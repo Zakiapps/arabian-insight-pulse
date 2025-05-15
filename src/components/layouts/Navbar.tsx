@@ -4,8 +4,6 @@ import { Bell, ChevronDown, Search, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
-import { LanguageSwitcher } from "@/components/ui/language-switcher";
-import { useLanguage } from "@/contexts/LanguageContext";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -22,7 +20,6 @@ import {
 
 const Navbar = () => {
   const { user, logout } = useAuth();
-  const { language } = useLanguage();
   const [showNotifications, setShowNotifications] = useState(false);
   
   const translations = {
@@ -48,7 +45,7 @@ const Navbar = () => {
       <div className="flex h-16 items-center px-4 gap-4">
         <SidebarTrigger />
         
-        <div className="hidden md:flex md:flex-1 md:items-center md:gap-4 md:w-full">
+        <div className="flex flex-1 items-center gap-4 w-full">
           <form className="flex-1 max-w-md">
             <div className="relative">
               <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
@@ -62,9 +59,6 @@ const Navbar = () => {
         </div>
 
         <div className="flex items-center gap-2">
-          {/* Language Switcher */}
-          <LanguageSwitcher />
-          
           {/* Notifications */}
           <Button
             variant="ghost"
@@ -83,13 +77,13 @@ const Navbar = () => {
                 <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
                   {user?.name.charAt(0)}
                 </div>
-                <div className="hidden md:flex md:flex-col md:items-end">
+                <div className="flex flex-col items-end">
                   <span className="text-sm font-medium">{user?.name}</span>
                   <span className="text-xs text-muted-foreground">
                     {translations.role[user?.role as keyof typeof translations.role] || translations.role.user}
                   </span>
                 </div>
-                <ChevronDown className="hidden md:inline h-4 w-4 text-muted-foreground" />
+                <ChevronDown className="h-4 w-4 text-muted-foreground" />
               </Button>
             </DropdownMenuTrigger>
             
@@ -103,7 +97,7 @@ const Navbar = () => {
               <DropdownMenuSeparator />
               <DropdownMenuItem asChild>
                 <a href="/settings" className="cursor-pointer flex w-full items-center">
-                  <User className="mr-2 h-4 w-4" />
+                  <User className="ml-2 h-4 w-4" />
                   <span>{translations.profile}</span>
                 </a>
               </DropdownMenuItem>

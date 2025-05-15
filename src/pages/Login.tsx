@@ -24,7 +24,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useLanguage } from "@/contexts/LanguageContext";
 
 const formSchema = z.object({
   email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
@@ -38,7 +37,6 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
-  const { isRTL } = useLanguage();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -48,7 +46,7 @@ const Login = () => {
     },
   });
 
-  const from = (location.state as any)?.from?.pathname || "/";
+  const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
@@ -63,7 +61,7 @@ const Login = () => {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4" dir={isRTL ? "rtl" : "ltr"}>
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4" dir="rtl">
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
@@ -75,7 +73,7 @@ const Login = () => {
           <p className="text-muted-foreground mt-2">مراقبة وتحليل محتوى وسائل التواصل الاجتماعي العربية</p>
         </div>
 
-        <Card>
+        <Card className="animate-scale-in">
           <CardHeader>
             <CardTitle>تسجيل الدخول إلى حسابك</CardTitle>
             <CardDescription>
@@ -135,11 +133,16 @@ const Login = () => {
               </form>
             </Form>
           </CardContent>
-          <CardFooter className="flex justify-center">
+          <CardFooter className="flex flex-col gap-4">
             <div className="text-center text-sm text-muted-foreground">
               ليس لديك حساب؟{" "}
               <Link to="/register" className="text-primary hover:underline">
                 إنشاء حساب جديد
+              </Link>
+            </div>
+            <div className="text-center text-sm">
+              <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
+                العودة إلى الصفحة الرئيسية
               </Link>
             </div>
           </CardFooter>

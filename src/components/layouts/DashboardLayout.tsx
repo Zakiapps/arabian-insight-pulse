@@ -5,13 +5,10 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import AppSidebar from "./AppSidebar";
 import Navbar from "./Navbar";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { getTextDirection } from "@/lib/utils";
 
 const DashboardLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const { language, isRTL } = useLanguage();
 
   // Fix hydration mismatch
   useEffect(() => {
@@ -22,12 +19,9 @@ const DashboardLayout = () => {
 
   return (
     <SidebarProvider>
-      <div 
-        className="min-h-screen flex w-full bg-muted/20" 
-        dir={getTextDirection(language)}
-      >
+      <div className="min-h-screen flex w-full bg-muted/20" dir="rtl">
         <AppSidebar />
-        <div className="flex flex-col flex-1">
+        <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
           <main className="flex-1 p-4 md:p-6 overflow-auto">
             <Outlet />

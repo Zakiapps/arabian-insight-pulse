@@ -17,6 +17,9 @@ import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
 import NotFound from "./pages/NotFound";
+import LandingPage from "./pages/LandingPage";
+import Pricing from "./pages/Pricing";
+import Services from "./pages/Services";
 
 const queryClient = new QueryClient();
 
@@ -29,12 +32,17 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
+              {/* صفحة البداية والتسعير والخدمات */}
+              <Route path="/" element={<LandingPage />} />
+              <Route path="/pricing" element={<Pricing />} />
+              <Route path="/services" element={<Services />} />
+              
               {/* مسارات المصادقة */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
               {/* المسارات المحمية */}
-              <Route path="/" element={
+              <Route path="/dashboard" element={
                 <ProtectedRoute>
                   <DashboardLayout />
                 </ProtectedRoute>
@@ -46,9 +54,6 @@ const App = () => (
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
-              
-              {/* إعادة توجيه / إلى /dashboard */}
-              <Route path="/" element={<Navigate to="/dashboard" replace />} />
               
               {/* التقاط جميع المسارات غير الموجودة */}
               <Route path="*" element={<NotFound />} />
