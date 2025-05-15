@@ -27,35 +27,36 @@ const AppSidebar = () => {
   const { logout, user } = useAuth();
   const { language } = useLanguage();
 
+  // Arabic menu items by default
   const menuItems = [
     { 
       icon: BarChart3, 
-      label: language === 'ar' ? "لوحة التحكم" : "Dashboard", 
+      label: "لوحة التحكم", 
       href: "/" 
     },
     { 
       icon: MessageSquare, 
-      label: language === 'ar' ? "المنشورات" : "Posts", 
+      label: "المنشورات", 
       href: "/posts" 
     },
     { 
       icon: Upload, 
-      label: language === 'ar' ? "رفع البيانات" : "Upload Data", 
+      label: "رفع البيانات", 
       href: "/upload" 
     },
     { 
       icon: Bell, 
-      label: language === 'ar' ? "التنبيهات" : "Alerts", 
+      label: "التنبيهات", 
       href: "/alerts" 
     },
     { 
       icon: FileText, 
-      label: language === 'ar' ? "التقارير" : "Reports", 
+      label: "التقارير", 
       href: "/reports" 
     },
     { 
       icon: Settings, 
-      label: language === 'ar' ? "الإعدادات" : "Settings", 
+      label: "الإعدادات", 
       href: "/settings" 
     },
   ];
@@ -68,7 +69,7 @@ const AppSidebar = () => {
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
           <span className="font-semibold text-xl">
-            {language === 'ar' ? "رؤى عربية" : "ArabInsights"}
+            رؤى عربية
           </span>
         </Link>
       </SidebarHeader>
@@ -104,7 +105,7 @@ const AppSidebar = () => {
             className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent text-right"
           >
             <LogOut className="h-4 w-4" />
-            <span>{language === 'ar' ? "تسجيل الخروج" : "Log out"}</span>
+            <span>تسجيل الخروج</span>
           </button>
         </div>
       </SidebarFooter>

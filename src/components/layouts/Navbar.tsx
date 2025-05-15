@@ -1,6 +1,6 @@
 
 import { useState } from "react";
-import { Bell, ChevronDown, Languages, Search, User } from "lucide-react";
+import { Bell, ChevronDown, Search, User } from "lucide-react";
 import { SidebarTrigger } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { Button } from "@/components/ui/button";
@@ -26,16 +26,21 @@ const Navbar = () => {
   const [showNotifications, setShowNotifications] = useState(false);
   
   const translations = {
-    search: language === 'ar' ? "البحث في المنشورات..." : "Search posts...",
-    profile: language === 'ar' ? "إعدادات الملف الشخصي" : "Profile settings",
-    logout: language === 'ar' ? "تسجيل الخروج" : "Log out",
-    notifications: language === 'ar' ? "الإشعارات" : "Notifications",
-    alertTitle: language === 'ar' ? "تنبيه: تم رصد مشاعر سلبية عالية" : "Alert: High negative sentiment detected",
-    alertDesc: language === 'ar' ? "آخر 20 منشورًا عن \"الحكومة\" لديهم 65٪ مشاعر سلبية" : "The last 20 posts about \"الحكومة\" have 65% negative sentiment",
-    uploadTitle: language === 'ar' ? "تمت معالجة تحميل CSV" : "CSV upload processed",
-    uploadDesc: language === 'ar' ? "تم تحليل مجموعتك المكونة من 150 منشورًا" : "Your batch of 150 posts has been analyzed",
-    timeAgo1: language === 'ar' ? "قبل 12 دقيقة" : "12m ago",
-    timeAgo2: language === 'ar' ? "قبل ساعتين" : "2h ago",
+    search: "البحث في المنشورات...",
+    profile: "إعدادات الملف الشخصي",
+    logout: "تسجيل الخروج",
+    notifications: "الإشعارات",
+    alertTitle: "تنبيه: تم رصد مشاعر سلبية عالية",
+    alertDesc: "آخر 20 منشورًا عن \"الحكومة\" لديهم 65٪ مشاعر سلبية",
+    uploadTitle: "تمت معالجة تحميل CSV",
+    uploadDesc: "تم تحليل مجموعتك المكونة من 150 منشورًا",
+    timeAgo1: "قبل 12 دقيقة",
+    timeAgo2: "قبل ساعتين",
+    role: {
+      admin: "مدير",
+      client: "عميل",
+      user: "مستخدم"
+    }
   };
   
   return (
@@ -80,7 +85,9 @@ const Navbar = () => {
                 </div>
                 <div className="hidden md:flex md:flex-col md:items-end">
                   <span className="text-sm font-medium">{user?.name}</span>
-                  <span className="text-xs text-muted-foreground">{user?.role}</span>
+                  <span className="text-xs text-muted-foreground">
+                    {translations.role[user?.role as keyof typeof translations.role] || translations.role.user}
+                  </span>
                 </div>
                 <ChevronDown className="hidden md:inline h-4 w-4 text-muted-foreground" />
               </Button>
