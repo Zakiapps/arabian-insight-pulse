@@ -29,11 +29,11 @@ const App = () => (
           <Sonner />
           <BrowserRouter>
             <Routes>
-              {/* Authentication routes */}
+              {/* مسارات المصادقة */}
               <Route path="/login" element={<Login />} />
               <Route path="/register" element={<Register />} />
               
-              {/* Protected routes */}
+              {/* المسارات المحمية */}
               <Route path="/" element={
                 <ProtectedRoute>
                   <DashboardLayout />
@@ -47,10 +47,10 @@ const App = () => (
                 <Route path="settings" element={<Settings />} />
               </Route>
               
-              {/* Redirect / to /dashboard */}
+              {/* إعادة توجيه / إلى /dashboard */}
               <Route path="/" element={<Navigate to="/dashboard" replace />} />
               
-              {/* Catch all */}
+              {/* التقاط جميع المسارات غير الموجودة */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </BrowserRouter>

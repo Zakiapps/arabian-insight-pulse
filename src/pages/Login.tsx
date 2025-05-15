@@ -24,10 +24,11 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const formSchema = z.object({
-  email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
+  password: z.string().min(6, "يجب أن تتكون كلمة المرور من 6 أحرف على الأقل"),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -37,6 +38,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const { isRTL } = useLanguage();
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -54,14 +56,14 @@ const Login = () => {
       await login(values.email, values.password);
       navigate(from, { replace: true });
     } catch (error) {
-      console.error("Login failed:", error);
+      console.error("فشل تسجيل الدخول:", error);
     } finally {
       setIsLoading(false);
     }
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+    <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4" dir={isRTL ? "rtl" : "ltr"}>
       <div className="w-full max-w-md">
         <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
@@ -69,15 +71,15 @@ const Login = () => {
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
           </div>
-          <h1 className="text-3xl font-bold">ArabInsights</h1>
-          <p className="text-muted-foreground mt-2">Monitor and analyze Arabic social media content</p>
+          <h1 className="text-3xl font-bold">رؤى عربية</h1>
+          <p className="text-muted-foreground mt-2">مراقبة وتحليل محتوى وسائل التواصل الاجتماعي العربية</p>
         </div>
 
         <Card>
           <CardHeader>
-            <CardTitle>Login to your account</CardTitle>
+            <CardTitle>تسجيل الدخول إلى حسابك</CardTitle>
             <CardDescription>
-              Enter your email and password to login to your account
+              أدخل بريدك الإلكتروني وكلمة المرور لتسجيل الدخول
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -88,7 +90,7 @@ const Login = () => {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>البريد الإلكتروني</FormLabel>
                       <FormControl>
                         <Input 
                           placeholder="name@company.com" 
@@ -105,7 +107,7 @@ const Login = () => {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Password</FormLabel>
+                      <FormLabel>كلمة المرور</FormLabel>
                       <FormControl>
                         <Input 
                           type="password" 
@@ -123,11 +125,11 @@ const Login = () => {
                   className="w-full" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "Logging in..." : "Login"}
+                  {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
                 </Button>
                 <div className="text-center text-sm">
                   <p className="text-muted-foreground">
-                    For demo: use admin@example.com / password
+                    للتجربة: استخدم admin@example.com / password
                   </p>
                 </div>
               </form>
@@ -135,9 +137,9 @@ const Login = () => {
           </CardContent>
           <CardFooter className="flex justify-center">
             <div className="text-center text-sm text-muted-foreground">
-              Don't have an account?{" "}
+              ليس لديك حساب؟{" "}
               <Link to="/register" className="text-primary hover:underline">
-                Create an account
+                إنشاء حساب جديد
               </Link>
             </div>
           </CardFooter>

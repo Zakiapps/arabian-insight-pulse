@@ -31,7 +31,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 
-// Mock data
+// بيانات وهمية
 const timeframeSentimentData = [
   { date: "06/01", positive: 48, neutral: 32, negative: 20 },
   { date: "06/02", positive: 42, neutral: 36, negative: 22 },
@@ -43,8 +43,8 @@ const timeframeSentimentData = [
 ];
 
 const dialectData = [
-  { name: "Jordanian", value: 65 },
-  { name: "Non-Jordanian", value: 35 },
+  { name: "أردني", value: 65 },
+  { name: "غير أردني", value: 35 },
 ];
 
 const topicsData = [
@@ -56,8 +56,8 @@ const topicsData = [
 ];
 
 const platformsData = [
-  { name: "Facebook", posts: 2850 },
-  { name: "Twitter", posts: 2150 },
+  { name: "فيسبوك", posts: 2850 },
+  { name: "تويتر", posts: 2150 },
 ];
 
 const SENTIMENT_COLORS = {
@@ -75,37 +75,37 @@ const Dashboard = () => {
     <div className="space-y-6">
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Dashboard</h1>
+          <h1 className="text-2xl font-bold tracking-tight">لوحة التحكم</h1>
           <p className="text-muted-foreground">
-            Monitor and analyze Arabic social media sentiment & dialects
+            مراقبة وتحليل المشاعر واللهجات في وسائل التواصل الاجتماعي العربية
           </p>
         </div>
         <div className="flex gap-4">
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-1">
-                <Filter className="w-4 h-4 mr-1" />
-                Filter
-                <ChevronDown className="w-4 h-4" />
+                <Filter className="w-4 h-4 ml-1" />
+                تصفية
+                <ChevronDown className="w-4 h-4 mr-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>All Sources</DropdownMenuItem>
-              <DropdownMenuItem>Facebook Only</DropdownMenuItem>
-              <DropdownMenuItem>Twitter Only</DropdownMenuItem>
+              <DropdownMenuItem>جميع المصادر</DropdownMenuItem>
+              <DropdownMenuItem>فيسبوك فقط</DropdownMenuItem>
+              <DropdownMenuItem>تويتر فقط</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
           <DropdownMenu>
             <DropdownMenuTrigger asChild>
               <Button variant="outline" className="gap-1">
-                <Download className="w-4 h-4 mr-1" />
-                Export
-                <ChevronDown className="w-4 h-4" />
+                <Download className="w-4 h-4 ml-1" />
+                تصدير
+                <ChevronDown className="w-4 h-4 mr-1" />
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end">
-              <DropdownMenuItem>Export as PDF</DropdownMenuItem>
-              <DropdownMenuItem>Export as Excel</DropdownMenuItem>
+              <DropdownMenuItem>تصدير كملف PDF</DropdownMenuItem>
+              <DropdownMenuItem>تصدير كملف Excel</DropdownMenuItem>
             </DropdownMenuContent>
           </DropdownMenu>
         </div>
@@ -115,20 +115,20 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Total Posts Analyzed
+              إجمالي المنشورات المحللة
             </CardTitle>
           </CardHeader>
           <CardContent>
             <div className="text-3xl font-bold">5,024</div>
             <div className="text-xs text-muted-foreground mt-1">
-              +12% from last week
+              +12% من الأسبوع الماضي
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Positive Sentiment
+              المشاعر الإيجابية
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -137,14 +137,14 @@ const Dashboard = () => {
               <div className="text-sm text-green-500">+3%</div>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              2,110 posts
+              2,110 منشور
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Neutral Sentiment
+              المشاعر المحايدة
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -153,14 +153,14 @@ const Dashboard = () => {
               <div className="text-sm text-muted-foreground">-1%</div>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              1,758 posts
+              1,758 منشور
             </div>
           </CardContent>
         </Card>
         <Card>
           <CardHeader className="pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
-              Negative Sentiment
+              المشاعر السلبية
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -169,7 +169,7 @@ const Dashboard = () => {
               <div className="text-sm text-red-500">+2%</div>
             </div>
             <div className="text-xs text-muted-foreground mt-1">
-              1,156 posts
+              1,156 منشور
             </div>
           </CardContent>
         </Card>
@@ -178,15 +178,15 @@ const Dashboard = () => {
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-7">
         <Card className="col-span-full lg:col-span-4">
           <CardHeader>
-            <CardTitle>Sentiment Analysis</CardTitle>
+            <CardTitle>تحليل المشاعر</CardTitle>
             <CardDescription>
-              Sentiment distribution over time
+              توزيع المشاعر على مدار الوقت
             </CardDescription>
             <Tabs defaultValue="7d" className="w-full" onValueChange={setTimeframe}>
               <TabsList className="grid w-full max-w-xs grid-cols-3">
-                <TabsTrigger value="7d">Week</TabsTrigger>
-                <TabsTrigger value="30d">Month</TabsTrigger>
-                <TabsTrigger value="90d">Quarter</TabsTrigger>
+                <TabsTrigger value="7d">أسبوع</TabsTrigger>
+                <TabsTrigger value="30d">شهر</TabsTrigger>
+                <TabsTrigger value="90d">ربع سنة</TabsTrigger>
               </TabsList>
             </Tabs>
           </CardHeader>
@@ -204,7 +204,7 @@ const Dashboard = () => {
                 <Area 
                   type="monotone" 
                   dataKey="positive" 
-                  name="Positive" 
+                  name="إيجابي" 
                   stackId="1" 
                   stroke={SENTIMENT_COLORS.positive} 
                   fill={SENTIMENT_COLORS.positive}
@@ -213,7 +213,7 @@ const Dashboard = () => {
                 <Area 
                   type="monotone" 
                   dataKey="neutral" 
-                  name="Neutral" 
+                  name="محايد" 
                   stackId="1" 
                   stroke={SENTIMENT_COLORS.neutral} 
                   fill={SENTIMENT_COLORS.neutral}
@@ -222,7 +222,7 @@ const Dashboard = () => {
                 <Area 
                   type="monotone" 
                   dataKey="negative" 
-                  name="Negative" 
+                  name="سلبي" 
                   stackId="1" 
                   stroke={SENTIMENT_COLORS.negative} 
                   fill={SENTIMENT_COLORS.negative}
@@ -235,9 +235,9 @@ const Dashboard = () => {
         
         <Card className="lg:col-span-3">
           <CardHeader>
-            <CardTitle>Dialect Detection</CardTitle>
+            <CardTitle>كشف اللهجة</CardTitle>
             <CardDescription>
-              Distribution of Jordanian vs non-Jordanian dialects
+              توزيع اللهجات الأردنية مقابل غير الأردنية
             </CardDescription>
           </CardHeader>
           <CardContent className="flex justify-center">
@@ -260,7 +260,7 @@ const Dashboard = () => {
                   ))}
                 </Pie>
                 <Tooltip 
-                  formatter={(value) => [`${value}%`, 'Percentage']}
+                  formatter={(value) => [`${value}%`, 'النسبة']}
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
                 />
               </PieChart>
@@ -273,12 +273,12 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle>Popular Topics</CardTitle>
-              <CardDescription>Most discussed topics in Arabic posts</CardDescription>
+              <CardTitle>المواضيع الشائعة</CardTitle>
+              <CardDescription>المواضيع الأكثر نقاشاً في المنشورات العربية</CardDescription>
             </div>
             <Button variant="ghost" size="icon">
               <ArrowRight className="h-4 w-4" />
-              <span className="sr-only">View all</span>
+              <span className="sr-only">عرض الكل</span>
             </Button>
           </CardHeader>
           <CardContent>
@@ -289,9 +289,9 @@ const Dashboard = () => {
                 <YAxis />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
-                  formatter={(value) => [`${value} posts`, 'Count']}
+                  formatter={(value) => [`${value} منشور`, 'العدد']}
                 />
-                <Bar dataKey="count" name="Posts" fill="hsl(var(--primary))" />
+                <Bar dataKey="count" name="المنشورات" fill="hsl(var(--primary))" />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
@@ -300,12 +300,12 @@ const Dashboard = () => {
         <Card>
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <div>
-              <CardTitle>Platform Breakdown</CardTitle>
-              <CardDescription>Posts by social media platform</CardDescription>
+              <CardTitle>توزيع المنصات</CardTitle>
+              <CardDescription>المنشورات حسب منصة التواصل الاجتماعي</CardDescription>
             </div>
             <Button variant="ghost" size="icon">
               <ArrowRight className="h-4 w-4" />
-              <span className="sr-only">View all</span>
+              <span className="sr-only">عرض الكل</span>
             </Button>
           </CardHeader>
           <CardContent>
@@ -316,9 +316,9 @@ const Dashboard = () => {
                 <YAxis />
                 <Tooltip 
                   contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
-                  formatter={(value) => [`${value} posts`, 'Count']}
+                  formatter={(value) => [`${value} منشور`, 'العدد']}
                 />
-                <Line type="monotone" dataKey="posts" name="Posts" stroke="hsl(var(--primary))" />
+                <Line type="monotone" dataKey="posts" name="المنشورات" stroke="hsl(var(--primary))" />
               </LineChart>
             </ResponsiveContainer>
           </CardContent>
