@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { getCategoryById } from "@/lib/utils";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -32,15 +33,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { cn } from "@/lib/utils";
+import { cn, categories } from "@/lib/utils";
 
-// Mock data for posts - focusing only on Jordanian dialect
+// Mock data for posts - focusing only on Jordanian dialect and adding categories
 const samplePosts = [
   {
     id: "p1",
     content: "الحكومة تعلن عن إجراءات جديدة لدعم الاقتصاد المحلي",
     platform: "Twitter",
     sentiment: "positive",
+    category: "politics",
     date: "2023-06-10",
     engagement: 245
   },
@@ -49,6 +51,7 @@ const samplePosts = [
     content: "أسعار المحروقات ترتفع مجدداً والمواطنون يعبرون عن استيائهم",
     platform: "Facebook",
     sentiment: "negative",
+    category: "economy",
     date: "2023-06-09",
     engagement: 513
   },
@@ -57,6 +60,7 @@ const samplePosts = [
     content: "افتتاح معرض للمنتجات المحلية في العاصمة عمان",
     platform: "Twitter",
     sentiment: "positive",
+    category: "economy",
     date: "2023-06-08",
     engagement: 189
   },
@@ -65,6 +69,7 @@ const samplePosts = [
     content: "وزارة التربية تعلن عن نتائج التوجيهي خلال الأسبوع القادم",
     platform: "Facebook",
     sentiment: "neutral",
+    category: "education",
     date: "2023-06-08",
     engagement: 782
   },
@@ -73,6 +78,7 @@ const samplePosts = [
     content: "خبراء الاقتصاد يتوقعون تحسن في أداء السوق المالي",
     platform: "Twitter",
     sentiment: "positive",
+    category: "economy",
     date: "2023-06-07",
     engagement: 122
   },
@@ -81,6 +87,7 @@ const samplePosts = [
     content: "مطالبات بتحسين الخدمات الصحية في المناطق النائية",
     platform: "Facebook",
     sentiment: "negative",
+    category: "health",
     date: "2023-06-07",
     engagement: 345
   },
@@ -89,6 +96,7 @@ const samplePosts = [
     content: "إطلاق مبادرة لدعم المشاريع الصغيرة والمتوسطة",
     platform: "Twitter",
     sentiment: "positive",
+    category: "economy",
     date: "2023-06-06",
     engagement: 267
   },
@@ -97,6 +105,7 @@ const samplePosts = [
     content: "نقابة المعلمين تعلن عن سلسلة مطالب جديدة",
     platform: "Facebook",
     sentiment: "neutral",
+    category: "education",
     date: "2023-06-05",
     engagement: 401
   },
@@ -116,10 +125,22 @@ const SentimentBadge = ({ sentiment }: { sentiment: string }) => {
   );
 };
 
+const CategoryBadge = ({ category, language }: { category: string, language: string }) => {
+  const categoryObj = categories.find(cat => cat.id === category);
+  const color = categoryObj ? categoryObj.color.replace('bg-', '') : "gray-500";
+  
+  return (
+    <Badge className={cn(`bg-${color}/10 text-${color} hover:bg-${color}/20`)}>
+      {getCategoryById(category, language)}
+    </Badge>
+  );
+};
+
 const Posts = () => {
   const { language } = useLanguage();
   const [searchTerm, setSearchTerm] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
@@ -131,9 +152,10 @@ const Posts = () => {
     exportCSV: language === 'ar' ? "تصدير كملف CSV" : "Export as CSV",
     exportExcel: language === 'ar' ? "تصدير كملف Excel" : "Export as Excel",
     searchFilter: language === 'ar' ? "البحث والتصفية" : "Post Search & Filtering",
-    searchFilterDesc: language === 'ar' ? "حدد النتائج حسب النص أو المشاعر أو المنصة" : "Narrow down results by text, sentiment, or platform",
+    searchFilterDesc: language === 'ar' ? "حدد النتائج حسب النص أو المشاعر أو المنصة أو الفئة" : "Narrow down results by text, sentiment, platform, or category",
     search: language === 'ar' ? "بحث في المنشورات..." : "Search posts...",
     sentiment: language === 'ar' ? "المشاعر" : "Sentiment",
+    category: language === 'ar' ? "الفئة" : "Category",
     platform: language === 'ar' ? "المنصة" : "Platform",
     all: language === 'ar' ? "الكل" : "All",
     positive: language === 'ar' ? "إيجابي" : "Positive",
@@ -154,8 +176,9 @@ const Posts = () => {
   const filteredPosts = samplePosts.filter(post => {
     const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesSentiment = sentimentFilter === 'all' || post.sentiment === sentimentFilter;
+    const matchesCategory = categoryFilter === 'all' || post.category === categoryFilter;
     const matchesPlatform = platformFilter === 'all' || post.platform === platformFilter;
-    return matchesSearch && matchesSentiment && matchesPlatform;
+    return matchesSearch && matchesSentiment && matchesCategory && matchesPlatform;
   });
 
   // Calculate pagination
@@ -203,7 +226,7 @@ const Posts = () => {
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
             <div className="relative">
               <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -226,6 +249,23 @@ const Posts = () => {
                   <SelectItem value="positive">{translations.positive}</SelectItem>
                   <SelectItem value="neutral">{translations.neutral}</SelectItem>
                   <SelectItem value="negative">{translations.negative}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={translations.category} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>{translations.category}</SelectLabel>
+                  <SelectItem value="all">{translations.all}</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {language === 'ar' ? cat.nameAr : cat.nameEn}
+                    </SelectItem>
+                  ))}
                 </SelectGroup>
               </SelectContent>
             </Select>
@@ -256,6 +296,7 @@ const Posts = () => {
                   <TableHead className="w-[400px]">{translations.content}</TableHead>
                   <TableHead>{translations.platform}</TableHead>
                   <TableHead>{translations.sentiment}</TableHead>
+                  <TableHead>{translations.category}</TableHead>
                   <TableHead>{translations.date}</TableHead>
                   <TableHead>{translations.engagement}</TableHead>
                 </TableRow>
@@ -267,6 +308,9 @@ const Posts = () => {
                     <TableCell>{post.platform}</TableCell>
                     <TableCell>
                       <SentimentBadge sentiment={post.sentiment} />
+                    </TableCell>
+                    <TableCell>
+                      <CategoryBadge category={post.category} language={language} />
                     </TableCell>
                     <TableCell>{post.date}</TableCell>
                     <TableCell>{post.engagement}</TableCell>

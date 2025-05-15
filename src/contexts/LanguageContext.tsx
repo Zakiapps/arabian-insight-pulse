@@ -7,6 +7,7 @@ interface LanguageContextType {
   language: Language;
   toggleLanguage: () => void;
   isRTL: boolean;
+  t: (ar: string, en: string) => string;
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -29,10 +30,15 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
     document.documentElement.dir = language === 'ar' ? 'rtl' : 'ltr';
   }, []);
 
+  // Simple translation helper
+  const t = (ar: string, en: string): string => {
+    return language === 'ar' ? ar : en;
+  };
+
   const isRTL = language === 'ar';
 
   return (
-    <LanguageContext.Provider value={{ language, toggleLanguage, isRTL }}>
+    <LanguageContext.Provider value={{ language, toggleLanguage, isRTL, t }}>
       {children}
     </LanguageContext.Provider>
   );
