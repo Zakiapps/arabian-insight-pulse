@@ -99,7 +99,10 @@ export default {
       },
       backgroundImage: {
         'gradient-radial': 'radial-gradient(var(--tw-gradient-stops))',
-      }
+      },
+      fontFamily: {
+        sans: ['Cairo', 'sans-serif'],
+      },
     }
   },
   plugins: [require("tailwindcss-animate")],

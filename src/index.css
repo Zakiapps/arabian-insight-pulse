@@ -1,4 +1,6 @@
 
+@import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
+
 @tailwind base;
 @tailwind components;
 @tailwind utilities;
@@ -14,7 +16,7 @@
     --popover: 0 0% 100%;
     --popover-foreground: 222.2 84% 4.9%;
 
-    --primary: 221 83% 53%;
+    --primary: 215 100% 50%;
     --primary-foreground: 210 40% 98%;
 
     --secondary: 210 40% 96.1%;
@@ -31,18 +33,18 @@
 
     --border: 214.3 31.8% 91.4%;
     --input: 214.3 31.8% 91.4%;
-    --ring: 221 83% 53%;
+    --ring: 215 100% 50%;
 
     --radius: 0.5rem;
 
     --sidebar-background: 223 84% 98%;
     --sidebar-foreground: 223 10% 30%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary: 215 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 223 84% 95%;
-    --sidebar-accent-foreground: 221 83% 53%;
+    --sidebar-accent-foreground: 215 100% 50%;
     --sidebar-border: 223 6% 90%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-ring: 215 100% 50%;
   }
 
   .dark {
@@ -76,12 +78,12 @@
 
     --sidebar-background: 223 50% 15%;
     --sidebar-foreground: 223 10% 90%;
-    --sidebar-primary: 221 83% 53%;
+    --sidebar-primary: 215 100% 50%;
     --sidebar-primary-foreground: 0 0% 100%;
     --sidebar-accent: 223 40% 20%;
-    --sidebar-accent-foreground: 221 83% 70%;
+    --sidebar-accent-foreground: 215 100% 70%;
     --sidebar-border: 223 30% 25%;
-    --sidebar-ring: 221 83% 53%;
+    --sidebar-ring: 215 100% 50%;
   }
 }
 
@@ -92,11 +94,26 @@
 
   body {
     @apply bg-background text-foreground;
+    font-family: 'Cairo', sans-serif;
   }
 
   /* RTL support for Arabic */
   [dir="rtl"] {
     text-align: right;
+  }
+  
+  [dir="rtl"] .sidebar-menu-button {
+    flex-direction: row-reverse;
+  }
+  
+  [dir="rtl"] .icon-margin-right {
+    margin-right: 0;
+    margin-left: 0.5rem;
+  }
+  
+  [dir="rtl"] .icon-margin-left {
+    margin-left: 0;
+    margin-right: 0.5rem;
   }
 }
 
@@ -117,4 +134,31 @@
 
 ::-webkit-scrollbar-thumb:hover {
   background: hsl(var(--muted-foreground) / 0.7);
+}
+
+/* Additional RTL utilities */
+.rtl-mirror {
+  transform: scaleX(-1);
+}
+
+.flex-row-reverse-rtl[dir="rtl"] {
+  flex-direction: row-reverse;
+}
+
+.ml-auto-rtl[dir="rtl"] {
+  margin-right: auto;
+  margin-left: initial;
+}
+
+.mr-auto-rtl[dir="rtl"] {
+  margin-left: auto;
+  margin-right: initial;
+}
+
+.text-right-rtl[dir="rtl"] {
+  text-align: right;
+}
+
+.text-left-rtl[dir="rtl"] {
+  text-align: left;
 }

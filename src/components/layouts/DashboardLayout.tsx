@@ -18,8 +18,8 @@ const DashboardLayout = () => {
   if (!mounted) return null;
 
   return (
-    <SidebarProvider defaultCollapsed={!isDesktop}>
-      <div className="min-h-screen flex w-full bg-muted/20">
+    <SidebarProvider>
+      <div className="min-h-screen flex w-full bg-muted/20" dir="rtl">
         <AppSidebar />
         <div className="flex flex-col flex-1">
           <Navbar />

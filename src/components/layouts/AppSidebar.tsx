@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
 import {
   Sidebar,
   SidebarContent,
@@ -24,14 +25,39 @@ import {
 const AppSidebar = () => {
   const { pathname } = useLocation();
   const { logout, user } = useAuth();
+  const { language } = useLanguage();
 
   const menuItems = [
-    { icon: BarChart3, label: "Dashboard", href: "/" },
-    { icon: MessageSquare, label: "Posts", href: "/posts" },
-    { icon: Upload, label: "Upload Data", href: "/upload" },
-    { icon: Bell, label: "Alerts", href: "/alerts" },
-    { icon: FileText, label: "Reports", href: "/reports" },
-    { icon: Settings, label: "Settings", href: "/settings" },
+    { 
+      icon: BarChart3, 
+      label: language === 'ar' ? "لوحة التحكم" : "Dashboard", 
+      href: "/" 
+    },
+    { 
+      icon: MessageSquare, 
+      label: language === 'ar' ? "المنشورات" : "Posts", 
+      href: "/posts" 
+    },
+    { 
+      icon: Upload, 
+      label: language === 'ar' ? "رفع البيانات" : "Upload Data", 
+      href: "/upload" 
+    },
+    { 
+      icon: Bell, 
+      label: language === 'ar' ? "التنبيهات" : "Alerts", 
+      href: "/alerts" 
+    },
+    { 
+      icon: FileText, 
+      label: language === 'ar' ? "التقارير" : "Reports", 
+      href: "/reports" 
+    },
+    { 
+      icon: Settings, 
+      label: language === 'ar' ? "الإعدادات" : "Settings", 
+      href: "/settings" 
+    },
   ];
 
   return (
@@ -41,7 +67,9 @@ const AppSidebar = () => {
           <div className="rounded-md bg-primary p-1.5">
             <BarChart3 className="h-5 w-5 text-white" />
           </div>
-          <span className="font-semibold text-xl">ArabInsights</span>
+          <span className="font-semibold text-xl">
+            {language === 'ar' ? "رؤى عربية" : "ArabInsights"}
+          </span>
         </Link>
       </SidebarHeader>
       <SidebarContent className="pt-6">
@@ -51,9 +79,9 @@ const AppSidebar = () => {
               <SidebarMenuButton asChild className={
                 cn("w-full justify-start gap-4", pathname === item.href && "bg-sidebar-accent")
               }>
-                <Link to={item.href}>
+                <Link to={item.href} className="flex items-center gap-4">
                   <item.icon className="h-5 w-5" />
-                  {item.label}
+                  <span>{item.label}</span>
                 </Link>
               </SidebarMenuButton>
             </SidebarMenuItem>
@@ -73,10 +101,10 @@ const AppSidebar = () => {
           </div>
           <button 
             onClick={logout}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent text-left"
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent text-right"
           >
             <LogOut className="h-4 w-4" />
-            <span>Log out</span>
+            <span>{language === 'ar' ? "تسجيل الخروج" : "Log out"}</span>
           </button>
         </div>
       </SidebarFooter>
