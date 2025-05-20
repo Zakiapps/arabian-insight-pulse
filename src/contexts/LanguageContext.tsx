@@ -4,6 +4,7 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 interface LanguageContextType {
   isRTL: boolean;
   t: (text: string) => string;
+  language: string; // Add the language property
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
@@ -23,7 +24,7 @@ export const LanguageProvider = ({ children }: { children: ReactNode }) => {
   };
 
   return (
-    <LanguageContext.Provider value={{ isRTL, t }}>
+    <LanguageContext.Provider value={{ isRTL, t, language: 'ar' }}>
       {children}
     </LanguageContext.Provider>
   );
