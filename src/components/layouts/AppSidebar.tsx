@@ -23,7 +23,7 @@ import {
 
 const AppSidebar = () => {
   const { pathname } = useLocation();
-  const { logout, user } = useAuth();
+  const { logout, user, profile } = useAuth();
 
   // Arabic menu items
   const menuItems = [
@@ -94,10 +94,10 @@ const AppSidebar = () => {
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3 px-2">
             <div className="h-9 w-9 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
-              {user?.name.charAt(0)}
+              {profile?.full_name?.charAt(0) || user?.email?.charAt(0)}
             </div>
             <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{user?.name}</span>
+              <span className="text-sm font-medium truncate">{profile?.full_name || user?.email}</span>
               <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
             </div>
           </div>

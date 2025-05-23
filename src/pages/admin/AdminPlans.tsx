@@ -68,10 +68,11 @@ export default function AdminPlans() {
       if (error) throw error;
       
       if (data) {
-        // Parse JSON features to array
+        // Parse JSON features to string array
         const parsedPlans = data.map(plan => ({
           ...plan,
-          features: Array.isArray(plan.features) ? plan.features : []
+          features: Array.isArray(plan.features) ? 
+            plan.features.map(feature => String(feature)) : [] // Ensure features are strings
         }));
         setPlans(parsedPlans);
       }

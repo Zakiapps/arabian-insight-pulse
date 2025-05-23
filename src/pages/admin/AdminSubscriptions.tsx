@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -84,7 +83,35 @@ export default function AdminSubscriptions() {
       if (error) throw error;
       
       if (data) {
-        setSubscriptions(data);
+        // Transform data to match our interface
+        const formattedSubscriptions = data.map(item => {
+          // Handle potential errors in the joined data
+          const user = typeof item.user === 'object' && item.user !== null ? {
+            email: item.user.email || '',
+            profile: {
+              full_name: item.user.profile?.full_name || null
+            }
+          } : { 
+            email: 'Unknown',
+            profile: { full_name: null }
+          };
+          
+          const plan = typeof item.plan === 'object' && item.plan !== null ? {
+            name: item.plan.name || 'Unknown Plan',
+            price_monthly: item.plan.price_monthly || 0
+          } : {
+            name: 'Unknown Plan',
+            price_monthly: 0
+          };
+          
+          return {
+            ...item,
+            user,
+            plan
+          };
+        });
+        
+        setSubscriptions(formattedSubscriptions);
       }
     } catch (error) {
       console.error("Error fetching subscriptions:", error);

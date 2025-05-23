@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { LanguageToggle } from "@/components/ui/language-toggle";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import {
-  SidebarMobile,
+  SidebarTrigger,
   SidebarMenuButton
 } from "@/components/ui/sidebar";
 import { Badge } from "@/components/ui/badge";
@@ -14,9 +14,7 @@ const AdminNavbar = () => {
   return (
     <header className="h-14 flex items-center gap-4 border-b bg-background px-4 lg:h-[60px] lg:px-6">
       <div className="flex items-center gap-2 lg:gap-3">
-        <SidebarMobile>
-          <SidebarMenuButton />
-        </SidebarMobile>
+        <SidebarTrigger />
         <div className="flex-1 flex items-center">
           <span className="text-lg font-semibold hidden md:inline-block">لوحة الإدارة</span>
         </div>

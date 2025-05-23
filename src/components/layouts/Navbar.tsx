@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/dialog";
 
 const Navbar = () => {
-  const { user, logout } = useAuth();
+  const { user, logout, profile } = useAuth();
   const [showNotifications, setShowNotifications] = useState(false);
   
   const translations = {
@@ -75,12 +75,12 @@ const Navbar = () => {
             <DropdownMenuTrigger asChild>
               <Button variant="ghost" className="gap-2">
                 <div className="h-8 w-8 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold">
-                  {user?.name.charAt(0)}
+                  {profile?.full_name?.charAt(0) || user?.email?.charAt(0)}
                 </div>
                 <div className="flex flex-col items-end">
-                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-sm font-medium">{profile?.full_name || user?.email}</span>
                   <span className="text-xs text-muted-foreground">
-                    {translations.role[user?.role as keyof typeof translations.role] || translations.role.user}
+                    {translations.role[profile?.role as keyof typeof translations.role] || translations.role.user}
                   </span>
                 </div>
                 <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -90,7 +90,7 @@ const Navbar = () => {
             <DropdownMenuContent align="end" className="w-56">
               <div className="flex items-center gap-2 p-2">
                 <div className="flex flex-col space-y-0.5">
-                  <span className="text-sm font-medium">{user?.name}</span>
+                  <span className="text-sm font-medium">{profile?.full_name || user?.email}</span>
                   <span className="text-xs text-muted-foreground">{user?.email}</span>
                 </div>
               </div>

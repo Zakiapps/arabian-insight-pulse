@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -88,7 +87,34 @@ export default function AdminTransactions() {
       if (error) throw error;
       
       if (data) {
-        setTransactions(data);
+        // Transform data to match our interface
+        const formattedTransactions = data.map(item => {
+          // Handle potential errors in the joined data
+          const user = typeof item.user === 'object' && item.user !== null ? {
+            email: item.user.email || '',
+            profile: {
+              full_name: item.user.profile?.full_name || null
+            }
+          } : { 
+            email: 'Unknown',
+            profile: { full_name: null }
+          };
+          
+          const subscription = item.subscription_id ? 
+            (typeof item.subscription === 'object' && item.subscription !== null ? {
+              plan: {
+                name: item.subscription.plan?.name || 'Unknown Plan'
+              }
+            } : undefined) : undefined;
+          
+          return {
+            ...item,
+            user,
+            subscription
+          };
+        });
+        
+        setTransactions(formattedTransactions);
       }
     } catch (error) {
       console.error("Error fetching transactions:", error);
