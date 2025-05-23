@@ -60,7 +60,7 @@ const AppSidebar = () => {
   ];
 
   return (
-    <Sidebar className="border-l border-t-0 border-b-0 border-r-0">
+    <Sidebar side="right" className="border-r border-t-0 border-b-0 border-l-0">
       <SidebarHeader className="border-b py-3">
         <Link to="/dashboard" className="flex items-center gap-2 px-4">
           <div className="rounded-md bg-primary p-1.5">
