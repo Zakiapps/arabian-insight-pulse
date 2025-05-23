@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { 
   Line, 
@@ -17,7 +16,7 @@ import {
   BarChart,
   AreaChart
 } from "recharts";
-import { ArrowRight, ChevronDown, Download, Filter } from "lucide-react";
+import { ArrowRight, ChevronDown, Download, Filter, Cube } from "lucide-react";
 import { cn, categories, getCategoryById } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -34,6 +33,7 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
+import ThreeDInsightView from "@/components/visualizations/ThreeDInsightView";
 
 // بيانات وهمية
 const timeframeSentimentData = [
@@ -82,8 +82,6 @@ const SENTIMENT_COLORS = {
   negative: "hsl(var(--sentiment-negative))",
 };
 
-const DIALECT_COLORS = ["#4f46e5", "#a1a1aa"];
-
 // Category colors
 const CATEGORY_COLORS = [
   "#4f46e5", // politics - blue
@@ -95,8 +93,11 @@ const CATEGORY_COLORS = [
   "#6366f1", // society - indigo
 ];
 
+const DIALECT_COLORS = ["#4f46e5", "#a1a1aa"];
+
 const Dashboard = () => {
   const [timeframe, setTimeframe] = useState("7d");
+  const [viewMode, setViewMode] = useState("2d"); // Add view mode state
   const { language } = useLanguage();
   
   const isArabic = language === 'ar';
@@ -135,6 +136,13 @@ const Dashboard = () => {
     positive: isArabic ? "إيجابي" : "Positive",
     neutral: isArabic ? "محايد" : "Neutral",
     negative: isArabic ? "سلبي" : "Negative",
+  };
+
+  // Sentiment data for 3D visualization
+  const sentimentData = {
+    positive: 42,
+    neutral: 35, 
+    negative: 23
   };
 
   return (
@@ -439,6 +447,27 @@ const Dashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* New 3D visualization section */}
+      <Card className="col-span-full">
+        <CardHeader className="flex flex-row items-center justify-between pb-2">
+          <div>
+            <CardTitle>رؤية ثلاثية الأبعاد للتحليل العاطفي</CardTitle>
+            <CardDescription>
+              عرض تفاعلي ثلاثي الأبعاد للمشاعر في المنشورات الاجتماعية
+            </CardDescription>
+          </div>
+          <Tabs defaultValue="3d" className="w-32">
+            <TabsList className="grid w-full grid-cols-2">
+              <TabsTrigger value="2d">2D</TabsTrigger>
+              <TabsTrigger value="3d">3D</TabsTrigger>
+            </TabsList>
+          </Tabs>
+        </CardHeader>
+        <CardContent>
+          <ThreeDInsightView sentimentData={sentimentData} />
+        </CardContent>
+      </Card>
     </div>
   );
 };

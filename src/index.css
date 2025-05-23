@@ -1,4 +1,3 @@
-
 @import url('https://fonts.googleapis.com/css2?family=Cairo:wght@300;400;500;600;700&display=swap');
 
 @tailwind base;
@@ -45,6 +44,11 @@
     --sidebar-accent-foreground: 215 100% 50%;
     --sidebar-border: 223 6% 90%;
     --sidebar-ring: 215 100% 50%;
+    
+    /* Sentiment analysis colors */
+    --sentiment-positive: 142 72% 40%;
+    --sentiment-neutral: 220 13% 65%;
+    --sentiment-negative: 0 84% 60%;
   }
 
   .dark {
