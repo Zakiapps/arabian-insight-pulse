@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -85,11 +86,13 @@ export default function AdminSubscriptions() {
       if (data) {
         // Transform data to match our interface
         const formattedSubscriptions = data.map(item => {
-          // Handle potential errors in the joined data
+          // Handle potential errors in the joined data with thorough null checking
           const user = item.user && typeof item.user === 'object' ? {
-            email: item.user.email || '',
+            email: (item.user && typeof item.user === 'object' && 'email' in item.user) ? item.user.email || '' : '',
             profile: {
-              full_name: item.user.profile?.full_name || null
+              full_name: (item.user && typeof item.user === 'object' && item.user.profile && typeof item.user.profile === 'object' && 'full_name' in item.user.profile) 
+                ? item.user.profile.full_name || null 
+                : null
             }
           } : { 
             email: 'Unknown',
