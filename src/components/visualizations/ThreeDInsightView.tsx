@@ -3,7 +3,6 @@ import { useRef, useState, useEffect } from "react";
 import { Canvas } from "@react-three/fiber";
 import { OrbitControls, Text } from "@react-three/drei";
 import { useLanguage } from "@/contexts/LanguageContext";
-import jordanMap from "@/assets/jordan-map.png";
 import * as THREE from "three";
 
 // TypeScript interface for the component props
@@ -25,8 +24,8 @@ interface ThreeDSceneProps {
 
 // 3D Bar component
 const SentimentBar = ({ position, height, color, label, labelPosition }: SentimentBarProps) => {
-  // Use a more generic type for the ref to avoid TypeScript errors
-  const meshRef = useRef<THREE.Object3D>(null);
+  // Use the specific THREE.Mesh type to match the JSX requirements
+  const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHover] = useState(false);
   const [clicked, setClick] = useState(false);
   
@@ -65,7 +64,8 @@ const SentimentBar = ({ position, height, color, label, labelPosition }: Sentime
 
 // Simplified Jordan Map component
 const JordanMap = () => {
-  const meshRef = useRef<THREE.Object3D>(null);
+  // Use the specific THREE.Mesh type to match the JSX requirements
+  const meshRef = useRef<THREE.Mesh>(null);
   
   return (
     <mesh ref={meshRef} position={[0, 4, -5]}>
