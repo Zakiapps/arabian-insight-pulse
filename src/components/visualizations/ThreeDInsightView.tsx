@@ -4,10 +4,28 @@ import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Text, useTexture } from "@react-three/drei";
 import { useLanguage } from "@/contexts/LanguageContext";
 import jordanMap from "/src/assets/jordan-map.png";
+import * as THREE from "three";
+
+// TypeScript interface for the component props
+interface SentimentBarProps {
+  position: [number, number, number];
+  height: number;
+  color: string;
+  label: string;
+  labelPosition: [number, number, number];
+}
+
+interface ThreeDSceneProps {
+  sentimentData: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+}
 
 // 3D Bar component
-const SentimentBar = ({ position, height, color, label, labelPosition }) => {
-  const meshRef = useRef();
+const SentimentBar = ({ position, height, color, label, labelPosition }: SentimentBarProps) => {
+  const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHover] = useState(false);
   const [clicked, setClick] = useState(false);
   
@@ -55,7 +73,7 @@ const SentimentBar = ({ position, height, color, label, labelPosition }) => {
 
 // Rotating Jordan Map component
 const JordanMap = () => {
-  const meshRef = useRef();
+  const meshRef = useRef<THREE.Mesh>(null);
   const texture = useTexture(jordanMap);
   
   useFrame(({ clock }) => {
@@ -73,7 +91,7 @@ const JordanMap = () => {
 };
 
 // Main 3D Scene
-const ThreeDScene = ({ sentimentData }) => {
+const ThreeDScene = ({ sentimentData }: ThreeDSceneProps) => {
   const { t } = useLanguage();
   
   return (
@@ -117,7 +135,15 @@ const ThreeDScene = ({ sentimentData }) => {
 };
 
 // Main component export
-const ThreeDInsightView = ({ sentimentData = { positive: 42, neutral: 35, negative: 23 } }) => {
+interface ThreeDInsightViewProps {
+  sentimentData?: {
+    positive: number;
+    neutral: number;
+    negative: number;
+  };
+}
+
+const ThreeDInsightView = ({ sentimentData = { positive: 42, neutral: 35, negative: 23 } }: ThreeDInsightViewProps) => {
   const [mounted, setMounted] = useState(false);
   
   useEffect(() => {

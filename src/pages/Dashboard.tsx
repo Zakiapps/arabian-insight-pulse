@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { 
   Line, 
@@ -16,7 +17,7 @@ import {
   BarChart,
   AreaChart
 } from "recharts";
-import { ArrowRight, ChevronDown, Download, Filter, Cube } from "lucide-react";
+import { ArrowRight, ChevronDown, Download, Filter } from "lucide-react";
 import { cn, categories, getCategoryById } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
