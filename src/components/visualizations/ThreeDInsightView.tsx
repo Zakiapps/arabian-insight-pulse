@@ -3,7 +3,7 @@ import { useRef, useState, useEffect } from "react";
 import { Canvas, useFrame } from "@react-three/fiber";
 import { OrbitControls, Text, useTexture } from "@react-three/drei";
 import { useLanguage } from "@/contexts/LanguageContext";
-import jordanMap from "/src/assets/jordan-map.png";
+import jordanMap from "@/assets/jordan-map.png";
 import * as THREE from "three";
 
 // TypeScript interface for the component props
