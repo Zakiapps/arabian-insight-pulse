@@ -91,14 +91,17 @@ export default function AdminTransactions() {
         // Transform data to match our interface
         const formattedTransactions = data.map(item => {
           // Handle potential errors in the joined data with thorough null checking
-          const user = item.user && typeof item.user === 'object' ? {
-            email: (item.user && typeof item.user === 'object' && 'email' in item.user) ? item.user.email || '' : '',
+          const userObj = item.user && typeof item.user === 'object' ? item.user : null;
+          const user = userObj ? {
+            email: 'email' in userObj ? String(userObj.email) || '' : '',
             profile: {
-              full_name: (item.user && typeof item.user === 'object' && item.user.profile && typeof item.user.profile === 'object' && 'full_name' in item.user.profile) 
-                ? item.user.profile.full_name || null 
-                : null
+              full_name: userObj && 
+                        userObj.profile && 
+                        typeof userObj.profile === 'object' && 
+                        'full_name' in userObj.profile ? 
+                        String(userObj.profile.full_name) || null : null
             }
-          } : { 
+          } : {
             email: 'Unknown',
             profile: { full_name: null }
           };
