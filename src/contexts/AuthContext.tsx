@@ -142,6 +142,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     try {
+      // Get the current origin for the redirect URL
+      const redirectTo = window.location.origin + "/login?verified=true";
+      
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
@@ -149,7 +152,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
           data: {
             full_name: name
           },
-          emailRedirectTo: window.location.origin + "/login"
+          emailRedirectTo: redirectTo
         }
       });
 
