@@ -25,6 +25,7 @@ interface ThreeDSceneProps {
 
 // 3D Bar component
 const SentimentBar = ({ position, height, color, label, labelPosition }: SentimentBarProps) => {
+  // Using THREE.Mesh type to match the expected type from @react-three/fiber
   const meshRef = useRef<THREE.Mesh>(null);
   const [hovered, setHover] = useState(false);
   const [clicked, setClick] = useState(false);
@@ -73,6 +74,7 @@ const SentimentBar = ({ position, height, color, label, labelPosition }: Sentime
 
 // Rotating Jordan Map component
 const JordanMap = () => {
+  // Using THREE.Mesh type to match the expected type from @react-three/fiber
   const meshRef = useRef<THREE.Mesh>(null);
   const texture = useTexture(jordanMap);
   
