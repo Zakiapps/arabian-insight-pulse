@@ -21,7 +21,7 @@ const DashboardLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex flex-row-reverse w-full bg-muted/20" dir="rtl">
+      <div className="min-h-screen flex w-full bg-muted/20" dir="rtl">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
