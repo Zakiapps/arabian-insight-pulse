@@ -1,20 +1,18 @@
 
-import { Outlet } from "react-router-dom";
+import { Outlet, Navigate } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
-import AppSidebar from "./AppSidebar";
-import Navbar from "./Navbar";
+import AppSidebar from "./AdminSidebar";
+import Navbar from "./AdminNavbar";
 import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
-const DashboardLayout = () => {
+const AdminLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isRTL } = useLanguage();
-  const { isAuthenticated, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading } = useAuth();
 
   // Fix hydration mismatch
   useEffect(() => {
@@ -31,6 +29,10 @@ const DashboardLayout = () => {
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
+  }
+
+  if (!isAdmin) {
+    return <Navigate to="/dashboard" replace />;
   }
 
   if (!mounted) return null;
@@ -50,4 +52,4 @@ const DashboardLayout = () => {
   );
 };
 
-export default DashboardLayout;
+export default AdminLayout;

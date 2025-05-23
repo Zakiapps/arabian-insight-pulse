@@ -8,6 +8,7 @@ import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardLayout from "./components/layouts/DashboardLayout";
+import AdminLayout from "./components/layouts/AdminLayout";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -20,6 +21,12 @@ import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import Pricing from "./pages/Pricing";
 import Services from "./pages/Services";
+import AdminDashboard from "./pages/admin/AdminDashboard";
+import AdminUsers from "./pages/admin/AdminUsers";
+import AdminPlans from "./pages/admin/AdminPlans";
+import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
+import AdminTransactions from "./pages/admin/AdminTransactions";
+import AdminSettings from "./pages/admin/AdminSettings";
 
 const queryClient = new QueryClient();
 
@@ -53,6 +60,20 @@ const App = () => (
                 <Route path="alerts" element={<Alerts />} />
                 <Route path="reports" element={<Reports />} />
                 <Route path="settings" element={<Settings />} />
+              </Route>
+
+              {/* مسارات لوحة الإدارة */}
+              <Route path="/admin" element={
+                <ProtectedRoute adminOnly>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
+                <Route index element={<AdminDashboard />} />
+                <Route path="users" element={<AdminUsers />} />
+                <Route path="plans" element={<AdminPlans />} />
+                <Route path="subscriptions" element={<AdminSubscriptions />} />
+                <Route path="transactions" element={<AdminTransactions />} />
+                <Route path="settings" element={<AdminSettings />} />
               </Route>
               
               {/* التقاط جميع المسارات غير الموجودة */}

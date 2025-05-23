@@ -1,0 +1,117 @@
+
+import { Link, useLocation } from "react-router-dom";
+import { 
+  BarChart3, 
+  Users, 
+  CreditCard, 
+  Settings, 
+  LogOut,
+  Tag,
+  MessageSquare
+} from "lucide-react";
+import { cn } from "@/lib/utils";
+import { useAuth } from "@/contexts/AuthContext";
+import {
+  Sidebar,
+  SidebarContent,
+  SidebarFooter,
+  SidebarHeader,
+  SidebarMenu,
+  SidebarMenuItem,
+  SidebarMenuButton,
+} from "@/components/ui/sidebar";
+
+const AdminSidebar = () => {
+  const { pathname } = useLocation();
+  const { logout, user, profile } = useAuth();
+
+  // Admin menu items
+  const menuItems = [
+    { 
+      icon: BarChart3, 
+      label: "لوحة الإدارة", 
+      href: "/admin" 
+    },
+    { 
+      icon: Users, 
+      label: "المستخدمين", 
+      href: "/admin/users" 
+    },
+    { 
+      icon: Tag, 
+      label: "الخطط", 
+      href: "/admin/plans" 
+    },
+    { 
+      icon: CreditCard, 
+      label: "الاشتراكات", 
+      href: "/admin/subscriptions" 
+    },
+    { 
+      icon: MessageSquare, 
+      label: "المدفوعات", 
+      href: "/admin/transactions" 
+    },
+    { 
+      icon: Settings, 
+      label: "الإعدادات", 
+      href: "/admin/settings" 
+    },
+  ];
+
+  return (
+    <Sidebar side="right" variant="floating" className="border-r border-t-0 border-b-0 border-l-0">
+      <SidebarHeader className="border-b py-3">
+        <Link to="/admin" className="flex items-center gap-2 px-4">
+          <div className="rounded-md bg-red-600 p-1.5">
+            <BarChart3 className="h-5 w-5 text-white" />
+          </div>
+          <span className="font-semibold text-xl">
+            لوحة الإدارة
+          </span>
+        </Link>
+      </SidebarHeader>
+      <SidebarContent className="pt-6">
+        <SidebarMenu>
+          {menuItems.map((item) => (
+            <SidebarMenuItem key={item.href}>
+              <SidebarMenuButton asChild className={
+                cn("w-full justify-start gap-4", 
+                  pathname === item.href && "bg-sidebar-accent",
+                  "[&>a]:flex [&>a]:items-center [&>a]:gap-4"
+                )
+              }>
+                <Link to={item.href}>
+                  <item.icon className="h-5 w-5" />
+                  <span>{item.label}</span>
+                </Link>
+              </SidebarMenuButton>
+            </SidebarMenuItem>
+          ))}
+        </SidebarMenu>
+      </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <div className="flex flex-col gap-4">
+          <div className="flex items-center gap-3 px-2">
+            <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center text-primary-foreground font-semibold">
+              {profile?.full_name?.charAt(0) || user?.email?.charAt(0)}
+            </div>
+            <div className="flex flex-col overflow-hidden">
+              <span className="text-sm font-medium truncate">{profile?.full_name || "مدير"}</span>
+              <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            </div>
+          </div>
+          <button 
+            onClick={() => logout()}
+            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent text-right"
+          >
+            <LogOut className="h-4 w-4 ml-1" />
+            <span>تسجيل الخروج</span>
+          </button>
+        </div>
+      </SidebarFooter>
+    </Sidebar>
+  );
+};
+
+export default AdminSidebar;

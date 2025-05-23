@@ -1,84 +1,129 @@
 
 import React, { createContext, useState, useEffect, useContext } from "react";
 import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { User, Session } from "@supabase/supabase-js";
+import { Database } from "@/integrations/supabase/types";
 
-type User = {
-  id: string;
-  email: string;
-  name: string;
-  role: "admin" | "client";
+type Profile = Database['public']['Tables']['profiles']['Row'];
+
+type UserWithProfile = User & {
+  profile?: Profile | null;
 };
 
 type AuthContextType = {
-  user: User | null;
+  user: UserWithProfile | null;
+  profile: Profile | null;
+  session: Session | null;
   loading: boolean;
+  isAdmin: boolean;
+  isAuthenticated: boolean;
   login: (email: string, password: string) => Promise<void>;
   register: (name: string, email: string, password: string) => Promise<void>;
-  logout: () => void;
-  isAuthenticated: boolean;
-  isAdmin: boolean;
+  logout: () => Promise<void>;
+  updateProfile: (data: Partial<Profile>) => Promise<void>;
 };
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Mock authentication service for MVP
-// In a real app, this would connect to your auth backend
-const mockUsers: User[] = [
-  {
-    id: "1",
-    email: "admin@example.com",
-    name: "Admin User",
-    role: "admin",
-  },
-  {
-    id: "2",
-    email: "client@example.com",
-    name: "Client User",
-    role: "client",
-  },
-];
-
 export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
-  const [user, setUser] = useState<User | null>(null);
+  const [user, setUser] = useState<UserWithProfile | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [isAdmin, setIsAdmin] = useState(false);
 
-  // Check for saved auth token on mount
-  useEffect(() => {
-    const savedUser = localStorage.getItem("user");
-    if (savedUser) {
-      try {
-        setUser(JSON.parse(savedUser));
-      } catch (error) {
-        console.error("Failed to parse saved user", error);
-        localStorage.removeItem("user");
+  // Fetch user profile data
+  const fetchProfile = async (userId: string) => {
+    try {
+      const { data, error } = await supabase
+        .from("profiles")
+        .select("*")
+        .eq("id", userId)
+        .maybeSingle();
+
+      if (error) throw error;
+      
+      if (data) {
+        setProfile(data);
+        setIsAdmin(data.role === "admin");
       }
+
+      return data;
+    } catch (error) {
+      console.error("Error fetching profile:", error);
+      return null;
     }
-    setLoading(false);
+  };
+
+  // Listen for authentication state changes
+  useEffect(() => {
+    // First set up auth state listener to prevent missing auth events during initialization
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, currentSession) => {
+        setSession(currentSession);
+        if (currentSession?.user) {
+          const currentUser = currentSession.user;
+          setUser(currentUser);
+          
+          // Use setTimeout to prevent potential deadlocks with Supabase client
+          setTimeout(() => {
+            fetchProfile(currentUser.id);
+          }, 0);
+        } else {
+          setUser(null);
+          setProfile(null);
+          setIsAdmin(false);
+        }
+      }
+    );
+
+    // Then check for existing session
+    const initializeAuth = async () => {
+      try {
+        const { data: { session: currentSession } } = await supabase.auth.getSession();
+        setSession(currentSession);
+        
+        if (currentSession?.user) {
+          setUser(currentSession.user);
+          const profileData = await fetchProfile(currentSession.user.id);
+          
+          if (profileData) {
+            const userWithProfile = { 
+              ...currentSession.user,
+              profile: profileData
+            };
+            setUser(userWithProfile);
+          }
+        }
+      } catch (error) {
+        console.error("Error initializing auth:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    initializeAuth();
+
+    return () => {
+      subscription.unsubscribe();
+    };
   }, []);
 
   // Login function
   const login = async (email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) throw error;
       
-      const foundUser = mockUsers.find(u => u.email === email);
-      
-      if (!foundUser) {
-        throw new Error("Invalid credentials");
-      }
-      
-      // In a real app, you'd verify the password here
-      if (password !== "password") {
-        throw new Error("Invalid credentials");
-      }
-      
-      setUser(foundUser);
-      localStorage.setItem("user", JSON.stringify(foundUser));
-      toast.success(`Welcome back, ${foundUser.name}!`);
+      toast.success("Login successful");
     } catch (error: any) {
-      toast.error(error.message || "Login failed");
+      toast.error(error.message || "Failed to sign in");
       throw error;
     } finally {
       setLoading(false);
@@ -89,28 +134,21 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   const register = async (name: string, email: string, password: string) => {
     setLoading(true);
     try {
-      // Simulate API call
-      await new Promise(resolve => setTimeout(resolve, 800));
-      
-      if (mockUsers.some(u => u.email === email)) {
-        throw new Error("Email already registered");
-      }
-      
-      const newUser: User = {
-        id: `${mockUsers.length + 1}`,
+      const { data, error } = await supabase.auth.signUp({
         email,
-        name,
-        role: "client", // New users are clients by default
-      };
+        password,
+        options: {
+          data: {
+            full_name: name
+          }
+        }
+      });
+
+      if (error) throw error;
       
-      // In a real app, you'd save this to your database
-      mockUsers.push(newUser);
-      
-      setUser(newUser);
-      localStorage.setItem("user", JSON.stringify(newUser));
-      toast.success("Registration successful!");
+      toast.success("Registration successful");
     } catch (error: any) {
-      toast.error(error.message || "Registration failed");
+      toast.error(error.message || "Failed to sign up");
       throw error;
     } finally {
       setLoading(false);
@@ -118,25 +156,52 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
   };
 
   // Logout function
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem("user");
-    toast.info("You have been logged out");
+  const logout = async () => {
+    try {
+      const { error } = await supabase.auth.signOut();
+      if (error) throw error;
+      toast.info("You have been logged out");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to sign out");
+      console.error("Error signing out:", error);
+    }
   };
-
-  const isAuthenticated = !!user;
-  const isAdmin = user?.role === "admin";
+  
+  // Update profile
+  const updateProfile = async (data: Partial<Profile>) => {
+    try {
+      if (!user) throw new Error("No user logged in");
+      
+      const { error } = await supabase
+        .from("profiles")
+        .update(data)
+        .eq("id", user.id);
+        
+      if (error) throw error;
+      
+      // Refresh profile data
+      const updatedProfile = await fetchProfile(user.id);
+      
+      toast.success("Profile updated successfully");
+    } catch (error: any) {
+      toast.error(error.message || "Failed to update profile");
+      throw error;
+    }
+  };
 
   return (
     <AuthContext.Provider
       value={{
         user,
+        profile,
+        session,
         loading,
+        isAdmin,
+        isAuthenticated: !!user,
         login,
         register,
         logout,
-        isAuthenticated,
-        isAdmin
+        updateProfile
       }}
     >
       {children}
