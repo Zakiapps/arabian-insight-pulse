@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -31,13 +30,14 @@ import { toast } from "sonner";
 import { MoreHorizontal, Search, CheckCircle, AlertCircle, ReceiptIcon, Download, Eye, ArrowDownUp, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 
+// Define proper interfaces with strict types
 interface UserProfile {
   full_name: string | null;
 }
 
 interface UserData {
   email: string;
-  profile?: UserProfile;
+  profile?: UserProfile | null;
 }
 
 interface PlanData {
@@ -45,7 +45,7 @@ interface PlanData {
 }
 
 interface SubscriptionData {
-  plan?: PlanData;
+  plan?: PlanData | null;
 }
 
 interface Transaction {
@@ -58,7 +58,7 @@ interface Transaction {
   payment_method: string | null;
   created_at: string;
   user?: UserData | null;
-  subscription?: SubscriptionData;
+  subscription?: SubscriptionData | null;
 }
 
 export default function AdminTransactions() {
@@ -96,34 +96,30 @@ export default function AdminTransactions() {
       if (error) throw error;
       
       if (data) {
-        // Transform data to match our interface
-        const formattedTransactions = data.map(item => {
+        // Transform data to match our interface with careful type handling
+        const formattedTransactions = data.map((item: any): Transaction => {
           // Handle potential errors in the joined data with thorough null checking
-          const userObj = item.user && typeof item.user === 'object' ? item.user : null;
-          const user = userObj ? {
-            email: 'email' in userObj ? String(userObj.email) || '' : '',
-            profile: {
-              full_name: userObj && 
-                        userObj.profile && 
-                        typeof userObj.profile === 'object' && 
-                        'full_name' in userObj.profile ? 
-                        String(userObj.profile.full_name) || null : null
-            }
-          } : {
-            email: 'Unknown',
-            profile: { full_name: null }
-          };
+          let userData: UserData | null = null;
           
-          const subscription = item.subscription_id && 
+          if (item.user && typeof item.user === 'object') {
+            userData = {
+              email: item.user.email || '',
+              profile: item.user.profile && typeof item.user.profile === 'object' ? {
+                full_name: item.user.profile.full_name || null
+              } : null
+            };
+          }
+          
+          const subscription: SubscriptionData | null = item.subscription_id && 
             item.subscription && typeof item.subscription === 'object' ? {
-              plan: {
-                name: item.subscription.plan?.name || 'Unknown Plan'
-              }
-            } : undefined;
+              plan: item.subscription.plan && typeof item.subscription.plan === 'object' ? {
+                name: item.subscription.plan.name || 'Unknown Plan'
+              } : null
+            } : null;
           
           return {
             ...item,
-            user,
+            user: userData,
             subscription
           };
         });
@@ -143,8 +139,8 @@ export default function AdminTransactions() {
     setLoading(true);
     try {
       setTimeout(() => {
-        // Mock transaction data
-        const mockTransactions = [
+        // Mock transaction data with properly typed objects
+        const mockTransactions: Transaction[] = [
           {
             id: "1",
             user_id: "user-1",
@@ -222,11 +218,12 @@ export default function AdminTransactions() {
               profile: {
                 full_name: "User Two"
               }
-            }
+            },
+            subscription: null
           }
         ];
         
-        setTransactions(mockTransactions as Transaction[]);
+        setTransactions(mockTransactions);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -313,7 +310,7 @@ export default function AdminTransactions() {
     }
   };
 
-  // Sort and filter transactions
+  // Sort and filter transactions with safe type checking
   const sortAndFilterTransactions = () => {
     let filtered = [...transactions];
     

@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -31,13 +30,14 @@ import { toast } from "sonner";
 import { MoreHorizontal, Search, CheckCircle, AlertCircle, RotateCw, Calendar, Download, Ban, Eye, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
+// Define proper interfaces with strict types
 interface UserProfile {
   full_name: string | null;
 }
 
 interface UserData {
   email: string;
-  profile?: UserProfile;
+  profile?: UserProfile | null;
 }
 
 interface PlanData {
@@ -90,35 +90,28 @@ export default function AdminSubscriptions() {
       if (error) throw error;
       
       if (data) {
-        // Transform data to match our interface
-        const formattedSubscriptions = data.map(item => {
+        // Transform data to match our interface with careful type handling
+        const formattedSubscriptions = data.map((item: any): Subscription => {
           // Handle potential errors in the joined data
-          const userObj = item.user && typeof item.user === 'object' ? item.user : null;
-          const user = userObj ? {
-            email: 'email' in userObj ? String(userObj.email) || '' : '',
-            profile: {
-              full_name: userObj && 
-                        userObj.profile && 
-                        typeof userObj.profile === 'object' && 
-                        'full_name' in userObj.profile ? 
-                        String(userObj.profile.full_name) || null : null
-            }
-          } : {
-            email: 'Unknown',
-            profile: { full_name: null }
-          };
+          let userData: UserData | null = null;
           
-          const plan = item.plan && typeof item.plan === 'object' ? {
+          if (item.user && typeof item.user === 'object') {
+            userData = {
+              email: item.user.email || '',
+              profile: item.user.profile && typeof item.user.profile === 'object' ? {
+                full_name: item.user.profile.full_name || null
+              } : null
+            };
+          }
+          
+          const plan: PlanData | null = item.plan && typeof item.plan === 'object' ? {
             name: item.plan.name || 'Unknown Plan',
             price_monthly: item.plan.price_monthly || 0
-          } : {
-            name: 'Unknown Plan',
-            price_monthly: 0
-          };
+          } : null;
           
           return {
             ...item,
-            user,
+            user: userData,
             plan
           };
         });
@@ -138,8 +131,8 @@ export default function AdminSubscriptions() {
     setLoading(true);
     try {
       setTimeout(() => {
-        // Mock subscription data
-        const mockSubscriptions = [
+        // Mock subscription data with properly typed objects
+        const mockSubscriptions: Subscription[] = [
           {
             id: "1",
             user_id: "user-1",
@@ -202,7 +195,7 @@ export default function AdminSubscriptions() {
           }
         ];
         
-        setSubscriptions(mockSubscriptions as Subscription[]);
+        setSubscriptions(mockSubscriptions);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -342,7 +335,7 @@ export default function AdminSubscriptions() {
     }
   };
 
-  // Filter subscriptions based on search and status filter
+  // Filter subscriptions based on search and status filter with safe type checking
   const filteredSubscriptions = subscriptions.filter(subscription => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
