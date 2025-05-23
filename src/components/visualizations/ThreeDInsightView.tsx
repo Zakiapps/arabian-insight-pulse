@@ -1,7 +1,7 @@
 
 import { useRef, useState, useEffect } from "react";
-import { Canvas, useFrame } from "@react-three/fiber";
-import { OrbitControls, Text, useTexture } from "@react-three/drei";
+import { Canvas } from "@react-three/fiber";
+import { OrbitControls, Text } from "@react-three/drei";
 import { useLanguage } from "@/contexts/LanguageContext";
 import jordanMap from "@/assets/jordan-map.png";
 import * as THREE from "three";
@@ -25,29 +25,20 @@ interface ThreeDSceneProps {
 
 // 3D Bar component
 const SentimentBar = ({ position, height, color, label, labelPosition }: SentimentBarProps) => {
-  // Using THREE.Mesh type to match the expected type from @react-three/fiber
-  const meshRef = useRef<THREE.Mesh>(null);
+  // Use a more generic type for the ref to avoid TypeScript errors
+  const meshRef = useRef<THREE.Object3D>(null);
   const [hovered, setHover] = useState(false);
   const [clicked, setClick] = useState(false);
   
-  useFrame(() => {
-    if (meshRef.current) {
-      if (clicked) {
-        meshRef.current.scale.y = Math.min(meshRef.current.scale.y + 0.01, height * 1.2);
-      } else if (hovered) {
-        meshRef.current.scale.y = Math.min(meshRef.current.scale.y + 0.01, height * 1.1);
-      } else {
-        meshRef.current.scale.y = Math.max(height, meshRef.current.scale.y - 0.01);
-      }
-    }
-  });
-
+  // Use a simpler animation approach to reduce compatibility issues
+  const animatedHeight = height * (hovered ? 1.1 : clicked ? 1.2 : 1);
+  
   return (
     <group position={position}>
       <mesh
         ref={meshRef}
         position={[0, height / 2, 0]}
-        scale={[1, height, 1]}
+        scale={[1, animatedHeight, 1]}
         onClick={() => setClick(!clicked)}
         onPointerOver={() => setHover(true)}
         onPointerOut={() => setHover(false)}
@@ -72,22 +63,14 @@ const SentimentBar = ({ position, height, color, label, labelPosition }: Sentime
   );
 };
 
-// Rotating Jordan Map component
+// Simplified Jordan Map component
 const JordanMap = () => {
-  // Using THREE.Mesh type to match the expected type from @react-three/fiber
-  const meshRef = useRef<THREE.Mesh>(null);
-  const texture = useTexture(jordanMap);
+  const meshRef = useRef<THREE.Object3D>(null);
   
-  useFrame(({ clock }) => {
-    if (meshRef.current) {
-      meshRef.current.rotation.y = clock.getElapsedTime() * 0.2;
-    }
-  });
-
   return (
     <mesh ref={meshRef} position={[0, 4, -5]}>
       <planeGeometry args={[6, 4]} />
-      <meshBasicMaterial map={texture} transparent opacity={0.7} />
+      <meshBasicMaterial color="#4f46e5" opacity={0.7} transparent />
     </mesh>
   );
 };
@@ -124,7 +107,7 @@ const ThreeDScene = ({ sentimentData }: ThreeDSceneProps) => {
         labelPosition={[0, -0.5, 0]}
       />
       
-      {/* Rotating Jordan Map */}
+      {/* Simplified Jordan Map */}
       <JordanMap />
       
       <OrbitControls 
@@ -150,6 +133,7 @@ const ThreeDInsightView = ({ sentimentData = { positive: 42, neutral: 35, negati
   
   useEffect(() => {
     setMounted(true);
+    return () => setMounted(false);
   }, []);
   
   if (!mounted) return null;
