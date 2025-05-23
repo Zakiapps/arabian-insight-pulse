@@ -47,9 +47,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (data) {
         setProfile(data);
         setIsAdmin(data.role === "admin");
+        return data;
       }
-
-      return data;
+      return null;
     } catch (error) {
       console.error("Error fetching profile:", error);
       return null;
@@ -61,7 +61,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     // First set up auth state listener to prevent missing auth events during initialization
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, currentSession) => {
+        console.log("Auth state changed:", event);
         setSession(currentSession);
+        
         if (currentSession?.user) {
           const currentUser = currentSession.user;
           setUser(currentUser);
@@ -119,11 +121,17 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         password
       });
 
-      if (error) throw error;
+      if (error) {
+        if (error.message.includes("Email not confirmed")) {
+          toast.error("Please verify your email before logging in. Check your inbox for a confirmation link.");
+        } else {
+          toast.error(error.message || "Failed to sign in");
+        }
+        throw error;
+      }
       
       toast.success("Login successful");
     } catch (error: any) {
-      toast.error(error.message || "Failed to sign in");
       throw error;
     } finally {
       setLoading(false);
@@ -140,13 +148,18 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         options: {
           data: {
             full_name: name
-          }
+          },
+          emailRedirectTo: window.location.origin + "/login"
         }
       });
 
       if (error) throw error;
       
-      toast.success("Registration successful");
+      if (data.user && !data.session) {
+        toast.info("Please check your email to confirm your account");
+      } else {
+        toast.success("Registration successful");
+      }
     } catch (error: any) {
       toast.error(error.message || "Failed to sign up");
       throw error;
@@ -180,7 +193,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       if (error) throw error;
       
       // Refresh profile data
-      const updatedProfile = await fetchProfile(user.id);
+      await fetchProfile(user.id);
       
       toast.success("Profile updated successfully");
     } catch (error: any) {

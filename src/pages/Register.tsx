@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { Alert, AlertDescription } from "@/components/ui/alert";
 
 const formSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -37,6 +38,8 @@ const Register = () => {
   const { register } = useAuth();
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(false);
+  const [registrationSuccess, setRegistrationSuccess] = useState(false);
+  const [registrationError, setRegistrationError] = useState<string | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -49,15 +52,47 @@ const Register = () => {
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
+    setRegistrationError(null);
     try {
       await register(values.name, values.email, values.password);
-      navigate("/", { replace: true });
-    } catch (error) {
+      setRegistrationSuccess(true);
+      // Don't navigate immediately, let user see the success message
+    } catch (error: any) {
       console.error("Registration failed:", error);
+      setRegistrationError(error.message || "Registration failed");
     } finally {
       setIsLoading(false);
     }
   };
+
+  if (registrationSuccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
+        <div className="w-full max-w-md">
+          <Card>
+            <CardHeader>
+              <CardTitle>Registration Successful!</CardTitle>
+              <CardDescription>
+                Please check your email to confirm your account
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <Alert className="bg-primary/10 border-primary text-primary">
+                <AlertDescription>
+                  We've sent a confirmation link to your email address. Please click on the link to activate your account before logging in.
+                </AlertDescription>
+              </Alert>
+            </CardContent>
+            <CardFooter className="flex justify-center">
+              <Button asChild variant="link">
+                <Link to="/login">Return to Login</Link>
+              </Button>
+            </CardFooter>
+          </Card>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4">
@@ -80,6 +115,11 @@ const Register = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {registrationError && (
+              <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4 text-sm">
+                {registrationError}
+              </div>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField

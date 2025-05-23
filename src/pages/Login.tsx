@@ -24,6 +24,7 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
+import { toast } from "sonner";
 
 const formSchema = z.object({
   email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
@@ -37,6 +38,7 @@ const Login = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -46,15 +48,25 @@ const Login = () => {
     },
   });
 
+  // Check for verification success in URL parameters
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    if (searchParams.get('verified') === 'true') {
+      toast.success("Email verified successfully! You can now login.");
+    }
+  }, [location]);
+
   const from = (location.state as any)?.from?.pathname || "/dashboard";
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
+    setLoginError(null);
     try {
       await login(values.email, values.password);
       navigate(from, { replace: true });
-    } catch (error) {
+    } catch (error: any) {
       console.error("فشل تسجيل الدخول:", error);
+      setLoginError(error.message || "حدث خطأ أثناء تسجيل الدخول");
     } finally {
       setIsLoading(false);
     }
@@ -81,6 +93,11 @@ const Login = () => {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {loginError && (
+              <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4 text-sm">
+                {loginError}
+              </div>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
                 <FormField
