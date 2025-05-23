@@ -90,7 +90,7 @@ export default function AdminTransactions() {
         // Transform data to match our interface
         const formattedTransactions = data.map(item => {
           // Handle potential errors in the joined data
-          const user = typeof item.user === 'object' && item.user !== null ? {
+          const user = item.user && typeof item.user === 'object' ? {
             email: item.user.email || '',
             profile: {
               full_name: item.user.profile?.full_name || null
@@ -100,12 +100,12 @@ export default function AdminTransactions() {
             profile: { full_name: null }
           };
           
-          const subscription = item.subscription_id ? 
-            (typeof item.subscription === 'object' && item.subscription !== null ? {
+          const subscription = item.subscription_id && 
+            item.subscription && typeof item.subscription === 'object' ? {
               plan: {
                 name: item.subscription.plan?.name || 'Unknown Plan'
               }
-            } : undefined) : undefined;
+            } : undefined;
           
           return {
             ...item,

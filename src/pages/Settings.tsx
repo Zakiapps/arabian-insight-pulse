@@ -86,7 +86,7 @@ const Settings = () => {
   const accountForm = useForm<z.infer<typeof accountFormSchema>>({
     resolver: zodResolver(accountFormSchema),
     defaultValues: {
-      name: user?.name || "",
+      name: user?.profile?.full_name || "",
       email: user?.email || "",
       company: "",
       currentPassword: "",

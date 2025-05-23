@@ -4,27 +4,35 @@ import React, { createContext, useContext, useState, ReactNode, useEffect } from
 interface LanguageContextType {
   isRTL: boolean;
   t: (text: string) => string;
-  language: string; // Add the language property
+  language: string;
+  toggleLanguage: () => void; // Add the toggleLanguage function
 }
 
 const LanguageContext = createContext<LanguageContextType | undefined>(undefined);
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
-  // Set Arabic as the only language
+  // Initial setting is Arabic (RTL)
   const [isRTL, setIsRTL] = useState<boolean>(true);
+  const [language, setLanguage] = useState<string>('ar');
   
-  // Set initial direction when component mounts
+  // Update document direction when RTL state changes
   useEffect(() => {
-    document.documentElement.dir = 'rtl';
-  }, []);
+    document.documentElement.dir = isRTL ? 'rtl' : 'ltr';
+  }, [isRTL]);
 
-  // Simple translation helper (now just returns the text since we only have Arabic)
+  // Toggle between RTL and LTR
+  const toggleLanguage = () => {
+    setIsRTL(prev => !prev);
+    setLanguage(prev => prev === 'ar' ? 'en' : 'ar');
+  };
+
+  // Simple translation helper 
   const t = (text: string): string => {
     return text;
   };
 
   return (
-    <LanguageContext.Provider value={{ isRTL, t, language: 'ar' }}>
+    <LanguageContext.Provider value={{ isRTL, t, language, toggleLanguage }}>
       {children}
     </LanguageContext.Provider>
   );

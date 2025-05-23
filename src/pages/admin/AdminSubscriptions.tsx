@@ -86,7 +86,7 @@ export default function AdminSubscriptions() {
         // Transform data to match our interface
         const formattedSubscriptions = data.map(item => {
           // Handle potential errors in the joined data
-          const user = typeof item.user === 'object' && item.user !== null ? {
+          const user = item.user && typeof item.user === 'object' ? {
             email: item.user.email || '',
             profile: {
               full_name: item.user.profile?.full_name || null
@@ -96,7 +96,7 @@ export default function AdminSubscriptions() {
             profile: { full_name: null }
           };
           
-          const plan = typeof item.plan === 'object' && item.plan !== null ? {
+          const plan = item.plan && typeof item.plan === 'object' ? {
             name: item.plan.name || 'Unknown Plan',
             price_monthly: item.plan.price_monthly || 0
           } : {
