@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
 import { useForm } from "react-hook-form";
