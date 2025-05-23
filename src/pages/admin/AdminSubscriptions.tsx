@@ -31,6 +31,20 @@ import { toast } from "sonner";
 import { MoreHorizontal, Search, CheckCircle, AlertCircle, RotateCw, Calendar, Download, Ban, Eye, RefreshCw } from "lucide-react";
 import { format } from "date-fns";
 
+interface UserProfile {
+  full_name: string | null;
+}
+
+interface UserData {
+  email: string;
+  profile?: UserProfile;
+}
+
+interface PlanData {
+  name: string;
+  price_monthly: number;
+}
+
 interface Subscription {
   id: string;
   user_id: string;
@@ -40,16 +54,8 @@ interface Subscription {
   current_period_end: string;
   cancel_at: string | null;
   created_at: string;
-  user?: {
-    email: string;
-    profile?: {
-      full_name: string | null;
-    };
-  };
-  plan?: {
-    name: string;
-    price_monthly: number;
-  };
+  user?: UserData | null;
+  plan?: PlanData | null;
 }
 
 export default function AdminSubscriptions() {
@@ -196,7 +202,7 @@ export default function AdminSubscriptions() {
           }
         ];
         
-        setSubscriptions(mockSubscriptions);
+        setSubscriptions(mockSubscriptions as Subscription[]);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -340,9 +346,9 @@ export default function AdminSubscriptions() {
   const filteredSubscriptions = subscriptions.filter(subscription => {
     const searchLower = searchQuery.toLowerCase();
     const matchesSearch = 
-      subscription.user?.email.toLowerCase().includes(searchLower) ||
-      subscription.user?.profile?.full_name?.toLowerCase().includes(searchLower) ||
-      subscription.plan?.name.toLowerCase().includes(searchLower);
+      (subscription.user?.email?.toLowerCase().includes(searchLower) ?? false) ||
+      (subscription.user?.profile?.full_name?.toLowerCase().includes(searchLower) ?? false) ||
+      (subscription.plan?.name?.toLowerCase().includes(searchLower) ?? false);
     
     const matchesStatus = statusFilter === "all" || subscription.status === statusFilter;
     
@@ -422,12 +428,12 @@ export default function AdminSubscriptions() {
                   <TableCell>
                     <div>
                       <div>{subscription.user?.profile?.full_name || "غير معروف"}</div>
-                      <div className="text-sm text-muted-foreground">{subscription.user?.email}</div>
+                      <div className="text-sm text-muted-foreground">{subscription.user?.email || "بريد غير معروف"}</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     <div>
-                      <div>{subscription.plan?.name}</div>
+                      <div>{subscription.plan?.name || "خطة غير معروفة"}</div>
                       <div className="text-sm text-muted-foreground">{formatPrice(subscription.plan?.price_monthly || 0)} / شهرياً</div>
                     </div>
                   </TableCell>
@@ -497,15 +503,15 @@ export default function AdminSubscriptions() {
               <div className="grid gap-2">
                 <h3 className="text-sm font-medium">معلومات المستخدم</h3>
                 <div className="bg-muted p-3 rounded-md">
-                  <div><span className="font-semibold">الاسم:</span> {selectedSubscription.user?.profile?.full_name}</div>
-                  <div><span className="font-semibold">البريد الإلكتروني:</span> {selectedSubscription.user?.email}</div>
+                  <div><span className="font-semibold">الاسم:</span> {selectedSubscription.user?.profile?.full_name || "غير معروف"}</div>
+                  <div><span className="font-semibold">البريد الإلكتروني:</span> {selectedSubscription.user?.email || "غير معروف"}</div>
                 </div>
               </div>
               
               <div className="grid gap-2">
                 <h3 className="text-sm font-medium">معلومات الخطة</h3>
                 <div className="bg-muted p-3 rounded-md">
-                  <div><span className="font-semibold">الخطة:</span> {selectedSubscription.plan?.name}</div>
+                  <div><span className="font-semibold">الخطة:</span> {selectedSubscription.plan?.name || "غير معروفة"}</div>
                   <div><span className="font-semibold">السعر:</span> {formatPrice(selectedSubscription.plan?.price_monthly || 0)} / شهرياً</div>
                 </div>
               </div>

@@ -31,6 +31,23 @@ import { toast } from "sonner";
 import { MoreHorizontal, Search, CheckCircle, AlertCircle, ReceiptIcon, Download, Eye, ArrowDownUp, CreditCard } from "lucide-react";
 import { format } from "date-fns";
 
+interface UserProfile {
+  full_name: string | null;
+}
+
+interface UserData {
+  email: string;
+  profile?: UserProfile;
+}
+
+interface PlanData {
+  name: string;
+}
+
+interface SubscriptionData {
+  plan?: PlanData;
+}
+
 interface Transaction {
   id: string;
   user_id: string;
@@ -40,17 +57,8 @@ interface Transaction {
   status: string;
   payment_method: string | null;
   created_at: string;
-  user?: {
-    email: string;
-    profile?: {
-      full_name: string | null;
-    };
-  };
-  subscription?: {
-    plan?: {
-      name: string;
-    };
-  };
+  user?: UserData | null;
+  subscription?: SubscriptionData;
 }
 
 export default function AdminTransactions() {
@@ -218,7 +226,7 @@ export default function AdminTransactions() {
           }
         ];
         
-        setTransactions(mockTransactions);
+        setTransactions(mockTransactions as Transaction[]);
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -313,9 +321,9 @@ export default function AdminTransactions() {
     if (searchQuery) {
       const searchLower = searchQuery.toLowerCase();
       filtered = filtered.filter(transaction => 
-        transaction.user?.email.toLowerCase().includes(searchLower) ||
-        transaction.user?.profile?.full_name?.toLowerCase().includes(searchLower) ||
-        transaction.subscription?.plan?.name?.toLowerCase().includes(searchLower) ||
+        (transaction.user?.email?.toLowerCase().includes(searchLower) ?? false) ||
+        (transaction.user?.profile?.full_name?.toLowerCase().includes(searchLower) ?? false) ||
+        (transaction.subscription?.plan?.name?.toLowerCase().includes(searchLower) ?? false) ||
         transaction.id.toLowerCase().includes(searchLower)
       );
     }
@@ -437,13 +445,13 @@ export default function AdminTransactions() {
                   <TableCell>
                     <div>
                       <div>{transaction.user?.profile?.full_name || "غير معروف"}</div>
-                      <div className="text-sm text-muted-foreground">{transaction.user?.email}</div>
+                      <div className="text-sm text-muted-foreground">{transaction.user?.email || "بريد غير معروف"}</div>
                     </div>
                   </TableCell>
                   <TableCell>
                     {transaction.subscription_id ? (
                       <div>
-                        <div>{transaction.subscription.plan?.name}</div>
+                        <div>{transaction.subscription?.plan?.name || "خطة غير معروفة"}</div>
                         <div className="text-sm text-muted-foreground truncate max-w-[120px]">
                           #{transaction.id.substring(0, 8)}
                         </div>
@@ -528,8 +536,8 @@ export default function AdminTransactions() {
               <div className="grid gap-2">
                 <h3 className="text-sm font-medium">معلومات المستخدم</h3>
                 <div className="bg-muted p-3 rounded-md">
-                  <div><span className="font-semibold">الاسم:</span> {selectedTransaction.user?.profile?.full_name}</div>
-                  <div><span className="font-semibold">البريد الإلكتروني:</span> {selectedTransaction.user?.email}</div>
+                  <div><span className="font-semibold">الاسم:</span> {selectedTransaction.user?.profile?.full_name || "غير معروف"}</div>
+                  <div><span className="font-semibold">البريد الإلكتروني:</span> {selectedTransaction.user?.email || "غير معروف"}</div>
                 </div>
               </div>
               
@@ -537,7 +545,7 @@ export default function AdminTransactions() {
                 <div className="grid gap-2">
                   <h3 className="text-sm font-medium">معلومات الاشتراك</h3>
                   <div className="bg-muted p-3 rounded-md">
-                    <div><span className="font-semibold">الخطة:</span> {selectedTransaction.subscription?.plan?.name}</div>
+                    <div><span className="font-semibold">الخطة:</span> {selectedTransaction.subscription?.plan?.name || "غير معروفة"}</div>
                     <div><span className="font-semibold">معرف الاشتراك:</span> {selectedTransaction.subscription_id}</div>
                   </div>
                 </div>
