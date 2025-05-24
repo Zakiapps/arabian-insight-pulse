@@ -6,6 +6,7 @@ import * as THREE from 'three';
 
 // Rotating cube component
 const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
+  // Fix TypeScript error by using the correct type
   const cubeRef = useRef<THREE.Mesh>(null);
   
   useFrame((state, delta) => {
@@ -24,6 +25,7 @@ const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
 
 // Floating text that represents data analytics
 const DataVisualization = () => {
+  // Fix TypeScript error by using the correct type
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
@@ -39,8 +41,7 @@ const DataVisualization = () => {
       <AnimatedCube position={[2, 0, 0]} color="#EA4335" />
       
       {/* Lines connecting the data points */}
-      <mesh position={[0, 0, 0]}>
-        {/* Fixed the cylinder geometry by moving rotation to the mesh */}
+      <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.05, 0.05, 4, 16]} />
         <meshBasicMaterial color="#ffffff" opacity={0.3} transparent />
       </mesh>
