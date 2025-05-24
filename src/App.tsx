@@ -23,11 +23,11 @@ const queryClient = new QueryClient();
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <SubscriptionProvider>
-        <LanguageProvider>
-          <div dir="rtl">
-            <Router>
-              <AuthProvider>
+      <LanguageProvider>
+        <div dir="rtl">
+          <Router>
+            <AuthProvider>
+              <SubscriptionProvider>
                 <Routes>
                   <Route path="/" element={<Home />} />
                   <Route path="/signin" element={<SignIn />} />
@@ -39,11 +39,11 @@ function App() {
                   <Route path="/text-analysis" element={<TextAnalysis />} />
                 </Routes>
                 <Toaster />
-              </AuthProvider>
-            </Router>
-          </div>
-        </LanguageProvider>
-      </SubscriptionProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
+          </Router>
+        </div>
+      </LanguageProvider>
     </QueryClientProvider>
   );
 }
