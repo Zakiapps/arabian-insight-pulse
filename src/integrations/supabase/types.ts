@@ -48,6 +48,42 @@ export type Database = {
         }
         Relationships: []
       }
+      payment_methods: {
+        Row: {
+          brand: string | null
+          created_at: string | null
+          id: string
+          is_default: boolean | null
+          last_four: string | null
+          stripe_payment_method_id: string | null
+          type: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          brand?: string | null
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          last_four?: string | null
+          stripe_payment_method_id?: string | null
+          type: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          brand?: string | null
+          created_at?: string | null
+          id?: string
+          is_default?: boolean | null
+          last_four?: string | null
+          stripe_payment_method_id?: string | null
+          type?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -55,6 +91,7 @@ export type Database = {
           full_name: string | null
           id: string
           role: string
+          subscription_plan: string | null
           updated_at: string
         }
         Insert: {
@@ -63,6 +100,7 @@ export type Database = {
           full_name?: string | null
           id: string
           role?: string
+          subscription_plan?: string | null
           updated_at?: string
         }
         Update: {
@@ -71,6 +109,7 @@ export type Database = {
           full_name?: string | null
           id?: string
           role?: string
+          subscription_plan?: string | null
           updated_at?: string
         }
         Relationships: []
@@ -283,14 +322,63 @@ export type Database = {
         }
         Relationships: []
       }
+      user_sessions: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_online: boolean | null
+          last_seen: string | null
+          session_id: string
+          updated_at: string | null
+          user_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          last_seen?: string | null
+          session_id: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_online?: boolean | null
+          last_seen?: string | null
+          session_id?: string
+          updated_at?: string | null
+          user_id?: string | null
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
     }
     Functions: {
+      clear_dummy_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       get_active_subscription_count: {
         Args: Record<PropertyKey, never>
         Returns: number
+      }
+      get_all_users_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          email: string
+          full_name: string
+          role: string
+          subscription_plan: string
+          avatar_url: string
+          created_at: string
+          last_sign_in_at: string
+          is_online: boolean
+          payment_methods_count: number
+        }[]
       }
       get_total_revenue: {
         Args: Record<PropertyKey, never>
@@ -303,6 +391,10 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
+      }
+      update_user_session_status: {
+        Args: { session_id_param: string; is_online_param?: boolean }
+        Returns: undefined
       }
     }
     Enums: {

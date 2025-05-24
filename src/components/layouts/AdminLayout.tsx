@@ -4,6 +4,7 @@ import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useUserSession } from "@/hooks/useUserSession";
 import AppSidebar from "./AdminSidebar";
 import Navbar from "./AdminNavbar";
 import { useAuth } from "@/contexts/AuthContext";
@@ -15,6 +16,9 @@ const AdminLayout = () => {
   
   // Use language context instead of forcing Arabic
   const { language, setLanguage } = useLanguage();
+
+  // Track admin session for online status
+  useUserSession();
 
   // Fix hydration mismatch
   useEffect(() => {
