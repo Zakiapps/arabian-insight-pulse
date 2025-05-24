@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -22,7 +21,7 @@ import {
 } from "lucide-react";
 
 const SendGridSettings = () => {
-  const { profile } = useAuth();
+  const { profile, user } = useAuth();
   const [loading, setLoading] = useState(false);
   const [testLoading, setTestLoading] = useState(false);
   const [settings, setSettings] = useState({
@@ -91,7 +90,7 @@ const SendGridSettings = () => {
       // Call edge function to test email
       const { data, error } = await supabase.functions.invoke('send-test-email', {
         body: {
-          to_email: profile?.email || 'test@example.com',
+          to_email: user?.email || 'test@example.com',
           subject: 'اختبار إعدادات البريد الإلكتروني',
           message: 'هذا اختبار لإعدادات SendGrid'
         }

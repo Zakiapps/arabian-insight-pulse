@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -24,11 +23,24 @@ import {
 } from "lucide-react";
 import Papa from 'papaparse';
 
+// Define types for CSV data
+interface CSVRow {
+  content: string;
+  source?: string;
+  engagement_count?: string;
+}
+
+interface AnalyzedData extends CSVRow {
+  sentiment: string;
+  confidence: number;
+  dialect: string;
+}
+
 const Upload = () => {
   const { isRTL } = useLanguage();
   const { profile } = useAuth();
   const [uploading, setUploading] = useState(false);
-  const [uploadedData, setUploadedData] = useState<any[]>([]);
+  const [uploadedData, setUploadedData] = useState<AnalyzedData[]>([]);
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0];
@@ -46,7 +58,7 @@ const Upload = () => {
       encoding: 'UTF-8',
       complete: async (results) => {
         try {
-          const data = results.data.filter((row: any) => 
+          const data = (results.data as CSVRow[]).filter((row: CSVRow) => 
             row.content && row.content.trim().length > 0
           );
           
@@ -58,7 +70,7 @@ const Upload = () => {
 
           // Process data in batches
           const batchSize = 10;
-          const analyzedData = [];
+          const analyzedData: AnalyzedData[] = [];
           
           for (let i = 0; i < data.length; i += batchSize) {
             const batch = data.slice(i, i + batchSize);
