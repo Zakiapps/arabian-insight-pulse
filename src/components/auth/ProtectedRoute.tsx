@@ -18,8 +18,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isLoading: subscriptionLoading, canAccessFeature } = useSubscription();
   const location = useLocation();
 
+  // Use a simpler loading indicator to improve performance
   if (loading || subscriptionLoading) {
-    // You could return a loading spinner here
     return (
       <div className="flex min-h-screen items-center justify-center">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />

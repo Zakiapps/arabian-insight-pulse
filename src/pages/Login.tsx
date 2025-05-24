@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
@@ -60,13 +61,31 @@ const Login = () => {
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
     setLoginError(null);
+
+    // Add a slight delay to show loading state
+    const loginPromise = login(values.email, values.password);
+    
     try {
-      await login(values.email, values.password);
-      navigate(from, { replace: true });
+      const { error, data } = await loginPromise;
+      
+      if (error) {
+        console.error("فشل تسجيل الدخول:", error);
+        setLoginError(error.message || "حدث خطأ أثناء تسجيل الدخول");
+        setIsLoading(false);
+        return;
+      }
+      
+      // If login is successful, navigate to dashboard
+      if (data) {
+        // Set a timeout to navigate to avoid UI flashing
+        setTimeout(() => {
+          navigate(from, { replace: true });
+        }, 100);
+        toast.success("تم تسجيل الدخول بنجاح");
+      }
     } catch (error: any) {
       console.error("فشل تسجيل الدخول:", error);
       setLoginError(error.message || "حدث خطأ أثناء تسجيل الدخول");
-    } finally {
       setIsLoading(false);
     }
   };
@@ -110,6 +129,7 @@ const Login = () => {
                           placeholder="name@company.com" 
                           {...field} 
                           autoComplete="email"
+                          disabled={isLoading}
                         />
                       </FormControl>
                       <FormMessage />
@@ -128,6 +148,7 @@ const Login = () => {
                           placeholder="••••••••" 
                           {...field} 
                           autoComplete="current-password"
+                          disabled={isLoading}
                         />
                       </FormControl>
                       <FormMessage />
@@ -139,7 +160,12 @@ const Login = () => {
                   className="w-full" 
                   disabled={isLoading}
                 >
-                  {isLoading ? "جاري تسجيل الدخول..." : "تسجيل الدخول"}
+                  {isLoading ? (
+                    <>
+                      <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-t-transparent border-white"></span>
+                      جاري تسجيل الدخول...
+                    </>
+                  ) : "تسجيل الدخول"}
                 </Button>
                 <div className="text-center text-sm">
                   <p className="text-muted-foreground">

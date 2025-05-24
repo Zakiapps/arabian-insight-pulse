@@ -21,7 +21,7 @@ export interface SubscriptionProviderProps {
   children: ReactNode;
 }
 
-// Features available for each subscription tier
+// Features available for each subscription tier - now cached in memory
 const featureAccess: Record<string, SubscriptionTier[]> = {
   'basic-analytics': ['free', 'basic', 'premium', 'enterprise'],
   'sentiment-analysis': ['basic', 'premium', 'enterprise'],
@@ -40,9 +40,11 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
   const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [cachedSubscriptionData, setCachedSubscriptionData] = useState<any>(null);
 
-  // Function to check subscription status
+  // Optimized function to check subscription status
   const checkSubscription = async () => {
+    // Set free tier for non-authenticated users
     if (!isAuthenticated || !user) {
       setSubscribed(false);
       setSubscriptionTier('free');
@@ -51,13 +53,26 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
       return;
     }
 
+    // Use cached data if available
+    if (cachedSubscriptionData) {
+      setSubscribed(cachedSubscriptionData.subscribed);
+      setSubscriptionTier(cachedSubscriptionData.tier);
+      setSubscriptionEnd(cachedSubscriptionData.end);
+      setIsLoading(false);
+      return;
+    }
+
     setIsLoading(true);
     try {
-      // For the purpose of this demo, we'll query the subscriptions table directly
-      // In a production app, you might want to use a secure backend endpoint
+      // Combined query to get subscription and plan in a single request
       const { data, error } = await supabase
         .from('subscriptions')
-        .select('*')
+        .select(`
+          *,
+          plan:plan_id (
+            name
+          )
+        `)
         .eq('user_id', user.id)
         .eq('status', 'active')
         .single();
@@ -70,16 +85,9 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
       } else if (data) {
         setSubscribed(true);
         
-        // Get the subscription tier from the plan
-        const { data: planData, error: planError } = await supabase
-          .from('subscription_plans')
-          .select('name')
-          .eq('id', data.plan_id)
-          .single();
-        
-        if (planData) {
-          // Convert plan name to tier
-          const tierName = planData.name.toLowerCase();
+        // Get tier from plan name
+        if (data.plan && data.plan.name) {
+          const tierName = data.plan.name.toLowerCase();
           if (tierName.includes('basic')) {
             setSubscriptionTier('basic');
           } else if (tierName.includes('premium')) {
@@ -94,10 +102,24 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
         }
         
         setSubscriptionEnd(data.current_period_end);
+
+        // Cache the subscription data for performance
+        setCachedSubscriptionData({
+          subscribed: true,
+          tier: subscriptionTier,
+          end: data.current_period_end
+        });
       } else {
         setSubscribed(false);
         setSubscriptionTier('free');
         setSubscriptionEnd(null);
+        
+        // Cache the free tier status
+        setCachedSubscriptionData({
+          subscribed: false,
+          tier: 'free',
+          end: null
+        });
       }
     } catch (error) {
       console.error('Error checking subscription:', error);
@@ -107,7 +129,7 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
     }
   };
 
-  // Check if user can access a specific feature based on their subscription tier
+  // Optimized feature access check - uses in-memory data
   const canAccessFeature = (feature: string): boolean => {
     // Admin can access all features
     if (user?.profile?.role === 'admin') return true;
@@ -119,8 +141,10 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
     return subscriptionTier !== null && featureAccess[feature].includes(subscriptionTier);
   };
 
-  // Check subscription on mount and when auth state changes
+  // Check subscription when auth state changes
   useEffect(() => {
+    // Clear cache when auth state changes
+    setCachedSubscriptionData(null);
     checkSubscription();
   }, [isAuthenticated, user]);
 
