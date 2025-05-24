@@ -32,7 +32,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (loading || subscriptionLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+          <p className="text-gray-600">جاري التحقق من الصلاحيات...</p>
+        </div>
       </div>
     );
   }

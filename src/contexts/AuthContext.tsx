@@ -30,14 +30,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     return false;
   }, [user?.email, profile?.role]);
   
-  // Enhanced authentication check
+  // Enhanced authentication check - more flexible for admin users
   const isAuthenticated = React.useMemo(() => {
     if (loading) return false;
     
     // Must have user and session
     if (!user || !session) return false;
     
-    // For admin user, profile is optional but recommended
+    // For admin user, profile is optional
     if (user.email === 'admin@arabinsights.com') {
       return true;
     }
