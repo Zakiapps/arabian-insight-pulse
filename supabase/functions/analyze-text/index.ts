@@ -16,6 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Cache for model and tokenizer data
 let modelCache: {
   model?: ArrayBuffer;
+  config?: any;
   tokenizerConfig?: any;
   specialTokens?: any;
   vocab?: Map<string, number>;
@@ -79,40 +80,54 @@ function validateArabicText(text: string): boolean {
   return arabicPattern.test(text);
 }
 
-// Load model and tokenizer files
+// Load all model files from private-model bucket
 async function loadModelFiles() {
   try {
     console.log('Loading model files from private-model bucket...');
     
-    // Load model file
+    // Load model.onnx file
     if (!modelCache.model) {
       const { data: modelData, error: modelError } = await supabase.storage
         .from('private-model')
-        .download('model_quantized.onnx');
+        .download('model.onnx');
       
       if (modelError || !modelData) {
         throw new Error(`Failed to load model: ${modelError?.message}`);
       }
       
       modelCache.model = await modelData.arrayBuffer();
-      console.log('Model loaded successfully, size:', modelCache.model.byteLength);
+      console.log('ONNX model loaded successfully, size:', modelCache.model.byteLength);
     }
     
-    // Load tokenizer config
-    if (!modelCache.tokenizerConfig) {
+    // Load config.json
+    if (!modelCache.config) {
       const { data: configData, error: configError } = await supabase.storage
+        .from('private-model')
+        .download('config.json');
+      
+      if (configError || !configData) {
+        throw new Error(`Failed to load config: ${configError?.message}`);
+      }
+      
+      modelCache.config = JSON.parse(await configData.text());
+      console.log('Model config loaded');
+    }
+    
+    // Load tokenizer_config.json
+    if (!modelCache.tokenizerConfig) {
+      const { data: tokConfigData, error: tokConfigError } = await supabase.storage
         .from('private-model')
         .download('tokenizer_config.json');
       
-      if (configError || !configData) {
-        throw new Error(`Failed to load tokenizer config: ${configError?.message}`);
+      if (tokConfigError || !tokConfigData) {
+        throw new Error(`Failed to load tokenizer config: ${tokConfigError?.message}`);
       }
       
-      modelCache.tokenizerConfig = JSON.parse(await configData.text());
+      modelCache.tokenizerConfig = JSON.parse(await tokConfigData.text());
       console.log('Tokenizer config loaded');
     }
     
-    // Load special tokens
+    // Load special_tokens_map.json
     if (!modelCache.specialTokens) {
       const { data: specialData, error: specialError } = await supabase.storage
         .from('private-model')
@@ -126,7 +141,7 @@ async function loadModelFiles() {
       console.log('Special tokens loaded');
     }
     
-    // Load vocab
+    // Load vocab.txt
     if (!modelCache.vocab) {
       const { data: vocabData, error: vocabError } = await supabase.storage
         .from('private-model')
@@ -158,7 +173,7 @@ async function loadModelFiles() {
       }
       
       modelCache.tokenizer = JSON.parse(await tokenizerData.text());
-      console.log('Tokenizer loaded');
+      console.log('Tokenizer JSON loaded');
     }
     
     return modelCache;
@@ -171,46 +186,63 @@ async function loadModelFiles() {
 // Enhanced tokenization using loaded tokenizer data
 function tokenizeText(text: string, maxLength: number = 128): number[] {
   try {
-    const { vocab, tokenizerConfig, specialTokens } = modelCache;
+    const { vocab, tokenizerConfig, specialTokens, tokenizer } = modelCache;
     
-    if (!vocab || !tokenizerConfig) {
-      throw new Error('Tokenizer not loaded');
+    if (!vocab || !tokenizerConfig || !tokenizer) {
+      throw new Error('Tokenizer components not loaded');
     }
     
-    // Get special token IDs
-    const clsTokenId = vocab.get('[CLS]') || vocab.get('<s>') || 101;
-    const sepTokenId = vocab.get('[SEP]') || vocab.get('</s>') || 102;
-    const padTokenId = vocab.get('[PAD]') || vocab.get('<pad>') || 0;
-    const unkTokenId = vocab.get('[UNK]') || vocab.get('<unk>') || 100;
+    console.log('Starting tokenization for text:', text.substring(0, 50) + '...');
+    
+    // Get special token IDs from vocab
+    const clsToken = specialTokens?.cls_token || '[CLS]';
+    const sepToken = specialTokens?.sep_token || '[SEP]';
+    const padToken = specialTokens?.pad_token || '[PAD]';
+    const unkToken = specialTokens?.unk_token || '[UNK]';
+    
+    const clsTokenId = vocab.get(clsToken) || vocab.get('[CLS]') || 101;
+    const sepTokenId = vocab.get(sepToken) || vocab.get('[SEP]') || 102;
+    const padTokenId = vocab.get(padToken) || vocab.get('[PAD]') || 0;
+    const unkTokenId = vocab.get(unkToken) || vocab.get('[UNK]') || 100;
     
     console.log('Special tokens:', { clsTokenId, sepTokenId, padTokenId, unkTokenId });
     
-    // Basic Arabic tokenization
+    // Preprocess the text
     const preprocessed = preprocessArabicText(text);
-    const words = preprocessed.split(/\s+/);
     
-    // Convert words to subword tokens (simplified)
+    // Use the tokenizer's vocab for proper tokenization
     const tokens: number[] = [clsTokenId];
+    
+    // Tokenize using the loaded tokenizer configuration
+    const words = preprocessed.split(/\s+/);
     
     for (const word of words) {
       if (tokens.length >= maxLength - 1) break; // Reserve space for [SEP]
       
-      // Try to find exact match first
+      // Try exact word match first
       if (vocab.has(word)) {
         tokens.push(vocab.get(word)!);
-      } else {
-        // Split into characters for Arabic text (simplified subword tokenization)
-        const chars = word.split('');
-        for (const char of chars) {
-          if (tokens.length >= maxLength - 1) break;
-          
-          if (vocab.has(char)) {
-            tokens.push(vocab.get(char)!);
-          } else if (vocab.has(`##${char}`)) {
-            tokens.push(vocab.get(`##${char}`)!);
-          } else {
-            tokens.push(unkTokenId);
-          }
+        continue;
+      }
+      
+      // Try with ## prefix for subword tokens
+      const subwordToken = `##${word}`;
+      if (vocab.has(subwordToken)) {
+        tokens.push(vocab.get(subwordToken)!);
+        continue;
+      }
+      
+      // Character-level fallback for Arabic text
+      const chars = Array.from(word);
+      for (const char of chars) {
+        if (tokens.length >= maxLength - 1) break;
+        
+        if (vocab.has(char)) {
+          tokens.push(vocab.get(char)!);
+        } else if (vocab.has(`##${char}`)) {
+          tokens.push(vocab.get(`##${char}`)!);
+        } else {
+          tokens.push(unkTokenId);
         }
       }
     }
@@ -231,66 +263,93 @@ function tokenizeText(text: string, maxLength: number = 128): number[] {
     }
     
     console.log('Tokenized sequence length:', tokens.length);
-    console.log('First 10 tokens:', tokens.slice(0, 10));
+    console.log('First 20 tokens:', tokens.slice(0, 20));
     
     return tokens;
   } catch (error) {
     console.error('Tokenization error:', error);
     // Fallback tokenization
-    const clsId = 101;
-    const sepId = 102;
-    const padId = 0;
-    
-    const basicTokens = [clsId];
-    const chars = text.split('').slice(0, maxLength - 2);
-    
-    chars.forEach(char => {
-      basicTokens.push(char.charCodeAt(0) % 30000 + 1);
-    });
-    
-    basicTokens.push(sepId);
-    
-    while (basicTokens.length < maxLength) {
-      basicTokens.push(padId);
-    }
-    
-    return basicTokens.slice(0, maxLength);
+    return createFallbackTokenization(text, 128);
   }
 }
 
-// ONNX Runtime Web inference (simplified implementation)
+// Fallback tokenization
+function createFallbackTokenization(text: string, maxLength: number): number[] {
+  const clsId = 101;
+  const sepId = 102;
+  const padId = 0;
+  
+  const tokens = [clsId];
+  const chars = text.split('').slice(0, maxLength - 2);
+  
+  chars.forEach(char => {
+    tokens.push(char.charCodeAt(0) % 30000 + 1);
+  });
+  
+  tokens.push(sepId);
+  
+  while (tokens.length < maxLength) {
+    tokens.push(padId);
+  }
+  
+  return tokens.slice(0, maxLength);
+}
+
+// Real ONNX Runtime inference
 async function runONNXInference(inputIds: number[]): Promise<{ sentiment: string; confidence: number; positive_prob: number; negative_prob: number }> {
   try {
-    console.log('Starting ONNX inference...');
+    console.log('Starting ONNX inference with real model...');
     
-    // Load ONNX Runtime Web from CDN
-    const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort.min.js');
+    // Import ONNX Runtime Web
+    const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js');
     
-    // Create session from model buffer
+    // Create session from the loaded model buffer
     const session = await ort.InferenceSession.create(modelCache.model!);
     console.log('ONNX session created successfully');
+    console.log('Model input names:', session.inputNames);
+    console.log('Model output names:', session.outputNames);
     
-    // Prepare input tensor
+    // Prepare input tensors
     const inputTensor = new ort.Tensor('int64', BigInt64Array.from(inputIds.map(x => BigInt(x))), [1, inputIds.length]);
     const attentionMask = new ort.Tensor('int64', BigInt64Array.from(inputIds.map(x => x > 0 ? BigInt(1) : BigInt(0))), [1, inputIds.length]);
     
     console.log('Input tensor shape:', inputTensor.dims);
+    console.log('Attention mask shape:', attentionMask.dims);
+    
+    // Prepare feeds object based on model's expected inputs
+    const feeds: Record<string, any> = {};
+    
+    // Try common input names
+    if (session.inputNames.includes('input_ids')) {
+      feeds['input_ids'] = inputTensor;
+    } else if (session.inputNames.includes('inputs')) {
+      feeds['inputs'] = inputTensor;
+    } else {
+      feeds[session.inputNames[0]] = inputTensor;
+    }
+    
+    if (session.inputNames.includes('attention_mask')) {
+      feeds['attention_mask'] = attentionMask;
+    }
+    
+    console.log('Running inference with feeds:', Object.keys(feeds));
     
     // Run inference
-    const results = await session.run({
-      'input_ids': inputTensor,
-      'attention_mask': attentionMask
-    });
-    
-    console.log('Inference completed');
+    const results = await session.run(feeds);
+    console.log('Inference completed, output keys:', Object.keys(results));
     
     // Extract logits from output
-    const logits = results['logits'] || results['output'] || Object.values(results)[0];
-    const logitsData = logits.data as Float32Array;
+    const logits = results['logits'] || results['output'] || results[session.outputNames[0]];
     
-    console.log('Logits:', Array.from(logitsData));
+    if (!logits) {
+      throw new Error('No logits found in model output');
+    }
+    
+    const logitsData = logits.data as Float32Array;
+    console.log('Raw logits:', Array.from(logitsData));
     
     // Apply softmax to get probabilities
+    // Assuming binary classification: index 0 = negative, index 1 = positive
     const negative_logit = logitsData[0];
     const positive_logit = logitsData[1];
     
@@ -411,15 +470,15 @@ serve(async (req) => {
     let analysisResult;
 
     try {
-      // Load model files
+      // Load all model files
       await loadModelFiles();
-      console.log('Model files loaded successfully');
+      console.log('All model files loaded successfully');
       
       // Tokenize the text
       const tokenIds = tokenizeText(preprocessedText, 128);
       console.log('Tokenization completed');
       
-      // Run ONNX inference
+      // Run real ONNX inference
       const onnxResult = await runONNXInference(tokenIds);
       
       analysisResult = {
