@@ -5,6 +5,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import ThreeDScene from '@/components/landing/ThreeDScene';
+import SoundEffects from '@/components/landing/SoundEffects';
 
 const LandingPage = () => {
   const { isAuthenticated } = useAuth();
@@ -36,6 +38,9 @@ const LandingPage = () => {
 
   return (
     <div className="min-h-screen bg-background flex flex-col" dir="rtl">
+      {/* Sound effects component */}
+      <SoundEffects autoplay={false} />
+
       {/* الهيدر */}
       <motion.header 
         initial={{ y: -100 }}
@@ -157,20 +162,25 @@ const LandingPage = () => {
               </motion.div>
             </motion.div>
             <motion.div 
-              className="flex items-center justify-center"
+              className="flex items-center justify-center relative"
               variants={floatingAnimation}
               animate="animate"
             >
+              {/* Add 3D scene in background */}
+              <div className="absolute inset-0 z-0">
+                <ThreeDScene className="h-full" />
+              </div>
+              
               <motion.div 
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="relative h-[350px] w-full md:h-[420px] lg:h-[650px]"
+                className="relative h-[350px] w-full md:h-[420px] lg:h-[650px] z-10"
               >
                 <img
                   src="/placeholder.svg"
                   alt="لوحة تحكم رؤى عربية"
-                  className="mx-auto h-full w-full object-cover rounded-lg bg-muted/50 p-2 sm:p-4 shadow-xl animate-fade-in"
+                  className="mx-auto h-full w-full object-cover rounded-lg bg-muted/50 p-2 sm:p-4 shadow-xl animate-fade-in backdrop-blur-sm"
                 />
                 <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/10"></div>
               </motion.div>
@@ -180,8 +190,13 @@ const LandingPage = () => {
       </section>
 
       {/* المميزات */}
-      <section className="py-12 md:py-24 bg-muted/30">
-        <div className="container px-4 md:px-6">
+      <section className="py-12 md:py-24 bg-muted/30 relative overflow-hidden">
+        {/* Add subtle 3D background elements */}
+        <div className="absolute inset-0 opacity-20 pointer-events-none">
+          <ThreeDScene className="h-full" />
+        </div>
+        
+        <div className="container px-4 md:px-6 relative z-10">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
@@ -283,9 +298,30 @@ const LandingPage = () => {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="py-12 md:py-24 bg-primary text-primary-foreground"
+        className="py-12 md:py-24 bg-primary text-primary-foreground relative overflow-hidden"
       >
-        <div className="container px-4 md:px-6">
+        {/* Add subtle audio visualization effect in the background */}
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="w-full h-full flex items-center justify-center">
+            {Array.from({ length: 10 }).map((_, i) => (
+              <motion.div 
+                key={i}
+                className="h-16 w-2 mx-1 bg-white rounded-full"
+                animate={{ 
+                  height: [40, Math.random() * 100 + 40, 40],
+                  opacity: [0.5, 0.8, 0.5]
+                }}
+                transition={{
+                  repeat: Infinity,
+                  duration: 1.5 + Math.random(),
+                  ease: "easeInOut"
+                }}
+              />
+            ))}
+          </div>
+        </div>
+        
+        <div className="container px-4 md:px-6 relative z-10">
           <motion.div 
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
