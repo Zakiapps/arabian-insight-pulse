@@ -18,6 +18,7 @@ import { useNotifications } from '@/hooks/useNotifications';
 import { useAuth } from '@/contexts/AuthContext';
 import { supabase } from '@/integrations/supabase/client';
 import { ButtonRTL } from '@/components/ui/button-rtl';
+import { toast } from 'sonner';
 import Papa from 'papaparse';
 
 export const QuickActions = () => {
@@ -28,30 +29,45 @@ export const QuickActions = () => {
   const [isExporting, setIsExporting] = useState(false);
 
   const handleUploadData = async () => {
-    if (!profile?.id) return;
+    console.log('Upload data button clicked');
     
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
-      navigate('/dashboard/upload');
+      const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
+      navigate('/upload');
       await completeTask(taskId, { page: 'upload' });
-      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة رفع البيانات', 'info');
+      toast.success('تم الانتقال إلى صفحة رفع البيانات');
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
+      console.error('Error navigating to upload:', error);
+      toast.error('فشل في الانتقال إلى صفحة رفع البيانات');
     }
   };
 
   const handleCreateReport = async () => {
-    if (!profile?.id) return;
+    console.log('Create report button clicked');
     
-    const taskId = await startTask('report_generation', 'إنشاء تقرير جديد');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
+      const taskId = await startTask('report_generation', 'إنشاء تقرير جديد');
+      
       // Fetch user's data for report
       const { data: postsData, error } = await supabase
         .from('analyzed_posts')
         .select('*')
         .eq('user_id', profile.id);
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching posts:', error);
+        throw new Error('فشل في جلب البيانات');
+      }
 
       // Create report entry
       const { data: reportData, error: reportError } = await supabase
@@ -69,22 +85,32 @@ export const QuickActions = () => {
         .select()
         .single();
 
-      if (reportError) throw reportError;
+      if (reportError) {
+        console.error('Error creating report:', reportError);
+        throw new Error('فشل في إنشاء التقرير');
+      }
 
       await completeTask(taskId, { reportId: reportData.id });
-      await createNotification('تم إنشاء التقرير', 'تم إنشاء التقرير بنجاح', 'success');
-      navigate('/dashboard/reports');
+      toast.success('تم إنشاء التقرير بنجاح');
+      navigate('/reports');
     } catch (error) {
-      await completeTask(taskId, null, error.message);
-      await createNotification('خطأ في إنشاء التقرير', 'فشل في إنشاء التقرير', 'error');
+      console.error('Error creating report:', error);
+      const errorMessage = error instanceof Error ? error.message : 'فشل في إنشاء التقرير';
+      toast.error(errorMessage);
     }
   };
 
   const handleSetupAlert = async () => {
-    if (!profile?.id) return;
+    console.log('Setup alert button clicked');
     
-    const taskId = await startTask('alert_setup', 'إعداد تنبيه جديد');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
+      const taskId = await startTask('alert_setup', 'إعداد تنبيه جديد');
+      
       // Create a default alert
       const { data: alertData, error } = await supabase
         .from('user_alerts')
@@ -99,43 +125,63 @@ export const QuickActions = () => {
         .select()
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error creating alert:', error);
+        throw new Error('فشل في إنشاء التنبيه');
+      }
 
       await completeTask(taskId, { alertId: alertData.id });
-      await createNotification('تم إعداد التنبيه', 'تم إنشاء تنبيه جديد بنجاح', 'success');
-      navigate('/dashboard/alerts');
+      toast.success('تم إنشاء تنبيه جديد بنجاح');
+      navigate('/alerts');
     } catch (error) {
-      await completeTask(taskId, null, error.message);
-      await createNotification('خطأ في إعداد التنبيه', 'فشل في إعداد التنبيه', 'error');
+      console.error('Error setting up alert:', error);
+      const errorMessage = error instanceof Error ? error.message : 'فشل في إعداد التنبيه';
+      toast.error(errorMessage);
     }
   };
 
   const handleAnalysisSettings = async () => {
-    if (!profile?.id) return;
+    console.log('Analysis settings button clicked');
     
-    const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
-      navigate('/dashboard/analysis-settings');
+      const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
+      navigate('/analysis-settings');
       await completeTask(taskId, { page: 'analysis-settings' });
+      toast.success('تم الانتقال إلى إعدادات التحليل');
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
+      console.error('Error navigating to analysis settings:', error);
+      toast.error('فشل في الانتقال إلى إعدادات التحليل');
     }
   };
 
   const handleExportData = async () => {
-    if (!profile?.id) return;
+    console.log('Export data button clicked');
+    
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
     
     setIsExporting(true);
-    const taskId = await startTask('export', 'تصدير البيانات إلى CSV');
     
     try {
+      const taskId = await startTask('export', 'تصدير البيانات إلى CSV');
+      
       const { data: postsData, error } = await supabase
         .from('analyzed_posts')
         .select('*')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching posts for export:', error);
+        throw new Error('فشل في جلب البيانات للتصدير');
+      }
 
       if (postsData && postsData.length > 0) {
         // Create CSV content
@@ -163,55 +209,73 @@ export const QuickActions = () => {
         document.body.removeChild(link);
 
         await completeTask(taskId, { recordsExported: postsData.length });
-        await createNotification('تم التصدير', `تم تصدير ${postsData.length} سجل بنجاح`, 'success');
+        toast.success(`تم تصدير ${postsData.length} سجل بنجاح`);
       } else {
         await completeTask(taskId, null, 'لا توجد بيانات للتصدير');
-        await createNotification('لا توجد بيانات', 'لا توجد بيانات للتصدير', 'warning');
+        toast.warning('لا توجد بيانات للتصدير');
       }
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في التصدير');
-      await createNotification('خطأ في التصدير', 'فشل في تصدير البيانات', 'error');
+      console.error('Error exporting data:', error);
+      const errorMessage = error instanceof Error ? error.message : 'فشل في تصدير البيانات';
+      toast.error(errorMessage);
     } finally {
       setIsExporting(false);
     }
   };
 
   const handleFilterData = async () => {
-    if (!profile?.id) return;
+    console.log('Filter data button clicked');
     
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
-      navigate('/dashboard/posts');
+      const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
+      navigate('/posts');
       await completeTask(taskId, { page: 'posts' });
+      toast.success('تم الانتقال إلى صفحة المنشورات');
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
+      console.error('Error navigating to posts:', error);
+      toast.error('فشل في الانتقال إلى صفحة المنشورات');
     }
   };
 
   const handleDownloadReports = async () => {
-    if (!profile?.id) return;
+    console.log('Download reports button clicked');
     
-    const taskId = await startTask('download_reports', 'تنزيل التقارير');
+    if (!profile?.id) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      return;
+    }
+    
     try {
+      const taskId = await startTask('download_reports', 'تنزيل التقارير');
+      
       const { data: reports, error } = await supabase
         .from('user_reports')
         .select('*')
         .eq('user_id', profile.id)
         .order('created_at', { ascending: false });
 
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching reports:', error);
+        throw new Error('فشل في جلب التقارير');
+      }
 
       if (reports && reports.length > 0) {
         await completeTask(taskId, { reportsCount: reports.length });
-        await createNotification('التقارير متاحة', `لديك ${reports.length} تقرير متاح`, 'info');
-        navigate('/dashboard/reports');
+        toast.success(`لديك ${reports.length} تقرير متاح`);
+        navigate('/reports');
       } else {
         await completeTask(taskId, null, 'لا توجد تقارير');
-        await createNotification('لا توجد تقارير', 'لا توجد تقارير متاحة للتنزيل', 'warning');
+        toast.warning('لا توجد تقارير متاحة للتنزيل');
       }
     } catch (error) {
-      await completeTask(taskId, null, error.message);
-      await createNotification('خطأ في التنزيل', 'فشل في تنزيل التقارير', 'error');
+      console.error('Error downloading reports:', error);
+      const errorMessage = error instanceof Error ? error.message : 'فشل في تنزيل التقارير';
+      toast.error(errorMessage);
     }
   };
 
