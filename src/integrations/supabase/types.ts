@@ -9,6 +9,42 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      alert_subscriptions: {
+        Row: {
+          category: string
+          created_at: string | null
+          email: string
+          frequency: string
+          id: string
+          is_active: boolean | null
+          last_sent_at: string | null
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          category: string
+          created_at?: string | null
+          email: string
+          frequency: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          category?: string
+          created_at?: string | null
+          email?: string
+          frequency?: string
+          id?: string
+          is_active?: boolean | null
+          last_sent_at?: string | null
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       analysis_settings: {
         Row: {
           accuracy_level: string | null
@@ -266,6 +302,42 @@ export type Database = {
         }
         Relationships: []
       }
+      scraping_configs: {
+        Row: {
+          created_at: string | null
+          hashtags: string[] | null
+          id: string
+          is_active: boolean | null
+          last_scrape_at: string | null
+          location_filters: string[] | null
+          platform: string
+          search_terms: string[]
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          last_scrape_at?: string | null
+          location_filters?: string[] | null
+          platform: string
+          search_terms: string[]
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          hashtags?: string[] | null
+          id?: string
+          is_active?: boolean | null
+          last_scrape_at?: string | null
+          location_filters?: string[] | null
+          platform?: string
+          search_terms?: string[]
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       sendgrid_settings: {
         Row: {
           api_key: string | null
@@ -296,6 +368,90 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
+        }
+        Relationships: []
+      }
+      social_media_posts: {
+        Row: {
+          author_handle: string | null
+          author_name: string | null
+          category: string | null
+          comments_count: number | null
+          confidence: number | null
+          content: string
+          created_at: string | null
+          engagement_count: number | null
+          hashtags: string[] | null
+          id: string
+          is_duplicate: boolean | null
+          is_jordanian_dialect: boolean | null
+          is_spam: boolean | null
+          is_viral: boolean | null
+          likes_count: number | null
+          location: string | null
+          platform: string
+          post_id: string
+          post_url: string | null
+          raw_data: Json | null
+          scraped_at: string | null
+          sentiment: string | null
+          sentiment_score: number | null
+          shares_count: number | null
+          updated_at: string | null
+        }
+        Insert: {
+          author_handle?: string | null
+          author_name?: string | null
+          category?: string | null
+          comments_count?: number | null
+          confidence?: number | null
+          content: string
+          created_at?: string | null
+          engagement_count?: number | null
+          hashtags?: string[] | null
+          id?: string
+          is_duplicate?: boolean | null
+          is_jordanian_dialect?: boolean | null
+          is_spam?: boolean | null
+          is_viral?: boolean | null
+          likes_count?: number | null
+          location?: string | null
+          platform: string
+          post_id: string
+          post_url?: string | null
+          raw_data?: Json | null
+          scraped_at?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          shares_count?: number | null
+          updated_at?: string | null
+        }
+        Update: {
+          author_handle?: string | null
+          author_name?: string | null
+          category?: string | null
+          comments_count?: number | null
+          confidence?: number | null
+          content?: string
+          created_at?: string | null
+          engagement_count?: number | null
+          hashtags?: string[] | null
+          id?: string
+          is_duplicate?: boolean | null
+          is_jordanian_dialect?: boolean | null
+          is_spam?: boolean | null
+          is_viral?: boolean | null
+          likes_count?: number | null
+          location?: string | null
+          platform?: string
+          post_id?: string
+          post_url?: string | null
+          raw_data?: Json | null
+          scraped_at?: string | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          shares_count?: number | null
+          updated_at?: string | null
         }
         Relationships: []
       }
@@ -652,6 +808,10 @@ export type Database = {
         Args: { user_id_param: string; new_role: string }
         Returns: undefined
       }
+      categorize_post: {
+        Args: { content: string }
+        Returns: string
+      }
       cleanup_old_notifications: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -717,6 +877,10 @@ export type Database = {
       }
       is_admin: {
         Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_post_viral: {
+        Args: { engagement_count: number; platform: string }
         Returns: boolean
       }
       mark_notification_read: {
