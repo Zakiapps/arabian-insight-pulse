@@ -28,9 +28,10 @@ import {
   Settings,
   Users2,
   CreditCard,
+  DollarSign,
   Receipt,
   BadgePercent,
-  Shield
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -39,7 +40,7 @@ import { Badge } from "@/components/ui/badge";
 
 const AppSidebar = () => {
   const location = useLocation();
-  const { profile, isAdmin, user } = useAuth();
+  const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);

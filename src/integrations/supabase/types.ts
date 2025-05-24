@@ -122,39 +122,6 @@ export type Database = {
           },
         ]
       }
-      notifications: {
-        Row: {
-          action_url: string | null
-          created_at: string | null
-          id: string
-          is_read: boolean | null
-          message: string
-          title: string
-          type: string | null
-          user_id: string
-        }
-        Insert: {
-          action_url?: string | null
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          message: string
-          title: string
-          type?: string | null
-          user_id: string
-        }
-        Update: {
-          action_url?: string | null
-          created_at?: string | null
-          id?: string
-          is_read?: boolean | null
-          message?: string
-          title?: string
-          type?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       payment_methods: {
         Row: {
           brand: string | null
@@ -373,45 +340,6 @@ export type Database = {
           },
         ]
       }
-      task_history: {
-        Row: {
-          completed_at: string | null
-          error_message: string | null
-          id: string
-          parameters: Json | null
-          result: Json | null
-          started_at: string | null
-          status: string | null
-          task_name: string
-          task_type: string
-          user_id: string
-        }
-        Insert: {
-          completed_at?: string | null
-          error_message?: string | null
-          id?: string
-          parameters?: Json | null
-          result?: Json | null
-          started_at?: string | null
-          status?: string | null
-          task_name: string
-          task_type: string
-          user_id: string
-        }
-        Update: {
-          completed_at?: string | null
-          error_message?: string | null
-          id?: string
-          parameters?: Json | null
-          result?: Json | null
-          started_at?: string | null
-          status?: string | null
-          task_name?: string
-          task_type?: string
-          user_id?: string
-        }
-        Relationships: []
-      }
       transactions: {
         Row: {
           amount: number
@@ -504,36 +432,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_preferences: {
-        Row: {
-          analysis_preferences: Json | null
-          created_at: string | null
-          dashboard_layout: Json | null
-          id: string
-          notification_settings: Json | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          analysis_preferences?: Json | null
-          created_at?: string | null
-          dashboard_layout?: Json | null
-          id?: string
-          notification_settings?: Json | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          analysis_preferences?: Json | null
-          created_at?: string | null
-          dashboard_layout?: Json | null
-          id?: string
-          notification_settings?: Json | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       user_reports: {
         Row: {
           created_at: string | null
@@ -605,27 +503,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_create_user: {
-        Args: {
-          email_param: string
-          password_param: string
-          full_name_param: string
-          role_param?: string
-        }
-        Returns: Json
-      }
-      admin_delete_user: {
-        Args: { user_id_param: string }
-        Returns: undefined
-      }
-      admin_update_user_role: {
-        Args: { user_id_param: string; new_role: string }
-        Returns: undefined
-      }
-      cleanup_old_notifications: {
-        Args: Record<PropertyKey, never>
-        Returns: undefined
-      }
       clear_all_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
@@ -637,16 +514,6 @@ export type Database = {
       clear_user_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
-      }
-      create_notification: {
-        Args: {
-          user_id_param: string
-          title_param: string
-          message_param: string
-          type_param?: string
-          action_url_param?: string
-        }
-        Returns: string
       }
       get_active_subscription_count: {
         Args: Record<PropertyKey, never>
@@ -688,10 +555,6 @@ export type Database = {
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
-      }
-      mark_notification_read: {
-        Args: { notification_id_param: string }
-        Returns: undefined
       }
       update_user_session_status: {
         Args: { session_id_param: string; is_online_param?: boolean }
