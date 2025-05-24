@@ -49,6 +49,17 @@ const fallbackReviews = [
   }
 ];
 
+// Define the review type
+interface Review {
+  id: number | string;
+  name: string;
+  company: string;
+  rating: number;
+  date: string;
+  review: string;
+  avatar: string | null;
+}
+
 // Star rating component
 const StarRating = ({ rating }: { rating: number }) => {
   const fullStars = Math.floor(rating);
@@ -66,23 +77,35 @@ const StarRating = ({ rating }: { rating: number }) => {
 
 const Reviews = () => {
   const { t } = useLanguage();
-  const [reviews, setReviews] = useState(fallbackReviews);
+  const [reviews, setReviews] = useState<Review[]>(fallbackReviews);
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
     const fetchReviews = async () => {
       try {
-        // Try to fetch reviews from Supabase
+        // Try to fetch reviews from analyzed_posts table and format them as reviews
         const { data, error } = await supabase
-          .from('customer_reviews')
+          .from('analyzed_posts')
           .select('*')
-          .order('date', { ascending: false });
+          .eq('sentiment', 'positive')
+          .limit(5);
         
         if (error) throw error;
         
         // Use fetched data if available, otherwise use fallback
         if (data && data.length > 0) {
-          setReviews(data);
+          // Transform the data from analyzed_posts to match the Review interface
+          const formattedReviews: Review[] = data.map((post, index) => ({
+            id: post.id || index + 1,
+            name: `مستخدم ${index + 1}`,
+            company: post.source || "عميل",
+            rating: Math.min(Math.max(Math.round((post.sentiment_score || 0.5) * 5), 1), 5),
+            date: post.created_at || new Date().toISOString(),
+            review: post.content || "",
+            avatar: null
+          }));
+          
+          setReviews(formattedReviews);
         }
       } catch (error) {
         console.error('Error fetching reviews:', error);
