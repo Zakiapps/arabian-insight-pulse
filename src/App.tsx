@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Route,
@@ -13,13 +14,15 @@ import Reports from "./pages/Reports";
 import SignIn from "./pages/SignIn";
 import SignUp from "./pages/SignUp";
 import { Toaster } from "sonner";
-import { QueryClient } from "@tanstack/react-query";
+import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AdminUsers from "./pages/admin/AdminUsers";
 import TextAnalysis from "./pages/TextAnalysis";
 
+const queryClient = new QueryClient();
+
 function App() {
   return (
-    <QueryClient>
+    <QueryClientProvider client={queryClient}>
       <AuthProvider>
         <SubscriptionProvider>
           <LanguageProvider>
@@ -41,7 +44,7 @@ function App() {
           </LanguageProvider>
         </SubscriptionProvider>
       </AuthProvider>
-    </QueryClient>
+    </QueryClientProvider>
   );
 }
 

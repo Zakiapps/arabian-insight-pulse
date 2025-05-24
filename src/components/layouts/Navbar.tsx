@@ -1,3 +1,4 @@
+
 import React, { useState } from "react";
 import { Link } from "react-router-dom";
 import { useLanguage } from "@/contexts/LanguageContext";
@@ -14,7 +15,7 @@ import { LogOut, Settings } from "lucide-react";
 
 const Navbar = () => {
   const { language, setLanguage } = useLanguage();
-  const { user, logout } = useAuth();
+  const { user, profile, logout } = useAuth();
   const isArabic = language === 'ar';
 
   const handleLanguageToggle = () => {
@@ -66,8 +67,8 @@ const Navbar = () => {
                 <DropdownMenuTrigger asChild>
                   <Button variant="ghost" className="ml-3 h-8 w-8 p-0">
                     <Avatar className="h-8 w-8">
-                      <AvatarImage src={user.avatar_url || ''} alt={user.full_name || user.email} />
-                      <AvatarFallback>{user.full_name?.charAt(0) || user.email.charAt(0)}</AvatarFallback>
+                      <AvatarImage src={profile?.avatar_url || ''} alt={profile?.full_name || user.email} />
+                      <AvatarFallback>{profile?.full_name?.charAt(0) || user.email.charAt(0)}</AvatarFallback>
                     </Avatar>
                   </Button>
                 </DropdownMenuTrigger>
@@ -87,13 +88,13 @@ const Navbar = () => {
             ) : (
               <div className="hidden md:ml-6 md:flex md:items-center">
                 <Link
-                  to="/login"
+                  to="/signin"
                   className="text-gray-900 hover:text-gray-700 px-3 py-2 rounded-md text-sm font-medium"
                 >
                   {isArabic ? "تسجيل الدخول" : "Log in"}
                 </Link>
                 <Link
-                  to="/register"
+                  to="/signup"
                   className="bg-primary text-primary-foreground hover:bg-primary/90 ml-4 px-4 py-2 rounded-md text-sm font-medium"
                 >
                   {isArabic ? "إنشاء حساب" : "Register"}
