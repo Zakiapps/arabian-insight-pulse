@@ -18,13 +18,13 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
-  const { profile, signOut } = useAuth();
+  const { profile, logout } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
     try {
-      await signOut();
+      await logout();
       navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);

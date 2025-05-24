@@ -107,7 +107,13 @@ export const useTaskHistory = () => {
       return;
     }
 
-    setTasks(data || []);
+    // Type assertion to ensure proper typing
+    const typedTasks = (data || []).map(item => ({
+      ...item,
+      status: item.status as 'pending' | 'running' | 'completed' | 'failed'
+    }));
+
+    setTasks(typedTasks);
   };
 
   useEffect(() => {

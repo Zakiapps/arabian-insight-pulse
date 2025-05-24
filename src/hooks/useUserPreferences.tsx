@@ -45,9 +45,9 @@ export const useUserPreferences = () => {
 
       if (data) {
         setPreferences({
-          dashboard_layout: data.dashboard_layout || { theme: 'default', language: 'ar' },
-          notification_settings: data.notification_settings || { email: true, push: true, in_app: true },
-          analysis_preferences: data.analysis_preferences || { auto_save: true, real_time: false }
+          dashboard_layout: (data.dashboard_layout as any) || { theme: 'default', language: 'ar' },
+          notification_settings: (data.notification_settings as any) || { email: true, push: true, in_app: true },
+          analysis_preferences: (data.analysis_preferences as any) || { auto_save: true, real_time: false }
         });
       }
     } catch (error) {
