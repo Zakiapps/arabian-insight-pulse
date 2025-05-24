@@ -72,8 +72,11 @@ export const TopTopics = () => {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 8)
       .map(([keyword, mentions], index) => {
-        // Generate a simple positive trend percentage - fixed the arithmetic issue
-        const trendValue = 15 + Math.floor(Math.random() * 30);
+        // Generate a simple positive trend percentage - ensure all values are numbers
+        const baseValue = 15;
+        const randomValue = Math.floor(Math.random() * 30);
+        const trendValue = baseValue + randomValue;
+        
         return {
           topic: keyword,
           mentions: Number(mentions), // Ensure mentions is a number
