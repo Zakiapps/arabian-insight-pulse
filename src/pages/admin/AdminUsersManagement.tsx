@@ -53,7 +53,8 @@ import {
   Eye,
   CreditCard,
   Circle,
-  Save
+  Save,
+  Brain
 } from "lucide-react";
 import { format } from "date-fns";
 

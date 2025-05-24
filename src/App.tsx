@@ -1,113 +1,48 @@
-
-import { Toaster } from "@/components/ui/toaster";
-import { Toaster as Sonner } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
+import {
+  BrowserRouter as Router,
+  Route,
+  Routes,
+} from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
 import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import ProtectedRoute from "./components/auth/ProtectedRoute";
-import DashboardLayout from "./components/layouts/DashboardLayout";
-import AdminLayout from "./components/layouts/AdminLayout";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
-import Posts from "./pages/Posts";
-import Upload from "./pages/Upload";
-import Alerts from "./pages/Alerts";
-import Reports from "./pages/Reports";
-import Settings from "./pages/Settings";
-import SentimentAnalysisPage from "./pages/SentimentAnalysis";
-import CategoryDistributionPage from "./pages/CategoryDistribution";
-import PlatformDistributionPage from "./pages/PlatformDistribution";
-import TopTopicsPage from "./pages/TopTopics";
-import DialectDetectionPage from "./pages/DialectDetection";
-import NotFound from "./pages/NotFound";
-import LandingPage from "./pages/LandingPage";
+import Home from "./pages/Home";
 import Pricing from "./pages/Pricing";
-import Services from "./pages/Services";
-import Reviews from "./pages/Reviews";
-import AdminDashboard from "./pages/admin/AdminDashboard";
+import Reports from "./pages/Reports";
+import SignIn from "./pages/SignIn";
+import SignUp from "./pages/SignUp";
+import { Toaster } from "sonner";
+import { QueryClient } from "@tanstack/react-query";
 import AdminUsers from "./pages/admin/AdminUsers";
-import AdminPlans from "./pages/admin/AdminPlans";
-import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
-import AdminTransactions from "./pages/admin/AdminTransactions";
-import AdminSettings from "./pages/admin/AdminSettings";
-import PaymentSettings from "./pages/admin/PaymentSettings";
+import TextAnalysis from "./pages/TextAnalysis";
 
-const queryClient = new QueryClient({
-  defaultOptions: {
-    queries: {
-      retry: false,
-      refetchOnWindowFocus: false
-    }
-  }
-});
-
-const App = () => (
-  <QueryClientProvider client={queryClient}>
-    <BrowserRouter>
-      <LanguageProvider>
-        <AuthProvider>
-          <SubscriptionProvider>
-            <TooltipProvider>
-              <Toaster />
-              <Sonner />
-              <Routes>
-                {/* صفحة البداية والتسعير والخدمات وآراء العملاء */}
-                <Route path="/" element={<LandingPage />} />
-                <Route path="/pricing" element={<Pricing />} />
-                <Route path="/services" element={<Services />} />
-                <Route path="/reviews" element={<Reviews />} />
-                
-                {/* مسارات المصادقة */}
-                <Route path="/login" element={<Login />} />
-                <Route path="/register" element={<Register />} />
-                
-                {/* المسارات المحمية */}
-                <Route path="/dashboard" element={
-                  <ProtectedRoute>
-                    <DashboardLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<Dashboard />} />
-                  <Route path="posts" element={<Posts />} />
-                  <Route path="upload" element={<Upload />} />
-                  <Route path="alerts" element={<Alerts />} />
-                  <Route path="reports" element={<Reports />} />
-                  <Route path="sentiment" element={<SentimentAnalysisPage />} />
-                  <Route path="categories" element={<CategoryDistributionPage />} />
-                  <Route path="platforms" element={<PlatformDistributionPage />} />
-                  <Route path="topics" element={<TopTopicsPage />} />
-                  <Route path="dialects" element={<DialectDetectionPage />} />
-                  <Route path="settings" element={<Settings />} />
-                </Route>
-
-                {/* مسارات لوحة الإدارة */}
-                <Route path="/admin" element={
-                  <ProtectedRoute adminOnly>
-                    <AdminLayout />
-                  </ProtectedRoute>
-                }>
-                  <Route index element={<AdminDashboard />} />
-                  <Route path="users" element={<AdminUsers />} />
-                  <Route path="plans" element={<AdminPlans />} />
-                  <Route path="subscriptions" element={<AdminSubscriptions />} />
-                  <Route path="transactions" element={<AdminTransactions />} />
-                  <Route path="settings" element={<AdminSettings />} />
-                  <Route path="payment-settings" element={<PaymentSettings />} />
-                </Route>
-                
-                {/* التقاط جميع المسارات غير الموجودة */}
-                <Route path="*" element={<NotFound />} />
-              </Routes>
-            </TooltipProvider>
-          </SubscriptionProvider>
-        </AuthProvider>
-      </LanguageProvider>
-    </BrowserRouter>
-  </QueryClientProvider>
-);
+function App() {
+  return (
+    <QueryClient>
+      <AuthProvider>
+        <SubscriptionProvider>
+          <LanguageProvider>
+            <div dir="rtl">
+              <Router>
+                <Routes>
+                  <Route path="/" element={<Home />} />
+                  <Route path="/signin" element={<SignIn />} />
+                  <Route path="/signup" element={<SignUp />} />
+                  <Route path="/dashboard" element={<Dashboard />} />
+                  <Route path="/admin/users" element={<AdminUsers />} />
+                  <Route path="/reports" element={<Reports />} />
+                  <Route path="/pricing" element={<Pricing />} />
+                  <Route path="/text-analysis" element={<TextAnalysis />} />
+                </Routes>
+                <Toaster />
+              </Router>
+            </div>
+          </LanguageProvider>
+        </SubscriptionProvider>
+      </AuthProvider>
+    </QueryClient>
+  );
+}
 
 export default App;
