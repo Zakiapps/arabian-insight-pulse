@@ -8,20 +8,55 @@ import { Progress } from "@/components/ui/progress";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import Papa from "papaparse";
 
 const Upload = () => {
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
   const [singleText, setSingleText] = useState("");
 
+  const processCSV = async (text: string): Promise<any[]> => {
+    return new Promise((resolve) => {
+      Papa.parse(text, {
+        header: true,
+        complete: (results) => {
+          resolve(results.data);
+        }
+      });
+    });
+  };
+
+  const analyzeSentiment = (text: string) => {
+    // Simplified sentiment analysis logic for demo
+    // In a real app, this would call an AI service
+    const length = text.length;
+    let score;
+    
+    if (length % 3 === 0) return { sentiment: 'positive', score: 0.7 + Math.random() * 0.3 };
+    if (length % 3 === 1) return { sentiment: 'neutral', score: 0.4 + Math.random() * 0.3 };
+    return { sentiment: 'negative', score: Math.random() * 0.4 };
+  };
+
+  const detectDialect = (text: string) => {
+    // Simplified dialect detection for demo
+    // In a real app, this would call an AI service
+    return text.length % 2 === 0;
+  };
+
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0] || null;
     setSelectedFile(file);
     
     if (file && !file.name.endsWith('.csv')) {
-      toast.error("Please select a CSV file");
+      toast.error("يرجى اختيار ملف CSV");
       setSelectedFile(null);
       event.target.value = '';
     }
@@ -34,7 +69,7 @@ const Upload = () => {
     setSelectedFile(file);
     
     if (file && !file.name.endsWith('.csv')) {
-      toast.error("Please select a CSV file");
+      toast.error("يرجى اختيار ملف CSV");
       setSelectedFile(null);
     }
   };
@@ -44,34 +79,88 @@ const Upload = () => {
   };
 
   const handleFileUpload = async () => {
-    if (!selectedFile) return;
+    if (!selectedFile || !user) return;
     
     setIsUploading(true);
     setUploadStatus('uploading');
     setUploadProgress(0);
     
-    // Simulate file upload with progress
-    const interval = setInterval(() => {
-      setUploadProgress(prev => {
-        const newProgress = prev + 10;
+    try {
+      // Read the file
+      const text = await selectedFile.text();
+      const records = await processCSV(text);
+      
+      if (records.length === 0 || !records[0].content) {
+        toast.error("تنسيق CSV غير صالح. يرجى التأكد من وجود عمود 'content'");
+        setUploadStatus('error');
+        setIsUploading(false);
+        return;
+      }
+      
+      // Simulate progress
+      const progressInterval = setInterval(() => {
+        setUploadProgress(prev => {
+          const newProgress = prev + 5;
+          if (newProgress >= 90) {
+            clearInterval(progressInterval);
+            return 90;
+          }
+          return newProgress;
+        });
+      }, 200);
+      
+      // Process and upload each record
+      const batchSize = 10;
+      let processed = 0;
+      let postsProcessed = 0;
+      
+      for (let i = 0; i < records.length; i += batchSize) {
+        const batch = records.slice(i, i + batchSize);
+        const postsToInsert = batch.map(record => {
+          const sentimentResult = analyzeSentiment(record.content);
+          return {
+            user_id: user.id,
+            content: record.content,
+            source: record.platform || 'unknown',
+            sentiment: sentimentResult.sentiment,
+            sentiment_score: sentimentResult.score,
+            is_jordanian_dialect: detectDialect(record.content),
+            engagement_count: record.engagement ? parseInt(record.engagement) : 0,
+          };
+        });
         
-        if (newProgress >= 100) {
-          clearInterval(interval);
+        const { error } = await supabase
+          .from('analyzed_posts')
+          .insert(postsToInsert);
+          
+        if (error) {
+          console.error("Error inserting records:", error);
+          toast.error("حدث خطأ أثناء معالجة السجلات");
+          setUploadStatus('error');
           setIsUploading(false);
-          setUploadStatus('success');
-          toast.success("File uploaded successfully!");
-          
-          // Simulate API analysis time
-          setTimeout(() => {
-            toast.success("CSV analysis complete! 250 posts processed.");
-          }, 2000);
-          
-          return 100;
+          clearInterval(progressInterval);
+          return;
         }
         
-        return newProgress;
-      });
-    }, 300);
+        processed++;
+        postsProcessed += batch.length;
+        
+        // Update progress
+        setUploadProgress(Math.min(90 + (processed / (Math.ceil(records.length / batchSize)) * 10), 100));
+      }
+      
+      clearInterval(progressInterval);
+      setUploadProgress(100);
+      setUploadStatus('success');
+      setIsUploading(false);
+      toast.success(`تم تحميل وتحليل ${postsProcessed} منشور بنجاح!`);
+      
+    } catch (error) {
+      console.error("Upload error:", error);
+      toast.error("حدث خطأ أثناء تحميل الملف");
+      setUploadStatus('error');
+      setIsUploading(false);
+    }
   };
 
   const handleCancel = () => {
@@ -80,61 +169,97 @@ const Upload = () => {
     setUploadStatus('idle');
   };
 
-  const handleTextAnalysis = () => {
-    if (!singleText.trim()) {
-      toast.error("Please enter some Arabic text to analyze");
+  const handleTextAnalysis = async () => {
+    if (!singleText.trim() || !user) {
+      toast.error("يرجى إدخال نص عربي للتحليل");
       return;
     }
     
-    toast.info("Analyzing text...");
+    toast.info("جاري تحليل النص...");
     
-    // Simulate API call
-    setTimeout(() => {
-      toast.success("Analysis complete!");
-      // In a real app, you would display results or redirect to results page
-    }, 1500);
+    // Process the single text entry
+    try {
+      const sentimentResult = analyzeSentiment(singleText);
+      const isJordanian = detectDialect(singleText);
+      
+      const { error } = await supabase
+        .from('analyzed_posts')
+        .insert({
+          user_id: user.id,
+          content: singleText,
+          source: 'manual-entry',
+          sentiment: sentimentResult.sentiment,
+          sentiment_score: sentimentResult.score,
+          is_jordanian_dialect: isJordanian,
+          engagement_count: 0
+        });
+      
+      if (error) {
+        console.error("Error inserting record:", error);
+        toast.error("حدث خطأ أثناء حفظ التحليل");
+        return;
+      }
+      
+      toast.success("تم تحليل النص بنجاح!");
+      
+      // Show simple results
+      const sentimentMap = {
+        'positive': 'إيجابي',
+        'neutral': 'محايد',
+        'negative': 'سلبي'
+      };
+      
+      toast.success(`نتائج التحليل: المشاعر: ${sentimentMap[sentimentResult.sentiment as keyof typeof sentimentMap]}, اللهجة: ${isJordanian ? 'أردنية' : 'غير أردنية'}`);
+      
+      // Clear the input
+      setSingleText("");
+      
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("حدث خطأ أثناء تحليل النص");
+    }
   };
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Data Upload</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('Data Upload')}</h1>
         <p className="text-muted-foreground">
-          Upload social media posts for AI sentiment and dialect analysis
+          {t('Upload social media posts for AI sentiment and dialect analysis')}
         </p>
       </div>
 
       <Tabs defaultValue="batch" className="w-full">
         <TabsList>
-          <TabsTrigger value="batch">Batch Upload</TabsTrigger>
-          <TabsTrigger value="single">Single Post Analysis</TabsTrigger>
+          <TabsTrigger value="batch">{t('Batch Upload')}</TabsTrigger>
+          <TabsTrigger value="single">{t('Single Post Analysis')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="batch">
           <Card>
             <CardHeader>
-              <CardTitle>Upload CSV File</CardTitle>
+              <CardTitle>{t('Upload CSV File')}</CardTitle>
               <CardDescription>
-                Upload a CSV file containing Arabic social media posts for batch analysis.
+                {t('Upload a CSV file containing Arabic social media posts for batch analysis.')}
                 <br />
-                The CSV should have a "content" column with the Arabic text.
+                {t('The CSV should have a "content" column with the Arabic text.')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               {uploadStatus === 'success' ? (
                 <Alert className="bg-green-500/10 border-green-500/30 text-green-500">
                   <Check className="h-4 w-4" />
-                  <AlertTitle>Upload Successful</AlertTitle>
+                  <AlertTitle>{t('Upload Successful')}</AlertTitle>
                   <AlertDescription>
-                    Your file has been uploaded and is being processed. You will be notified when the analysis is complete.
+                    {t('Your file has been uploaded and is being processed. You will be notified when the analysis is complete.')}
                   </AlertDescription>
                 </Alert>
               ) : uploadStatus === 'error' ? (
                 <Alert variant="destructive">
                   <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>Upload Failed</AlertTitle>
+                  <AlertTitle>{t('Upload Failed')}</AlertTitle>
                   <AlertDescription>
-                    There was an error uploading your file. Please try again.
+                    {t('There was an error uploading your file. Please try again.')}
                   </AlertDescription>
                 </Alert>
               ) : (
@@ -154,10 +279,10 @@ const Upload = () => {
                   <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
                     <UploadIcon className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mt-4 text-lg font-semibold">Click or drag file to upload</h3>
+                  <h3 className="mt-4 text-lg font-semibold">{t('Click or drag file to upload')}</h3>
                   <p className="text-sm text-muted-foreground mt-2">
-                    Upload a CSV file with your social media posts<br />
-                    File should be under 10MB
+                    {t('Upload a CSV file with your social media posts')}<br />
+                    {t('File should be under 10MB')}
                   </p>
                 </div>
               )}
@@ -182,7 +307,7 @@ const Upload = () => {
                   {isUploading && (
                     <div className="space-y-2">
                       <div className="flex justify-between">
-                        <span className="text-sm">{uploadProgress}% complete</span>
+                        <span className="text-sm">{uploadProgress}% مكتمل</span>
                       </div>
                       <Progress value={uploadProgress} />
                     </div>
@@ -193,10 +318,10 @@ const Upload = () => {
             {selectedFile && uploadStatus !== 'success' && (
               <CardFooter className="flex justify-between">
                 <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
-                  Cancel
+                  {t('Cancel')}
                 </Button>
                 <Button onClick={handleFileUpload} disabled={isUploading}>
-                  {isUploading ? "Uploading..." : "Upload & Analyze"}
+                  {isUploading ? "جاري التحميل..." : t('Upload & Analyze')}
                 </Button>
               </CardFooter>
             )}
@@ -206,21 +331,21 @@ const Upload = () => {
         <TabsContent value="single">
           <Card>
             <CardHeader>
-              <CardTitle>Analyze Single Post</CardTitle>
+              <CardTitle>{t('Analyze Single Post')}</CardTitle>
               <CardDescription>
-                Enter Arabic text to analyze sentiment and dialect
+                {t('Enter Arabic text to analyze sentiment and dialect')}
               </CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
                 <div className="grid gap-2">
                   <label htmlFor="post-content" className="text-sm font-medium">
-                    Post Content
+                    {t('Post Content')}
                   </label>
                   <textarea
                     id="post-content"
                     rows={5}
-                    placeholder="Enter Arabic text..."
+                    placeholder={t('Enter Arabic text...')}
                     className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
                     value={singleText}
                     onChange={(e) => setSingleText(e.target.value)}
@@ -231,7 +356,7 @@ const Upload = () => {
             </CardContent>
             <CardFooter>
               <Button onClick={handleTextAnalysis}>
-                Analyze Text
+                {t('Analyze Text')}
               </Button>
             </CardFooter>
           </Card>
@@ -240,29 +365,29 @@ const Upload = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Upload Guidelines</CardTitle>
+          <CardTitle>{t('Upload Guidelines')}</CardTitle>
           <CardDescription>
-            Tips for preparing your data for analysis
+            {t('Tips for preparing your data for analysis')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="space-y-4">
             <div className="grid gap-2">
-              <h3 className="text-base font-semibold">CSV File Format</h3>
+              <h3 className="text-base font-semibold">{t('CSV File Format')}</h3>
               <p className="text-sm text-muted-foreground">
-                Your CSV file should have the following columns:
+                {t('Your CSV file should have the following columns:')}
               </p>
-              <ul className="list-disc pl-5 text-sm text-muted-foreground">
-                <li>content: The Arabic text content (required)</li>
-                <li>date: Post date in YYYY-MM-DD format (optional)</li>
-                <li>platform: Social media platform source (optional)</li>
-                <li>engagement: Number representing engagement count (optional)</li>
+              <ul className="list-disc pr-5 text-sm text-muted-foreground">
+                <li>{t('content: The Arabic text content (required)')}</li>
+                <li>{t('date: Post date in YYYY-MM-DD format (optional)')}</li>
+                <li>{t('platform: Social media platform source (optional)')}</li>
+                <li>{t('engagement: Number representing engagement count (optional)')}</li>
               </ul>
             </div>
             
             <div className="grid gap-2">
-              <h3 className="text-base font-semibold">Example Format</h3>
-              <div className="bg-muted/50 p-3 rounded-md overflow-x-auto">
+              <h3 className="text-base font-semibold">{t('Example Format')}</h3>
+              <div className="bg-muted/50 p-3 rounded-md overflow-x-auto" dir="ltr">
                 <code className="text-xs">
                   content,date,platform,engagement<br />
                   "الحكومة تعلن عن تخفيض أسعار المحروقات",2023-06-01,Twitter,145<br />

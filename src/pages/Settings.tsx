@@ -38,13 +38,15 @@ import {
   TabsTrigger,
 } from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
 
 const accountFormSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
+  name: z.string().min(2, "الاسم يجب أن يكون على الأقل حرفين"),
+  email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
   company: z.string().optional(),
   currentPassword: z.string().optional(),
-  newPassword: z.string().min(8, "Password must be at least 8 characters").optional(),
+  newPassword: z.string().min(8, "كلمة المرور يجب أن تكون على الأقل 8 أحرف").optional(),
   confirmPassword: z.string().optional(),
 }).refine((data) => {
   if (data.newPassword && !data.currentPassword) {
@@ -52,7 +54,7 @@ const accountFormSchema = z.object({
   }
   return true;
 }, {
-  message: "Current password is required to set a new password",
+  message: "كلمة المرور الحالية مطلوبة لتعيين كلمة مرور جديدة",
   path: ["currentPassword"],
 }).refine((data) => {
   if (data.newPassword && data.newPassword !== data.confirmPassword) {
@@ -60,7 +62,7 @@ const accountFormSchema = z.object({
   }
   return true;
 }, {
-  message: "Passwords do not match",
+  message: "كلمات المرور غير متطابقة",
   path: ["confirmPassword"],
 });
 
@@ -79,7 +81,8 @@ const notificationFormSchema = z.object({
 });
 
 const Settings = () => {
-  const { user } = useAuth();
+  const { user, updateUserProfile } = useAuth();
+  const { t } = useLanguage();
   const [activeTab, setActiveTab] = useState("account");
   
   // Account form
@@ -117,18 +120,82 @@ const Settings = () => {
     },
   });
 
-  function onAccountSubmit(values: z.infer<typeof accountFormSchema>) {
-    toast.success("Account settings updated!");
-    console.log(values);
+  async function onAccountSubmit(values: z.infer<typeof accountFormSchema>) {
+    try {
+      // Update user profile in Supabase
+      if (user) {
+        // Update profile name
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .update({ full_name: values.name })
+          .eq('id', user.id);
+          
+        if (profileError) {
+          console.error("Error updating profile:", profileError);
+          toast.error("حدث خطأ أثناء تحديث الملف الشخصي");
+          return;
+        }
+        
+        // Update email if changed
+        if (values.email !== user.email) {
+          const { error: emailError } = await supabase.auth.updateUser({
+            email: values.email,
+          });
+          
+          if (emailError) {
+            console.error("Error updating email:", emailError);
+            toast.error("حدث خطأ أثناء تحديث البريد الإلكتروني");
+            return;
+          }
+          
+          toast.info("تم إرسال رابط تأكيد البريد الإلكتروني الجديد");
+        }
+        
+        // Update password if provided
+        if (values.currentPassword && values.newPassword) {
+          const { error: passwordError } = await supabase.auth.updateUser({
+            password: values.newPassword,
+          });
+          
+          if (passwordError) {
+            console.error("Error updating password:", passwordError);
+            toast.error("حدث خطأ أثناء تحديث كلمة المرور");
+            return;
+          }
+          
+          toast.success("تم تحديث كلمة المرور بنجاح");
+          accountForm.setValue("currentPassword", "");
+          accountForm.setValue("newPassword", "");
+          accountForm.setValue("confirmPassword", "");
+        }
+        
+        // Update local user state
+        if (updateUserProfile) {
+          updateUserProfile({
+            ...user,
+            profile: {
+              ...user.profile,
+              full_name: values.name
+            },
+            email: values.email
+          });
+        }
+        
+        toast.success("تم تحديث إعدادات الحساب!");
+      }
+    } catch (error) {
+      console.error("Account update error:", error);
+      toast.error("فشل في تحديث إعدادات الحساب");
+    }
   }
 
   function onApiSubmit(values: z.infer<typeof apiFormSchema>) {
-    toast.success("API settings updated!");
+    toast.success("تم تحديث إعدادات API!");
     console.log(values);
   }
 
   function onNotificationSubmit(values: z.infer<typeof notificationFormSchema>) {
-    toast.success("Notification preferences updated!");
+    toast.success("تم تحديث تفضيلات الإشعارات!");
     console.log(values);
   }
 
@@ -136,31 +203,31 @@ const Settings = () => {
     // Simulate generating an API key
     const newApiKey = "ak_" + Math.random().toString(36).substring(2, 15);
     apiForm.setValue("apiKey", newApiKey);
-    toast.success("New API key generated!");
+    toast.success("تم إنشاء مفتاح API جديد!");
   }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Settings</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('Settings')}</h1>
         <p className="text-muted-foreground">
-          Manage your account settings and preferences
+          {t('Manage your account settings and preferences')}
         </p>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full max-w-md grid-cols-3">
-          <TabsTrigger value="account">Account</TabsTrigger>
-          <TabsTrigger value="api">API</TabsTrigger>
-          <TabsTrigger value="notifications">Notifications</TabsTrigger>
+          <TabsTrigger value="account">{t('Account')}</TabsTrigger>
+          <TabsTrigger value="api">{t('API')}</TabsTrigger>
+          <TabsTrigger value="notifications">{t('Notifications')}</TabsTrigger>
         </TabsList>
         
         <TabsContent value="account">
           <Card>
             <CardHeader>
-              <CardTitle>Account</CardTitle>
+              <CardTitle>{t('Account')}</CardTitle>
               <CardDescription>
-                Update your personal information and password
+                {t('Update your personal information and password')}
               </CardDescription>
             </CardHeader>
             <Form {...accountForm}>
@@ -172,9 +239,9 @@ const Settings = () => {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Name</FormLabel>
+                          <FormLabel>{t('Name')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your name" {...field} />
+                            <Input placeholder="اسمك" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -186,9 +253,9 @@ const Settings = () => {
                       name="email"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Email</FormLabel>
+                          <FormLabel>{t('Email')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your email" {...field} />
+                            <Input placeholder="بريدك الإلكتروني" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -200,9 +267,9 @@ const Settings = () => {
                       name="company"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Company (Optional)</FormLabel>
+                          <FormLabel>{t('Company (Optional)')}</FormLabel>
                           <FormControl>
-                            <Input placeholder="Your company" {...field} />
+                            <Input placeholder="شركتك" {...field} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -211,14 +278,14 @@ const Settings = () => {
                   </div>
                   
                   <div>
-                    <h3 className="text-lg font-medium">Change Password</h3>
+                    <h3 className="text-lg font-medium">{t('Change Password')}</h3>
                     <div className="space-y-4 mt-4">
                       <FormField
                         control={accountForm.control}
                         name="currentPassword"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Current password</FormLabel>
+                            <FormLabel>{t('Current password')}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
@@ -236,7 +303,7 @@ const Settings = () => {
                         name="newPassword"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>New password</FormLabel>
+                            <FormLabel>{t('New password')}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
@@ -246,7 +313,7 @@ const Settings = () => {
                             </FormControl>
                             <FormMessage />
                             <FormDescription>
-                              Must be at least 8 characters
+                              {t('Must be at least 8 characters')}
                             </FormDescription>
                           </FormItem>
                         )}
@@ -257,7 +324,7 @@ const Settings = () => {
                         name="confirmPassword"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Confirm new password</FormLabel>
+                            <FormLabel>{t('Confirm new password')}</FormLabel>
                             <FormControl>
                               <Input 
                                 type="password" 
@@ -273,7 +340,7 @@ const Settings = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit">Save changes</Button>
+                  <Button type="submit">{t('Save changes')}</Button>
                 </CardFooter>
               </form>
             </Form>
@@ -283,9 +350,9 @@ const Settings = () => {
         <TabsContent value="api">
           <Card>
             <CardHeader>
-              <CardTitle>API Settings</CardTitle>
+              <CardTitle>{t('API Settings')}</CardTitle>
               <CardDescription>
-                Manage your API keys and webhooks
+                {t('Manage your API keys and webhooks')}
               </CardDescription>
             </CardHeader>
             <Form {...apiForm}>
@@ -297,21 +364,21 @@ const Settings = () => {
                       name="apiKey"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>API Key</FormLabel>
+                          <FormLabel>{t('API Key')}</FormLabel>
                           <div className="flex gap-2">
                             <FormControl>
                               <Input 
                                 readOnly 
                                 {...field} 
-                                placeholder="No API key generated"
+                                placeholder={t('No API key generated')}
                               />
                             </FormControl>
                             <Button type="button" onClick={generateApiKey}>
-                              Generate
+                              {t('Generate')}
                             </Button>
                           </div>
                           <FormDescription>
-                            Use this key to access the ArabInsights API
+                            {t('Use this key to access the ArabInsights API')}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -323,20 +390,20 @@ const Settings = () => {
                       name="accessLevel"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Access Level</FormLabel>
+                          <FormLabel>{t('Access Level')}</FormLabel>
                           <FormControl>
                             <Select value={field.value} onValueChange={field.onChange}>
                               <SelectTrigger>
-                                <SelectValue placeholder="Select access level" />
+                                <SelectValue placeholder={t('Select access level')} />
                               </SelectTrigger>
                               <SelectContent>
-                                <SelectItem value="read_only">Read Only</SelectItem>
-                                <SelectItem value="read_write">Read & Write</SelectItem>
+                                <SelectItem value="read_only">{t('Read Only')}</SelectItem>
+                                <SelectItem value="read_write">{t('Read & Write')}</SelectItem>
                               </SelectContent>
                             </Select>
                           </FormControl>
                           <FormDescription>
-                            Control the level of access for this API key
+                            {t('Control the level of access for this API key')}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -348,15 +415,16 @@ const Settings = () => {
                       name="webhookUrl"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Webhook URL (Optional)</FormLabel>
+                          <FormLabel>{t('Webhook URL (Optional)')}</FormLabel>
                           <FormControl>
                             <Input 
                               placeholder="https://your-server.com/webhook" 
                               {...field} 
+                              dir="ltr"
                             />
                           </FormControl>
                           <FormDescription>
-                            We'll send alert notifications to this URL
+                            {t('We\'ll send alert notifications to this URL')}
                           </FormDescription>
                           <FormMessage />
                         </FormItem>
@@ -365,7 +433,7 @@ const Settings = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit">Save API settings</Button>
+                  <Button type="submit">{t('Save API settings')}</Button>
                 </CardFooter>
               </form>
             </Form>
@@ -375,9 +443,9 @@ const Settings = () => {
         <TabsContent value="notifications">
           <Card>
             <CardHeader>
-              <CardTitle>Notification Preferences</CardTitle>
+              <CardTitle>{t('Notification Preferences')}</CardTitle>
               <CardDescription>
-                Choose how and when you receive notifications
+                {t('Choose how and when you receive notifications')}
               </CardDescription>
             </CardHeader>
             <Form {...notificationForm}>
@@ -385,7 +453,7 @@ const Settings = () => {
                 <CardContent className="space-y-6">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg font-medium">Delivery Methods</h3>
+                      <h3 className="text-lg font-medium">{t('Delivery Methods')}</h3>
                       <div className="space-y-4 mt-4">
                         <FormField
                           control={notificationForm.control}
@@ -393,9 +461,9 @@ const Settings = () => {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>Email Notifications</FormLabel>
+                                <FormLabel>{t('Email Notifications')}</FormLabel>
                                 <FormDescription>
-                                  Receive notifications via email
+                                  {t('Receive notifications via email')}
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -414,9 +482,9 @@ const Settings = () => {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>App Notifications</FormLabel>
+                                <FormLabel>{t('App Notifications')}</FormLabel>
                                 <FormDescription>
-                                  Receive notifications in the dashboard
+                                  {t('Receive notifications in the dashboard')}
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -432,7 +500,7 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <h3 className="text-lg font-medium">Alert Types</h3>
+                      <h3 className="text-lg font-medium">{t('Alert Types')}</h3>
                       <div className="space-y-4 mt-4">
                         <FormField
                           control={notificationForm.control}
@@ -440,9 +508,9 @@ const Settings = () => {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>Sentiment Alerts</FormLabel>
+                                <FormLabel>{t('Sentiment Alerts')}</FormLabel>
                                 <FormDescription>
-                                  Notify when sentiment thresholds are triggered
+                                  {t('Notify when sentiment thresholds are triggered')}
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -461,9 +529,9 @@ const Settings = () => {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>Dialect Alerts</FormLabel>
+                                <FormLabel>{t('Dialect Alerts')}</FormLabel>
                                 <FormDescription>
-                                  Notify about dialect-specific triggers
+                                  {t('Notify about dialect-specific triggers')}
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -482,9 +550,9 @@ const Settings = () => {
                           render={({ field }) => (
                             <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
                               <div className="space-y-0.5">
-                                <FormLabel>Report Generation</FormLabel>
+                                <FormLabel>{t('Report Generation')}</FormLabel>
                                 <FormDescription>
-                                  Notify when reports are ready for viewing
+                                  {t('Notify when reports are ready for viewing')}
                                 </FormDescription>
                               </div>
                               <FormControl>
@@ -501,7 +569,7 @@ const Settings = () => {
                   </div>
                 </CardContent>
                 <CardFooter>
-                  <Button type="submit">Save notification preferences</Button>
+                  <Button type="submit">{t('Save notification preferences')}</Button>
                 </CardFooter>
               </form>
             </Form>

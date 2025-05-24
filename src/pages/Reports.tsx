@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Calendar as CalendarIcon, Download, FileText, ChevronDown } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar } from "@/components/ui/calendar";
@@ -17,110 +17,217 @@ import {
 } from "@/components/ui/popover";
 import { format } from "date-fns";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext";
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock report templates
-const reportTemplates = [
+// Report template type
+type ReportTemplate = {
+  id: string;
+  name: string;
+  description: string;
+  icon: string;
+};
+
+// Report type
+type Report = {
+  id: string;
+  name: string;
+  date: string;
+  format: string;
+  file_url?: string;
+  report_type: string;
+};
+
+// Report templates
+const reportTemplates: ReportTemplate[] = [
   {
     id: "1",
-    name: "Sentiment Analysis Report",
-    description: "Overview of sentiment trends and analysis",
+    name: "تقرير تحليل المشاعر",
+    description: "نظرة عامة على اتجاهات وتحليلات المشاعر",
     icon: "chart",
   },
   {
     id: "2",
-    name: "Dialect Distribution Report",
-    description: "Analysis of dialect distribution across posts",
+    name: "تقرير توزيع اللهجات",
+    description: "تحليل توزيع اللهجات عبر المنشورات",
     icon: "globe",
   },
   {
     id: "3",
-    name: "Engagement Metrics Report",
-    description: "Engagement statistics and trends",
+    name: "تقرير مقاييس التفاعل",
+    description: "إحصائيات واتجاهات التفاعل",
     icon: "activity",
   },
   {
     id: "4",
-    name: "Topic Analysis Report",
-    description: "Breakdown of the most discussed topics",
+    name: "تقرير تحليل المواضيع",
+    description: "تفصيل المواضيع الأكثر نقاشاً",
     icon: "list",
   },
 ];
 
-// Mock generated reports
-const generatedReports = [
-  {
-    id: "r1",
-    name: "Weekly Sentiment Analysis",
-    date: "2023-06-10",
-    format: "PDF",
-  },
-  {
-    id: "r2",
-    name: "Monthly Dialect Report",
-    date: "2023-06-01",
-    format: "Excel",
-  },
-  {
-    id: "r3",
-    name: "Q2 Engagement Summary",
-    date: "2023-05-15",
-    format: "PDF",
-  },
-];
+// Map from template ID to report type
+const templateToReportType: Record<string, string> = {
+  "1": "sentiment",
+  "2": "dialect",
+  "3": "engagement",
+  "4": "topic"
+};
 
 const Reports = () => {
+  const { t } = useLanguage();
+  const { user } = useAuth();
   const [date, setDate] = useState<Date | undefined>(new Date());
   const [selectedTemplate, setSelectedTemplate] = useState(reportTemplates[0]);
+  const [selectedFormat, setSelectedFormat] = useState("PDF");
+  const [generatedReports, setGeneratedReports] = useState<Report[]>([]);
+  const [isLoading, setIsLoading] = useState(true);
   
-  const handleGenerateReport = () => {
-    if (!date) {
-      toast.error("Please select a date range");
+  // Fetch user reports from Supabase
+  useEffect(() => {
+    async function fetchReports() {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('user_reports')
+          .select('*')
+          .eq('user_id', user.id)
+          .order('created_at', { ascending: false });
+          
+        if (error) {
+          console.error("Error fetching reports:", error);
+          toast.error("حدث خطأ أثناء جلب التقارير");
+          return;
+        }
+        
+        // Transform data to match our Report type
+        const transformedReports: Report[] = data.map(report => ({
+          id: report.id,
+          name: report.name,
+          date: format(new Date(report.created_at || new Date()), 'yyyy-MM-dd'),
+          format: report.format,
+          file_url: report.file_url || undefined,
+          report_type: report.report_type
+        }));
+        
+        setGeneratedReports(transformedReports);
+      } catch (err) {
+        console.error("Failed to fetch reports:", err);
+        toast.error("فشل في تحميل التقارير");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchReports();
+  }, [user]);
+  
+  const handleGenerateReport = async () => {
+    if (!date || !user) {
+      toast.error("الرجاء اختيار نطاق زمني");
       return;
     }
 
-    toast.info("Generating report...");
+    toast.info("جاري إنشاء التقرير...");
     
-    // Simulate API call delay
-    setTimeout(() => {
-      toast.success("Report generated successfully!");
-    }, 1500);
+    try {
+      // Create report parameters
+      const reportType = templateToReportType[selectedTemplate.id];
+      const reportName = selectedTemplate.name + " - " + format(date, 'yyyy-MM-dd');
+      
+      // Insert report into database
+      const { data, error } = await supabase
+        .from('user_reports')
+        .insert({
+          user_id: user.id,
+          name: reportName,
+          report_type: reportType,
+          format: selectedFormat,
+          parameters: { date: format(date, 'yyyy-MM-dd') },
+          status: 'completed' // In a real app, this would be 'processing' initially
+        })
+        .select();
+        
+      if (error) {
+        console.error("Error creating report:", error);
+        toast.error("حدث خطأ أثناء إنشاء التقرير");
+        return;
+      }
+      
+      // Add new report to state
+      const newReport: Report = {
+        id: data[0].id,
+        name: data[0].name,
+        date: format(new Date(data[0].created_at), 'yyyy-MM-dd'),
+        format: data[0].format,
+        report_type: data[0].report_type
+      };
+      
+      setGeneratedReports([newReport, ...generatedReports]);
+      toast.success("تم إنشاء التقرير بنجاح!");
+      
+    } catch (err) {
+      console.error("Failed to generate report:", err);
+      toast.error("فشل في إنشاء التقرير");
+    }
   };
 
   const handleDownloadReport = (reportId: string) => {
-    toast.info("Downloading report...");
+    // In a real app, this would download the actual file from storage
+    toast.info("جاري تنزيل التقرير...");
     
     // Simulate download delay
     setTimeout(() => {
-      toast.success("Report downloaded successfully!");
+      toast.success("تم تنزيل التقرير بنجاح!");
     }, 1000);
   };
+
+  // Show loading state
+  if (isLoading && !generatedReports.length) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('Reports')}</h1>
+          <p className="text-muted-foreground">
+            {t('Generate and download reports from your data')}
+          </p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight">Reports</h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('Reports')}</h1>
         <p className="text-muted-foreground">
-          Generate and download reports from your data
+          {t('Generate and download reports from your data')}
         </p>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
           <CardHeader>
-            <CardTitle>Generate New Report</CardTitle>
+            <CardTitle>{t('Generate New Report')}</CardTitle>
             <CardDescription>
-              Create a new report with your selected parameters
+              {t('Create a new report with your selected parameters')}
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="space-y-4">
               <div className="space-y-2">
-                <div className="font-medium text-sm">Report Template</div>
+                <div className="font-medium text-sm">{t('Report Template')}</div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
                       {selectedTemplate.name}
-                      <ChevronDown className="h-4 w-4 ml-2" />
+                      <ChevronDown className="h-4 w-4 mr-2" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent className="w-[320px]">
@@ -142,12 +249,12 @@ const Reports = () => {
               </div>
 
               <div className="space-y-2">
-                <div className="font-medium text-sm">Date Range</div>
+                <div className="font-medium text-sm">{t('Date Range')}</div>
                 <Popover>
                   <PopoverTrigger asChild>
-                    <Button variant="outline" className="w-full justify-start text-left">
-                      <CalendarIcon className="mr-2 h-4 w-4" />
-                      {date ? format(date, "PPP") : "Select date"}
+                    <Button variant="outline" className="w-full justify-start text-right">
+                      <CalendarIcon className="ml-2 h-4 w-4" />
+                      {date ? format(date, "PPP") : t('Select date')}
                     </Button>
                   </PopoverTrigger>
                   <PopoverContent className="w-auto p-0">
@@ -162,17 +269,17 @@ const Reports = () => {
               </div>
               
               <div className="space-y-2">
-                <div className="font-medium text-sm">Report Format</div>
+                <div className="font-medium text-sm">{t('Report Format')}</div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
                     <Button variant="outline" className="w-full justify-between">
-                      PDF
-                      <ChevronDown className="h-4 w-4 ml-2" />
+                      {selectedFormat}
+                      <ChevronDown className="h-4 w-4 mr-2" />
                     </Button>
                   </DropdownMenuTrigger>
                   <DropdownMenuContent>
-                    <DropdownMenuItem>PDF</DropdownMenuItem>
-                    <DropdownMenuItem>Excel</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFormat("PDF")}>PDF</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setSelectedFormat("Excel")}>Excel</DropdownMenuItem>
                   </DropdownMenuContent>
                 </DropdownMenu>
               </div>
@@ -181,7 +288,7 @@ const Reports = () => {
                 className="w-full mt-4" 
                 onClick={handleGenerateReport}
               >
-                Generate Report
+                {t('Generate Report')}
               </Button>
             </div>
           </CardContent>
@@ -189,9 +296,9 @@ const Reports = () => {
         
         <Card>
           <CardHeader>
-            <CardTitle>Previous Reports</CardTitle>
+            <CardTitle>{t('Previous Reports')}</CardTitle>
             <CardDescription>
-              Access your generated reports
+              {t('Access your generated reports')}
             </CardDescription>
           </CardHeader>
           <CardContent>
@@ -206,7 +313,7 @@ const Reports = () => {
                       <div className="p-2 bg-primary/10 rounded-md">
                         <FileText className="h-4 w-4 text-primary" />
                       </div>
-                      <div className="ml-3">
+                      <div className="mr-3">
                         <div className="font-medium text-sm">{report.name}</div>
                         <div className="text-xs text-muted-foreground">
                           {format(new Date(report.date), "PPP")} • {report.format}
@@ -227,9 +334,9 @@ const Reports = () => {
                   <div className="inline-flex items-center justify-center rounded-full p-2 bg-muted">
                     <FileText className="h-6 w-6 text-muted-foreground" />
                   </div>
-                  <h3 className="mt-2 text-sm font-semibold">No reports yet</h3>
+                  <h3 className="mt-2 text-sm font-semibold">{t('No reports yet')}</h3>
                   <p className="mt-1 text-sm text-muted-foreground">
-                    Generate your first report to see it here
+                    {t('Generate your first report to see it here')}
                   </p>
                 </div>
               )}
@@ -240,50 +347,50 @@ const Reports = () => {
       
       <Card>
         <CardHeader>
-          <CardTitle>Report Types</CardTitle>
+          <CardTitle>{t('Report Types')}</CardTitle>
           <CardDescription>
-            Available report types and their contents
+            {t('Available report types and their contents')}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <div className="space-y-2">
-              <h3 className="font-medium">Sentiment Analysis Report</h3>
-              <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                <li>Sentiment distribution (positive, neutral, negative)</li>
-                <li>Sentiment trends over selected time period</li>
-                <li>Top positive and negative keywords</li>
-                <li>Sentiment by topic breakdown</li>
+              <h3 className="font-medium">{t('Sentiment Analysis Report')}</h3>
+              <ul className="text-sm text-muted-foreground list-disc mr-5 space-y-1">
+                <li>توزيع المشاعر (إيجابية، محايدة، سلبية)</li>
+                <li>اتجاهات المشاعر خلال الفترة الزمنية المحددة</li>
+                <li>أهم الكلمات الإيجابية والسلبية</li>
+                <li>تقسيم المشاعر حسب الموضوع</li>
               </ul>
             </div>
             
             <div className="space-y-2">
-              <h3 className="font-medium">Dialect Distribution Report</h3>
-              <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                <li>Jordanian vs non-Jordanian dialect distribution</li>
-                <li>Dialect usage by topic</li>
-                <li>Dialect trends over selected time period</li>
-                <li>Geographic distribution when available</li>
+              <h3 className="font-medium">{t('Dialect Distribution Report')}</h3>
+              <ul className="text-sm text-muted-foreground list-disc mr-5 space-y-1">
+                <li>توزيع اللهجات الأردنية مقابل غير الأردنية</li>
+                <li>استخدام اللهجات حسب الموضوع</li>
+                <li>اتجاهات اللهجات خلال الفترة الزمنية المحددة</li>
+                <li>التوزيع الجغرافي عندما يكون متاحًا</li>
               </ul>
             </div>
             
             <div className="space-y-2">
-              <h3 className="font-medium">Engagement Metrics Report</h3>
-              <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                <li>Engagement by platform (likes, shares, comments)</li>
-                <li>Engagement correlation with sentiment</li>
-                <li>Top engaging content analysis</li>
-                <li>Engagement trends over selected time period</li>
+              <h3 className="font-medium">{t('Engagement Metrics Report')}</h3>
+              <ul className="text-sm text-muted-foreground list-disc mr-5 space-y-1">
+                <li>التفاعل حسب المنصة (الإعجابات، المشاركات، التعليقات)</li>
+                <li>علاقة التفاعل بالمشاعر</li>
+                <li>تحليل المحتوى الأكثر تفاعلاً</li>
+                <li>اتجاهات التفاعل خلال الفترة الزمنية المحددة</li>
               </ul>
             </div>
             
             <div className="space-y-2">
-              <h3 className="font-medium">Topic Analysis Report</h3>
-              <ul className="text-sm text-muted-foreground list-disc ml-5 space-y-1">
-                <li>Top topics by volume</li>
-                <li>Topic sentiment breakdown</li>
-                <li>Emerging topics identification</li>
-                <li>Topic correlation analysis</li>
+              <h3 className="font-medium">{t('Topic Analysis Report')}</h3>
+              <ul className="text-sm text-muted-foreground list-disc mr-5 space-y-1">
+                <li>أهم المواضيع من حيث الحجم</li>
+                <li>تقسيم مشاعر المواضيع</li>
+                <li>تحديد المواضيع الناشئة</li>
+                <li>تحليل العلاقة بين المواضيع</li>
               </ul>
             </div>
           </div>

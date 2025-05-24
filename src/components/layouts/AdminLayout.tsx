@@ -12,15 +12,9 @@ const AdminLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isAuthenticated, isAdmin, loading } = useAuth();
-
-  // Force RTL for admin panel
-  const { setLanguage } = useLanguage();
-
-  // Set language to Arabic for admin panel
-  useEffect(() => {
-    setLanguage('ar');
-    document.documentElement.dir = 'rtl';
-  }, [setLanguage]);
+  
+  // Use language context instead of forcing Arabic
+  const { language, setLanguage } = useLanguage();
 
   // Fix hydration mismatch
   useEffect(() => {
@@ -47,7 +41,7 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-muted/10" dir="rtl">
+      <div className="min-h-screen flex w-full bg-muted/10">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />

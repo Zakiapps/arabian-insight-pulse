@@ -9,6 +9,45 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analyzed_posts: {
+        Row: {
+          analyzed_at: string | null
+          content: string
+          created_at: string | null
+          engagement_count: number | null
+          id: string
+          is_jordanian_dialect: boolean | null
+          sentiment: string | null
+          sentiment_score: number | null
+          source: string | null
+          user_id: string
+        }
+        Insert: {
+          analyzed_at?: string | null
+          content: string
+          created_at?: string | null
+          engagement_count?: number | null
+          id?: string
+          is_jordanian_dialect?: boolean | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          source?: string | null
+          user_id: string
+        }
+        Update: {
+          analyzed_at?: string | null
+          content?: string
+          created_at?: string | null
+          engagement_count?: number | null
+          id?: string
+          is_jordanian_dialect?: boolean | null
+          sentiment?: string | null
+          sentiment_score?: number | null
+          source?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -159,6 +198,87 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      user_alerts: {
+        Row: {
+          active: boolean | null
+          condition: string
+          created_at: string | null
+          dialect_value: string | null
+          id: string
+          keyword: string | null
+          metric: string
+          name: string
+          notify_via: string | null
+          timeframe: string
+          user_id: string
+          value: number | null
+        }
+        Insert: {
+          active?: boolean | null
+          condition: string
+          created_at?: string | null
+          dialect_value?: string | null
+          id?: string
+          keyword?: string | null
+          metric: string
+          name: string
+          notify_via?: string | null
+          timeframe: string
+          user_id: string
+          value?: number | null
+        }
+        Update: {
+          active?: boolean | null
+          condition?: string
+          created_at?: string | null
+          dialect_value?: string | null
+          id?: string
+          keyword?: string | null
+          metric?: string
+          name?: string
+          notify_via?: string | null
+          timeframe?: string
+          user_id?: string
+          value?: number | null
+        }
+        Relationships: []
+      }
+      user_reports: {
+        Row: {
+          created_at: string | null
+          file_url: string | null
+          format: string
+          id: string
+          name: string
+          parameters: Json | null
+          report_type: string
+          status: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          file_url?: string | null
+          format: string
+          id?: string
+          name: string
+          parameters?: Json | null
+          report_type: string
+          status?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string | null
+          format?: string
+          id?: string
+          name?: string
+          parameters?: Json | null
+          report_type?: string
+          status?: string | null
+          user_id?: string
+        }
+        Relationships: []
       }
     }
     Views: {

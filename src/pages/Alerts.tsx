@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Plus, Bell, Trash2, Check } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import {
@@ -33,49 +33,28 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { useAuth } from "@/contexts/AuthContext"; 
+import { supabase } from "@/integrations/supabase/client";
 
-// Mock existing alerts
-const initialAlerts = [
-  {
-    id: "1",
-    name: "High negative sentiment",
-    metric: "sentiment",
-    condition: "above",
-    value: 50,
-    timeframe: "hour",
-    keyword: "الحكومة",
-    active: true,
-    notifyVia: "app",
-  },
-  {
-    id: "2",
-    name: "Low engagement alert",
-    metric: "engagement",
-    condition: "below",
-    value: 100,
-    timeframe: "day",
-    keyword: "الاقتصاد",
-    active: false,
-    notifyVia: "app",
-  },
-  {
-    id: "3",
-    name: "Jordan dialect monitor",
-    metric: "dialect",
-    condition: "equals",
-    value: 0, // Not used for dialect
-    timeframe: "day",
-    keyword: "",
-    active: true,
-    notifyVia: "app",
-    dialectValue: "Jordanian",
-  },
-];
-
-type Alert = typeof initialAlerts[0];
+type Alert = {
+  id: string;
+  name: string;
+  metric: string;
+  condition: string;
+  value: number;
+  timeframe: string;
+  keyword?: string;
+  active: boolean;
+  notifyVia: string;
+  dialectValue?: string;
+  user_id?: string;
+};
 
 const Alerts = () => {
-  const [alerts, setAlerts] = useState<Alert[]>(initialAlerts);
+  const { t } = useLanguage();
+  const { user } = useAuth();
+  const [alerts, setAlerts] = useState<Alert[]>([]);
   const [newAlertOpen, setNewAlertOpen] = useState(false);
   const [newAlert, setNewAlert] = useState<Partial<Alert>>({
     metric: "sentiment",
@@ -86,24 +65,116 @@ const Alerts = () => {
     active: true,
     notifyVia: "app",
   });
+  const [isLoading, setIsLoading] = useState(true);
   
-  const handleAddAlert = () => {
+  // Fetch alerts from Supabase
+  useEffect(() => {
+    async function fetchAlerts() {
+      if (!user) return;
+      
+      setIsLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from('user_alerts')
+          .select('*')
+          .eq('user_id', user.id);
+          
+        if (error) {
+          console.error("Error fetching alerts:", error);
+          toast.error("حدث خطأ أثناء جلب التنبيهات");
+          return;
+        }
+        
+        // Transform data to match our Alert type
+        const transformedAlerts: Alert[] = data.map(alert => ({
+          id: alert.id,
+          name: alert.name,
+          metric: alert.metric,
+          condition: alert.condition,
+          value: alert.value || 0,
+          timeframe: alert.timeframe,
+          keyword: alert.keyword || undefined,
+          active: alert.active || false,
+          notifyVia: alert.notify_via || 'app',
+          dialectValue: alert.dialect_value,
+        }));
+        
+        setAlerts(transformedAlerts);
+      } catch (err) {
+        console.error("Failed to fetch alerts:", err);
+        toast.error("فشل في تحميل التنبيهات");
+      } finally {
+        setIsLoading(false);
+      }
+    }
+    
+    fetchAlerts();
+  }, [user]);
+  
+  const handleAddAlert = async () => {
     if (!newAlert.name || newAlert.name.trim() === "") {
-      toast.error("Please provide a name for the alert");
+      toast.error("يرجى تقديم اسم للتنبيه");
       return;
     }
     
-    const alert = {
-      id: `${Date.now()}`,
-      ...newAlert,
-      name: newAlert.name || "New Alert",
-      value: newAlert.value || 50,
-      active: newAlert.active ?? true,
-    } as Alert;
+    if (!user) {
+      toast.error("يجب تسجيل الدخول لإنشاء تنبيهات");
+      return;
+    }
     
-    setAlerts([...alerts, alert]);
-    toast.success("Alert created successfully");
-    setNewAlertOpen(false);
+    try {
+      // Prepare alert data for insertion
+      const alertData = {
+        name: newAlert.name,
+        user_id: user.id,
+        metric: newAlert.metric,
+        condition: newAlert.condition, 
+        value: newAlert.value,
+        timeframe: newAlert.timeframe,
+        keyword: newAlert.keyword || null,
+        active: newAlert.active ?? true,
+        notify_via: newAlert.notifyVia || 'app',
+        dialect_value: newAlert.dialectValue || null,
+      };
+      
+      // Insert into database
+      const { data, error } = await supabase
+        .from('user_alerts')
+        .insert(alertData)
+        .select();
+        
+      if (error) {
+        console.error("Error creating alert:", error);
+        toast.error("حدث خطأ أثناء إنشاء التنبيه");
+        return;
+      }
+      
+      // Add new alert to state
+      const insertedAlert: Alert = {
+        id: data[0].id,
+        name: data[0].name,
+        metric: data[0].metric,
+        condition: data[0].condition,
+        value: data[0].value || 0,
+        timeframe: data[0].timeframe,
+        keyword: data[0].keyword || undefined,
+        active: data[0].active || false,
+        notifyVia: data[0].notify_via || 'app',
+        dialectValue: data[0].dialect_value,
+      };
+      
+      setAlerts([...alerts, insertedAlert]);
+      toast.success("تم إنشاء التنبيه بنجاح");
+      setNewAlertOpen(false);
+      resetNewAlertForm();
+      
+    } catch (err) {
+      console.error("Failed to create alert:", err);
+      toast.error("فشل في إنشاء التنبيه");
+    }
+  };
+
+  const resetNewAlertForm = () => {
     setNewAlert({
       metric: "sentiment",
       condition: "above", 
@@ -115,16 +186,50 @@ const Alerts = () => {
     });
   };
 
-  const handleDeleteAlert = (id: string) => {
-    setAlerts(alerts.filter(alert => alert.id !== id));
-    toast.info("Alert deleted");
+  const handleDeleteAlert = async (id: string) => {
+    try {
+      const { error } = await supabase
+        .from('user_alerts')
+        .delete()
+        .eq('id', id);
+        
+      if (error) {
+        console.error("Error deleting alert:", error);
+        toast.error("حدث خطأ أثناء حذف التنبيه");
+        return;
+      }
+      
+      setAlerts(alerts.filter(alert => alert.id !== id));
+      toast.info("تم حذف التنبيه");
+      
+    } catch (err) {
+      console.error("Failed to delete alert:", err);
+      toast.error("فشل في حذف التنبيه");
+    }
   };
 
-  const handleToggleAlert = (id: string, active: boolean) => {
-    setAlerts(alerts.map(alert => 
-      alert.id === id ? { ...alert, active } : alert
-    ));
-    toast.success(`Alert ${active ? 'activated' : 'deactivated'}`);
+  const handleToggleAlert = async (id: string, active: boolean) => {
+    try {
+      const { error } = await supabase
+        .from('user_alerts')
+        .update({ active })
+        .eq('id', id);
+        
+      if (error) {
+        console.error("Error updating alert:", error);
+        toast.error("حدث خطأ أثناء تحديث التنبيه");
+        return;
+      }
+      
+      setAlerts(alerts.map(alert => 
+        alert.id === id ? { ...alert, active } : alert
+      ));
+      toast.success(active ? 'تم تفعيل التنبيه' : 'تم إلغاء تفعيل التنبيه');
+      
+    } catch (err) {
+      console.error("Failed to toggle alert:", err);
+      toast.error("فشل في تغيير حالة التنبيه");
+    }
   };
 
   const getAlertDescription = (alert: Alert) => {
@@ -132,58 +237,81 @@ const Alerts = () => {
     
     if (alert.metric === "sentiment") {
       const sentimentType = alert.condition === "above" ? "negative" : "positive";
-      description = `Alert when ${sentimentType} sentiment is ${alert.condition} ${alert.value}%`;
+      description = `تنبيه عندما تكون المشاعر ${sentimentType === "negative" ? "السلبية" : "الإيجابية"} ${alert.condition === "above" ? "أعلى من" : alert.condition === "below" ? "أقل من" : "تساوي"} ${alert.value}%`;
     } else if (alert.metric === "engagement") {
-      description = `Alert when engagement is ${alert.condition} ${alert.value}`;
+      description = `تنبيه عندما يكون التفاعل ${alert.condition === "above" ? "أعلى من" : alert.condition === "below" ? "أقل من" : "يساوي"} ${alert.value}`;
     } else if (alert.metric === "dialect") {
-      description = `Alert when dialect detected as ${alert.dialectValue || "Jordanian"}`;
+      description = `تنبيه عندما يتم اكتشاف اللهجة ${alert.dialectValue === "Jordanian" ? "الأردنية" : "غير الأردنية"}`;
     }
     
     if (alert.keyword) {
-      description += ` for keyword "${alert.keyword}"`;
+      description += ` للكلمة المفتاحية "${alert.keyword}"`;
     }
     
-    description += ` within the last ${alert.timeframe}`;
+    const timeframeMap = {
+      "hour": "الساعة الأخيرة",
+      "day": "اليوم الأخير",
+      "week": "الأسبوع الأخير"
+    };
+    
+    description += ` خلال ${timeframeMap[alert.timeframe as keyof typeof timeframeMap]}`;
     
     return description;
   };
+
+  // Show loading state
+  if (isLoading && !alerts.length) {
+    return (
+      <div className="space-y-6">
+        <div>
+          <h1 className="text-2xl font-bold tracking-tight">{t('Alerts')}</h1>
+          <p className="text-muted-foreground">
+            {t('Get notified when important metrics change')}
+          </p>
+        </div>
+        <div className="flex items-center justify-center h-64">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight">Alerts</h1>
+          <h1 className="text-2xl font-bold tracking-tight">{t('Alerts')}</h1>
           <p className="text-muted-foreground">
-            Get notified when important metrics change
+            {t('Get notified when important metrics change')}
           </p>
         </div>
         <Dialog open={newAlertOpen} onOpenChange={setNewAlertOpen}>
           <DialogTrigger asChild>
             <Button>
-              <Plus className="mr-2 h-4 w-4" />
-              New Alert
+              <Plus className="ml-2 h-4 w-4" />
+              {t('New Alert')}
             </Button>
           </DialogTrigger>
           <DialogContent className="sm:max-w-[500px]">
             <DialogHeader>
-              <DialogTitle>Create Alert</DialogTitle>
+              <DialogTitle>{t('Create Alert')}</DialogTitle>
               <DialogDescription>
-                Set up parameters for your new alert
+                {t('Set up parameters for your new alert')}
               </DialogDescription>
             </DialogHeader>
             <div className="space-y-4 py-4">
               <div className="grid gap-2">
-                <Label htmlFor="name">Alert Name</Label>
+                <Label htmlFor="name">{t('Alert Name')}</Label>
                 <Input 
                   id="name" 
-                  placeholder="Enter alert name" 
+                  placeholder={t('Enter alert name')} 
                   value={newAlert.name || ""}
                   onChange={(e) => setNewAlert({...newAlert, name: e.target.value})}
                 />
               </div>
               
               <div className="grid gap-2">
-                <Label>Alert Type</Label>
+                <Label>{t('Alert Type')}</Label>
                 <Select 
                   value={newAlert.metric} 
                   onValueChange={(value) => setNewAlert({
@@ -193,14 +321,14 @@ const Alerts = () => {
                   })}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select metric" />
+                    <SelectValue placeholder={t('Select metric')} />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectGroup>
-                      <SelectLabel>Metrics</SelectLabel>
-                      <SelectItem value="sentiment">Sentiment</SelectItem>
-                      <SelectItem value="engagement">Engagement</SelectItem>
-                      <SelectItem value="dialect">Dialect</SelectItem>
+                      <SelectLabel>{t('Metrics')}</SelectLabel>
+                      <SelectItem value="sentiment">{t('Sentiment')}</SelectItem>
+                      <SelectItem value="engagement">{t('Engagement')}</SelectItem>
+                      <SelectItem value="dialect">{t('Dialect')}</SelectItem>
                     </SelectGroup>
                   </SelectContent>
                 </Select>
@@ -208,18 +336,18 @@ const Alerts = () => {
               
               {newAlert.metric !== "dialect" && (
                 <div className="grid gap-2">
-                  <Label>Condition</Label>
+                  <Label>{t('Condition')}</Label>
                   <Select 
                     value={newAlert.condition} 
                     onValueChange={(value) => setNewAlert({...newAlert, condition: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select condition" />
+                      <SelectValue placeholder={t('Select condition')} />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="above">Above</SelectItem>
-                      <SelectItem value="below">Below</SelectItem>
-                      <SelectItem value="equals">Equals</SelectItem>
+                      <SelectItem value="above">{t('Above')}</SelectItem>
+                      <SelectItem value="below">{t('Below')}</SelectItem>
+                      <SelectItem value="equals">{t('Equals')}</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
@@ -227,24 +355,26 @@ const Alerts = () => {
               
               {newAlert.metric === "dialect" ? (
                 <div className="grid gap-2">
-                  <Label>Dialect</Label>
+                  <Label>{t('Dialect')}</Label>
                   <Select 
                     value={newAlert.dialectValue || "Jordanian"} 
                     onValueChange={(value) => setNewAlert({...newAlert, dialectValue: value})}
                   >
                     <SelectTrigger>
-                      <SelectValue placeholder="Select dialect" />
+                      <SelectValue placeholder="اختر اللهجة" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="Jordanian">Jordanian</SelectItem>
-                      <SelectItem value="Non-Jordanian">Non-Jordanian</SelectItem>
+                      <SelectItem value="Jordanian">أردنية</SelectItem>
+                      <SelectItem value="Non-Jordanian">غير أردنية</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
               ) : (
                 <div className="grid gap-4">
                   <div className="flex items-center justify-between">
-                    <Label>Threshold Value: {newAlert.value}%</Label>
+                    <Label>
+                      {t('Threshold Value')}: {newAlert.value}%
+                    </Label>
                   </div>
                   <Slider
                     value={[newAlert.value || 50]}
@@ -257,27 +387,27 @@ const Alerts = () => {
               )}
               
               <div className="grid gap-2">
-                <Label>Timeframe</Label>
+                <Label>{t('Timeframe')}</Label>
                 <Select 
                   value={newAlert.timeframe} 
                   onValueChange={(value) => setNewAlert({...newAlert, timeframe: value})}
                 >
                   <SelectTrigger>
-                    <SelectValue placeholder="Select timeframe" />
+                    <SelectValue placeholder={t('Select timeframe')} />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="hour">Last Hour</SelectItem>
-                    <SelectItem value="day">Last 24 Hours</SelectItem>
-                    <SelectItem value="week">Last Week</SelectItem>
+                    <SelectItem value="hour">{t('Last Hour')}</SelectItem>
+                    <SelectItem value="day">{t('Last 24 Hours')}</SelectItem>
+                    <SelectItem value="week">{t('Last Week')}</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
               
               <div className="grid gap-2">
-                <Label htmlFor="keyword">Keyword (Optional)</Label>
+                <Label htmlFor="keyword">{t('Keyword (Optional)')}</Label>
                 <Input 
                   id="keyword" 
-                  placeholder="Filter by keyword" 
+                  placeholder={t('Filter by keyword')} 
                   value={newAlert.keyword || ""}
                   onChange={(e) => setNewAlert({...newAlert, keyword: e.target.value})}
                 />
@@ -289,14 +419,14 @@ const Alerts = () => {
                   checked={newAlert.active} 
                   onCheckedChange={(checked) => setNewAlert({...newAlert, active: checked})}
                 />
-                <Label htmlFor="active">Enable alert immediately</Label>
+                <Label htmlFor="active" className="mr-2">{t('Enable alert immediately')}</Label>
               </div>
             </div>
             <DialogFooter>
               <Button variant="ghost" onClick={() => setNewAlertOpen(false)}>
-                Cancel
+                {t('Cancel')}
               </Button>
-              <Button onClick={handleAddAlert}>Save Alert</Button>
+              <Button onClick={handleAddAlert}>{t('Save Alert')}</Button>
             </DialogFooter>
           </DialogContent>
         </Dialog>
@@ -308,7 +438,7 @@ const Alerts = () => {
             <CardHeader className="pb-3">
               <div className="flex items-center justify-between">
                 <div className="flex items-center space-x-2">
-                  <Bell className="h-5 w-5 text-primary" />
+                  <Bell className="h-5 w-5 text-primary ml-2" />
                   <CardTitle>{alert.name}</CardTitle>
                 </div>
                 <Switch 
@@ -322,18 +452,18 @@ const Alerts = () => {
             </CardHeader>
             <CardContent>
               <div className="flex items-center text-sm">
-                <div className="rounded-full w-3 h-3 bg-primary mr-2" />
-                <span>Notify via app notifications</span>
+                <div className="rounded-full w-3 h-3 bg-primary ml-2" />
+                <span>الإشعار عبر تنبيهات التطبيق</span>
               </div>
             </CardContent>
             <CardFooter className="pt-0 flex justify-between">
               <Button variant="outline" size="sm" onClick={() => handleDeleteAlert(alert.id)}>
-                <Trash2 className="h-4 w-4 mr-1" />
-                Delete
+                <Trash2 className="h-4 w-4 ml-1" />
+                حذف
               </Button>
-              <Button variant="ghost" size="sm" onClick={() => toast.success("Test notification sent")}>
-                <Bell className="h-4 w-4 mr-1" />
-                Test Alert
+              <Button variant="ghost" size="sm" onClick={() => toast.success("تم إرسال تنبيه تجريبي")}>
+                <Bell className="h-4 w-4 ml-1" />
+                {t('Test Alert')}
               </Button>
             </CardFooter>
           </Card>
@@ -345,13 +475,13 @@ const Alerts = () => {
               <div className="rounded-full bg-muted p-3 mb-3">
                 <Bell className="h-6 w-6 text-muted-foreground" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">No Alerts Set Up</h3>
+              <h3 className="text-lg font-semibold mb-2">{t('No Alerts Set Up')}</h3>
               <p className="text-muted-foreground text-center mb-4">
-                You haven't created any alerts yet. Create your first alert to get notified about important changes.
+                {t('You haven\'t created any alerts yet. Create your first alert to get notified about important changes.')}
               </p>
               <Button onClick={() => setNewAlertOpen(true)}>
-                <Plus className="mr-2 h-4 w-4" />
-                Create First Alert
+                <Plus className="ml-2 h-4 w-4" />
+                {t('Create First Alert')}
               </Button>
             </CardContent>
           </Card>
@@ -360,9 +490,9 @@ const Alerts = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle>Alert Types</CardTitle>
+          <CardTitle>{t('Alert Types')}</CardTitle>
           <CardDescription>
-            Different types of alerts you can set up
+            {t('Different types of alerts you can set up')}
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -373,10 +503,10 @@ const Alerts = () => {
                   <div className="p-1 rounded-full bg-red-500/10">
                     <Check className="h-4 w-4 text-red-500" />
                   </div>
-                  <h3 className="font-medium">Sentiment Alerts</h3>
+                  <h3 className="font-medium mr-2">{t('Sentiment Alerts')}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Get notified when sentiment about a topic or keyword crosses a threshold.
+                  {t('Get notified when sentiment about a topic or keyword crosses a threshold.')}
                 </p>
               </div>
               
@@ -385,10 +515,10 @@ const Alerts = () => {
                   <div className="p-1 rounded-full bg-blue-500/10">
                     <Check className="h-4 w-4 text-blue-500" />
                   </div>
-                  <h3 className="font-medium">Engagement Alerts</h3>
+                  <h3 className="font-medium mr-2">{t('Engagement Alerts')}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Monitor when engagement levels spike or drop for your topics of interest.
+                  {t('Monitor when engagement levels spike or drop for your topics of interest.')}
                 </p>
               </div>
               
@@ -397,10 +527,10 @@ const Alerts = () => {
                   <div className="p-1 rounded-full bg-purple-500/10">
                     <Check className="h-4 w-4 text-purple-500" />
                   </div>
-                  <h3 className="font-medium">Dialect Alerts</h3>
+                  <h3 className="font-medium mr-2">{t('Dialect Alerts')}</h3>
                 </div>
                 <p className="text-sm text-muted-foreground">
-                  Get notified about posts in specific dialects for targeted monitoring.
+                  {t('Get notified about posts in specific dialects for targeted monitoring.')}
                 </p>
               </div>
             </div>

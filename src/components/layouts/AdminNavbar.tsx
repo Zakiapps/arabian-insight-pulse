@@ -1,5 +1,5 @@
 
-import { Bell, Search, HelpCircle } from "lucide-react";
+import { Bell, Search, HelpCircle, User, LogOut } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { LanguageToggle } from "@/components/ui/language-toggle";
@@ -13,10 +13,22 @@ import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 
 const AdminNavbar = () => {
+  const { user, logout } = useAuth();
+  const { t } = useLanguage();
+  
+  const userInitials = user?.profile?.full_name 
+    ? user.profile.full_name.split(' ').map(n => n[0]).join('').toUpperCase() 
+    : 'U';
+
   return (
     <header className="h-16 flex items-center gap-4 border-b bg-background px-4 lg:px-6">
       <div className="flex items-center gap-2 lg:gap-3">
@@ -50,12 +62,35 @@ const AdminNavbar = () => {
               </Button>
             </DropdownMenuTrigger>
             <DropdownMenuContent align="end" className="w-80">
-              <div className="p-2 font-medium">الإشعارات</div>
+              <DropdownMenuLabel>الإشعارات</DropdownMenuLabel>
+              <DropdownMenuSeparator />
               <div className="p-4 text-center text-sm text-muted-foreground">
                 لا توجد إشعارات جديدة
               </div>
             </DropdownMenuContent>
           </DropdownMenu>
+          
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="icon" className="rounded-full">
+                <Avatar className="h-8 w-8">
+                  <AvatarFallback>{userInitials}</AvatarFallback>
+                </Avatar>
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem className="cursor-pointer flex items-center">
+                <User className="ml-2 h-4 w-4" />
+                الملف الشخصي
+              </DropdownMenuItem>
+              <DropdownMenuSeparator />
+              <DropdownMenuItem className="cursor-pointer flex items-center" onClick={logout}>
+                <LogOut className="ml-2 h-4 w-4" />
+                تسجيل الخروج
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+          
           <Button size="icon" variant="ghost">
             <HelpCircle className="h-5 w-5" />
             <span className="sr-only">المساعدة</span>
