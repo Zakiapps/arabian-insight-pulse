@@ -32,12 +32,12 @@ const queryClient = new QueryClient();
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
-    <AuthProvider>
+    <BrowserRouter>
       <LanguageProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <BrowserRouter>
+        <AuthProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
             <Routes>
               {/* صفحة البداية والتسعير والخدمات */}
               <Route path="/" element={<LandingPage />} />
@@ -79,10 +79,10 @@ const App = () => (
               {/* التقاط جميع المسارات غير الموجودة */}
               <Route path="*" element={<NotFound />} />
             </Routes>
-          </BrowserRouter>
-        </TooltipProvider>
+          </TooltipProvider>
+        </AuthProvider>
       </LanguageProvider>
-    </AuthProvider>
+    </BrowserRouter>
   </QueryClientProvider>
 );
 
