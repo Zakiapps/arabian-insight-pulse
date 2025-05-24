@@ -1,20 +1,24 @@
 
 import { Navigate, useLocation } from "react-router-dom";
 import { useAuth } from "@/contexts/AuthContext";
+import { useSubscription } from "@/contexts/SubscriptionContext";
 
 interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
+  requiredFeature?: string;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children,
-  adminOnly = false
+  adminOnly = false,
+  requiredFeature
 }) => {
   const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isLoading: subscriptionLoading, canAccessFeature } = useSubscription();
   const location = useLocation();
 
-  if (loading) {
+  if (loading || subscriptionLoading) {
     // You could return a loading spinner here
     return (
       <div className="flex min-h-screen items-center justify-center">
@@ -31,6 +35,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   if (adminOnly && !isAdmin) {
     // Redirect to dashboard if not an admin
     return <Navigate to="/dashboard" replace />;
+  }
+
+  // Check feature access if a required feature is specified
+  if (requiredFeature && !canAccessFeature(requiredFeature)) {
+    // Redirect to pricing page for subscription upgrade
+    return <Navigate to="/pricing" replace />;
   }
 
   return <>{children}</>;

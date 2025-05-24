@@ -6,6 +6,7 @@ import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { BrowserRouter, Routes, Route, Navigate } from "react-router-dom";
 import { AuthProvider } from "./contexts/AuthContext";
 import { LanguageProvider } from "./contexts/LanguageContext";
+import { SubscriptionProvider } from "./contexts/SubscriptionContext";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import DashboardLayout from "./components/layouts/DashboardLayout";
 import AdminLayout from "./components/layouts/AdminLayout";
@@ -35,51 +36,53 @@ const App = () => (
     <BrowserRouter>
       <LanguageProvider>
         <AuthProvider>
-          <TooltipProvider>
-            <Toaster />
-            <Sonner />
-            <Routes>
-              {/* صفحة البداية والتسعير والخدمات */}
-              <Route path="/" element={<LandingPage />} />
-              <Route path="/pricing" element={<Pricing />} />
-              <Route path="/services" element={<Services />} />
-              
-              {/* مسارات المصادقة */}
-              <Route path="/login" element={<Login />} />
-              <Route path="/register" element={<Register />} />
-              
-              {/* المسارات المحمية */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="posts" element={<Posts />} />
-                <Route path="upload" element={<Upload />} />
-                <Route path="alerts" element={<Alerts />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="settings" element={<Settings />} />
-              </Route>
+          <SubscriptionProvider>
+            <TooltipProvider>
+              <Toaster />
+              <Sonner />
+              <Routes>
+                {/* صفحة البداية والتسعير والخدمات */}
+                <Route path="/" element={<LandingPage />} />
+                <Route path="/pricing" element={<Pricing />} />
+                <Route path="/services" element={<Services />} />
+                
+                {/* مسارات المصادقة */}
+                <Route path="/login" element={<Login />} />
+                <Route path="/register" element={<Register />} />
+                
+                {/* المسارات المحمية */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="posts" element={<Posts />} />
+                  <Route path="upload" element={<Upload />} />
+                  <Route path="alerts" element={<Alerts />} />
+                  <Route path="reports" element={<Reports />} />
+                  <Route path="settings" element={<Settings />} />
+                </Route>
 
-              {/* مسارات لوحة الإدارة */}
-              <Route path="/admin" element={
-                <ProtectedRoute adminOnly>
-                  <AdminLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<AdminDashboard />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="plans" element={<AdminPlans />} />
-                <Route path="subscriptions" element={<AdminSubscriptions />} />
-                <Route path="transactions" element={<AdminTransactions />} />
-                <Route path="settings" element={<AdminSettings />} />
-              </Route>
-              
-              {/* التقاط جميع المسارات غير الموجودة */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </TooltipProvider>
+                {/* مسارات لوحة الإدارة */}
+                <Route path="/admin" element={
+                  <ProtectedRoute adminOnly>
+                    <AdminLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<AdminDashboard />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="plans" element={<AdminPlans />} />
+                  <Route path="subscriptions" element={<AdminSubscriptions />} />
+                  <Route path="transactions" element={<AdminTransactions />} />
+                  <Route path="settings" element={<AdminSettings />} />
+                </Route>
+                
+                {/* التقاط جميع المسارات غير الموجودة */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </TooltipProvider>
+          </SubscriptionProvider>
         </AuthProvider>
       </LanguageProvider>
     </BrowserRouter>
