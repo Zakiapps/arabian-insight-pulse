@@ -14,7 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  ChevronRight,
+  ChevronLeft,
   LayoutDashboard,
   MessageSquare,
   Upload,
@@ -130,7 +130,7 @@ const AppSidebar = () => {
   ];
 
   return (
-    <Sidebar side="left" className="border-r bg-card">
+    <Sidebar side="right" className="border-l bg-card">
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
@@ -158,14 +158,14 @@ const AppSidebar = () => {
                         variant="ghost"
                         className={`justify-start w-full h-10 ${
                           isActive(item.url) 
-                            ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                            ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
                             : 'hover:bg-muted/50'
                         }`}
                         dir={isRTL ? "rtl" : "ltr"}
                       >
-                        <item.icon className="h-4 w-4 ml-3" />
+                        <item.icon className="h-4 w-4 mr-3" />
                         <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
+                        {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
                       </Button>
                     </Link>
                   </SidebarMenuButton>
@@ -189,14 +189,14 @@ const AppSidebar = () => {
                         variant="ghost"
                         className={`justify-start w-full h-10 ${
                           isActive(item.url) 
-                            ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                            ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
                             : 'hover:bg-muted/50'
                         }`}
                         dir={isRTL ? "rtl" : "ltr"}
                       >
-                        <item.icon className="h-4 w-4 ml-3" />
+                        <item.icon className="h-4 w-4 mr-3" />
                         <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
+                        {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
                       </Button>
                     </Link>
                   </SidebarMenuButton>
@@ -223,14 +223,14 @@ const AppSidebar = () => {
                           variant="ghost"
                           className={`justify-start w-full h-10 ${
                             isActive(item.url) 
-                              ? 'bg-destructive/10 text-destructive font-medium border-r-2 border-destructive' 
+                              ? 'bg-destructive/10 text-destructive font-medium border-l-2 border-destructive' 
                               : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
                           }`}
                           dir={isRTL ? "rtl" : "ltr"}
                         >
-                          <item.icon className="h-4 w-4 ml-3" />
+                          <item.icon className="h-4 w-4 mr-3" />
                           <span className="flex-1 text-right">{item.title}</span>
-                          {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
+                          {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
                         </Button>
                       </Link>
                     </SidebarMenuButton>
@@ -251,14 +251,14 @@ const AppSidebar = () => {
                       variant="ghost"
                       className={`justify-start w-full h-10 ${
                         isActive('/dashboard/settings') 
-                          ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                          ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
                           : 'hover:bg-muted/50'
                       }`}
                       dir={isRTL ? "rtl" : "ltr"}
                     >
-                      <Settings className="h-4 w-4 ml-3" />
+                      <Settings className="h-4 w-4 mr-3" />
                       <span className="flex-1 text-right">الإعدادات</span>
-                      {isActive('/dashboard/settings') && <ChevronRight className="h-4 w-4 mr-2" />}
+                      {isActive('/dashboard/settings') && <ChevronLeft className="h-4 w-4 ml-2" />}
                     </Button>
                   </Link>
                 </SidebarMenuButton>
