@@ -28,10 +28,12 @@ import {
   Upload,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
+import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
+  const navigate = useNavigate();
 
   // Fetch real data from Supabase - using correct table name
   const { data: postsData, isLoading: postsLoading } = useQuery({
@@ -77,6 +79,15 @@ const Dashboard = () => {
   // Recent posts for activity feed
   const recentPosts = postsData?.slice(0, 5) || [];
 
+  // Handler functions for all buttons
+  const handleNewAnalysis = () => navigate('/dashboard/upload');
+  const handleExportData = () => navigate('/dashboard/reports');
+  const handleFilterData = () => navigate('/dashboard/posts');
+  const handleUploadData = () => navigate('/dashboard/upload');
+  const handleCreateReport = () => navigate('/dashboard/reports');
+  const handleSetupAlert = () => navigate('/dashboard/alerts');
+  const handleAnalysisSettings = () => navigate('/dashboard/settings');
+
   return (
     <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
       {/* Header Section - Brandwatch Style */}
@@ -90,15 +101,15 @@ const Dashboard = () => {
             <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input placeholder="البحث في البيانات..." className="pl-10 w-64" />
           </div>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleFilterData}>
             <Filter className="h-4 w-4 mr-2" />
             تصفية
           </Button>
-          <Button variant="outline" size="sm">
+          <Button variant="outline" size="sm" onClick={handleExportData}>
             <Download className="h-4 w-4 mr-2" />
             تصدير
           </Button>
-          <Button size="sm">
+          <Button size="sm" onClick={handleNewAnalysis}>
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
           </Button>
@@ -107,7 +118,7 @@ const Dashboard = () => {
 
       {/* Quick Stats - Brandwatch Style Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-blue-500">
+        <Card className="border-l-4 border-l-blue-500 cursor-pointer" onClick={() => navigate('/dashboard/posts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المنشورات</CardTitle>
             <MessageSquare className="h-4 w-4 text-blue-500" />
@@ -116,12 +127,12 @@ const Dashboard = () => {
             <div className="text-2xl font-bold">{totalPosts.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
               <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              +12% من الأسبوع الماضي
+              المنشورات المحللة
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-green-500">
+        <Card className="border-l-4 border-l-green-500 cursor-pointer" onClick={() => navigate('/dashboard/sentiment')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">المشاعر الإيجابية</CardTitle>
             <Heart className="h-4 w-4 text-green-500" />
@@ -134,7 +145,7 @@ const Dashboard = () => {
           </CardContent>
         </Card>
 
-        <Card className="border-l-4 border-l-red-500">
+        <Card className="border-l-4 border-l-red-500 cursor-pointer" onClick={() => navigate('/dashboard/sentiment')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">المشاعر السلبية</CardTitle>
             <TrendingDown className="h-4 w-4 text-red-500" />
@@ -148,7 +159,7 @@ const Dashboard = () => {
         </Card>
 
         {isAdmin && (
-          <Card className="border-l-4 border-l-purple-500">
+          <Card className="border-l-4 border-l-purple-500 cursor-pointer" onClick={() => navigate('/admin/users')}>
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
               <Users className="h-4 w-4 text-purple-500" />
@@ -157,7 +168,7 @@ const Dashboard = () => {
               <div className="text-2xl font-bold">{totalUsers.toLocaleString()}</div>
               <p className="text-xs text-muted-foreground">
                 <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-                +5% نمو شهري
+                إجمالي المستخدمين
               </p>
             </CardContent>
           </Card>
@@ -193,7 +204,7 @@ const Dashboard = () => {
                   </div>
                 ) : recentPosts.length > 0 ? (
                   recentPosts.map((post, index) => (
-                    <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
+                    <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors cursor-pointer" onClick={() => navigate('/dashboard/posts')}>
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs">
                           {post.source?.charAt(0)?.toUpperCase() || 'P'}
@@ -212,7 +223,7 @@ const Dashboard = () => {
                             {new Date(post.created_at).toLocaleDateString('ar')}
                           </span>
                         </div>
-                        <p className="text-sm line-clamp-2">{post.content}</p>
+                        <p className="text-sm line-clamp-2" dir="rtl">{post.content}</p>
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Globe className="h-3 w-3" />
@@ -230,7 +241,11 @@ const Dashboard = () => {
                   ))
                 ) : (
                   <div className="text-center py-8 text-muted-foreground">
-                    لا توجد منشورات حالياً
+                    <MessageSquare className="h-12 w-12 mx-auto mb-4 text-muted-foreground/50" />
+                    <p>لا توجد منشورات حالياً</p>
+                    <Button className="mt-4" onClick={handleUploadData}>
+                      رفع بيانات جديدة
+                    </Button>
                   </div>
                 )}
               </div>
@@ -247,22 +262,22 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 rounded-lg bg-green-50 border border-green-200">
+                <div className="p-4 rounded-lg bg-green-50 border border-green-200 cursor-pointer" onClick={() => navigate('/dashboard/sentiment')}>
                   <div className="flex items-center gap-2 mb-2">
                     <TrendingUp className="h-4 w-4 text-green-600" />
                     <span className="font-medium text-green-900">اتجاه إيجابي</span>
                   </div>
                   <p className="text-sm text-green-700">
-                    زيادة {sentimentPercentage.positive}% في المشاعر الإيجابية هذا الأسبوع
+                    {sentimentPercentage.positive}% من المشاعر إيجابية
                   </p>
                 </div>
-                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200">
+                <div className="p-4 rounded-lg bg-blue-50 border border-blue-200 cursor-pointer" onClick={() => navigate('/dashboard/posts')}>
                   <div className="flex items-center gap-2 mb-2">
                     <MessageSquare className="h-4 w-4 text-blue-600" />
                     <span className="font-medium text-blue-900">نشاط عالي</span>
                   </div>
                   <p className="text-sm text-blue-700">
-                    {totalPosts.toLocaleString()} منشور تم تحليله اليوم
+                    {totalPosts.toLocaleString()} منشور تم تحليله
                   </p>
                 </div>
               </div>
@@ -278,19 +293,19 @@ const Dashboard = () => {
               <CardTitle>إجراءات سريعة</CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleUploadData}>
                 <Upload className="h-4 w-4 mr-2" />
                 رفع بيانات جديدة
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleCreateReport}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 إنشاء تقرير
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleSetupAlert}>
                 <Bell className="h-4 w-4 mr-2" />
                 إعداد تنبيه
               </Button>
-              <Button variant="outline" className="w-full justify-start">
+              <Button variant="outline" className="w-full justify-start" onClick={handleAnalysisSettings}>
                 <Settings className="h-4 w-4 mr-2" />
                 إعدادات التحليل
               </Button>
@@ -311,7 +326,7 @@ const Dashboard = () => {
                   const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : 0;
                   
                   return (
-                    <div key={platform} className="flex items-center justify-between">
+                    <div key={platform} className="flex items-center justify-between cursor-pointer hover:bg-muted/30 p-2 rounded" onClick={() => navigate('/dashboard/platforms')}>
                       <span className="text-sm">{platform}</span>
                       <div className="flex items-center gap-2">
                         <div className="w-16 h-2 bg-muted rounded-full overflow-hidden">
@@ -335,7 +350,7 @@ const Dashboard = () => {
               <CardTitle>الملف الشخصي</CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center gap-3 cursor-pointer" onClick={() => navigate('/dashboard/settings')}>
                 <Avatar>
                   <AvatarImage src={profile?.avatar_url} />
                   <AvatarFallback>
