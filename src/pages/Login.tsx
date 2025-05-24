@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { Link, useNavigate, useLocation } from "react-router-dom";
 import { BarChart3 } from "lucide-react";
@@ -25,6 +24,7 @@ import {
   CardTitle,
 } from "@/components/ui/card";
 import { toast } from "sonner";
+import AdminRegistration from "@/components/admin/AdminRegistration";
 
 const formSchema = z.object({
   email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
@@ -39,6 +39,7 @@ const Login = () => {
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
   const [loginError, setLoginError] = useState<string | null>(null);
+  const [showAdminRegistration, setShowAdminRegistration] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -97,7 +98,7 @@ const Login = () => {
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-muted/30 p-4" dir="rtl">
-      <div className="w-full max-w-md">
+      <div className="w-full max-w-md space-y-6">
         <div className="mb-8 text-center">
           <div className="flex justify-center mb-4">
             <div className="rounded-md bg-primary p-2">
@@ -108,92 +109,114 @@ const Login = () => {
           <p className="text-muted-foreground mt-2">مراقبة وتحليل محتوى وسائل التواصل الاجتماعي العربية</p>
         </div>
 
-        <Card className="animate-scale-in">
-          <CardHeader>
-            <CardTitle>تسجيل الدخول إلى حسابك</CardTitle>
-            <CardDescription>
-              أدخل بريدك الإلكتروني وكلمة المرور لتسجيل الدخول
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {loginError && (
-              <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4 text-sm">
-                {loginError}
-              </div>
-            )}
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>البريد الإلكتروني</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="name@company.com" 
-                          {...field} 
-                          autoComplete="email"
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="password"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>كلمة المرور</FormLabel>
-                      <FormControl>
-                        <Input 
-                          type="password" 
-                          placeholder="••••••••" 
-                          {...field} 
-                          autoComplete="current-password"
-                          disabled={isLoading}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <Button 
-                  type="submit" 
-                  className="w-full" 
-                  disabled={isLoading}
-                >
-                  {isLoading ? (
-                    <>
-                      <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-t-transparent border-white"></span>
-                      جاري تسجيل الدخول...
-                    </>
-                  ) : "تسجيل الدخول"}
-                </Button>
-                <div className="text-center text-sm">
-                  <p className="text-muted-foreground">
-                    للتجربة: استخدم admin@example.com / password
-                  </p>
+        {showAdminRegistration ? (
+          <div className="space-y-4">
+            <AdminRegistration />
+            <Button 
+              variant="outline" 
+              onClick={() => setShowAdminRegistration(false)}
+              className="w-full"
+            >
+              العودة إلى تسجيل الدخول
+            </Button>
+          </div>
+        ) : (
+          <Card className="animate-scale-in">
+            <CardHeader>
+              <CardTitle>تسجيل الدخول إلى حسابك</CardTitle>
+              <CardDescription>
+                أدخل بريدك الإلكتروني وكلمة المرور لتسجيل الدخول
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              {loginError && (
+                <div className="bg-destructive/10 text-destructive p-3 rounded-md mb-4 text-sm">
+                  {loginError}
                 </div>
-              </form>
-            </Form>
-          </CardContent>
-          <CardFooter className="flex flex-col gap-4">
-            <div className="text-center text-sm text-muted-foreground">
-              ليس لديك حساب؟{" "}
-              <Link to="/register" className="text-primary hover:underline">
-                إنشاء حساب جديد
-              </Link>
-            </div>
-            <div className="text-center text-sm">
-              <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
-                العودة إلى الصفحة الرئيسية
-              </Link>
-            </div>
-          </CardFooter>
-        </Card>
+              )}
+              <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4">
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>البريد الإلكتروني</FormLabel>
+                        <FormControl>
+                          <Input 
+                            placeholder="name@company.com" 
+                            {...field} 
+                            autoComplete="email"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>كلمة المرور</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="password" 
+                            placeholder="••••••••" 
+                            {...field} 
+                            autoComplete="current-password"
+                            disabled={isLoading}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <Button 
+                    type="submit" 
+                    className="w-full" 
+                    disabled={isLoading}
+                  >
+                    {isLoading ? (
+                      <>
+                        <span className="h-4 w-4 mr-2 animate-spin rounded-full border-2 border-t-transparent border-white"></span>
+                        جاري تسجيل الدخول...
+                      </>
+                    ) : "تسجيل الدخول"}
+                  </Button>
+                  <div className="text-center text-sm">
+                    <p className="text-muted-foreground">
+                      للتجربة: استخدم admin@example.com / password
+                    </p>
+                  </div>
+                </form>
+              </Form>
+            </CardContent>
+            <CardFooter className="flex flex-col gap-4">
+              <div className="text-center text-sm text-muted-foreground">
+                ليس لديك حساب؟{" "}
+                <Link to="/register" className="text-primary hover:underline">
+                  إنشاء حساب جديد
+                </Link>
+              </div>
+              <div className="text-center text-sm">
+                <Button 
+                  variant="link" 
+                  onClick={() => setShowAdminRegistration(true)}
+                  className="text-xs text-muted-foreground hover:text-primary"
+                >
+                  إنشاء حساب المدير
+                </Button>
+              </div>
+              <div className="text-center text-sm">
+                <Link to="/" className="text-muted-foreground hover:text-primary transition-colors">
+                  العودة إلى الصفحة الرئيسية
+                </Link>
+              </div>
+            </CardFooter>
+          </Card>
+        )}
       </div>
     </div>
   );
