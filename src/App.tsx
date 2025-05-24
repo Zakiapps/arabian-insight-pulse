@@ -22,6 +22,7 @@ import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import Pricing from "./pages/Pricing";
 import Services from "./pages/Services";
+import Reviews from "./pages/Reviews";
 import AdminDashboard from "./pages/admin/AdminDashboard";
 import AdminUsers from "./pages/admin/AdminUsers";
 import AdminPlans from "./pages/admin/AdminPlans";
@@ -30,7 +31,14 @@ import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminSettings from "./pages/admin/AdminSettings";
 import PaymentSettings from "./pages/admin/PaymentSettings";
 
-const queryClient = new QueryClient();
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: false, // Don't retry failed queries automatically
+      refetchOnWindowFocus: false // Don't refetch on window focus for better performance
+    }
+  }
+});
 
 const App = () => (
   <QueryClientProvider client={queryClient}>
@@ -42,10 +50,11 @@ const App = () => (
               <Toaster />
               <Sonner />
               <Routes>
-                {/* صفحة البداية والتسعير والخدمات */}
+                {/* صفحة البداية والتسعير والخدمات وآراء العملاء */}
                 <Route path="/" element={<LandingPage />} />
                 <Route path="/pricing" element={<Pricing />} />
                 <Route path="/services" element={<Services />} />
+                <Route path="/reviews" element={<Reviews />} />
                 
                 {/* مسارات المصادقة */}
                 <Route path="/login" element={<Login />} />

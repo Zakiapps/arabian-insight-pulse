@@ -7,11 +7,10 @@ import preloadSounds from './utils/preloadSounds.ts'
 // Create root element
 const rootElement = document.getElementById("root")!;
 
-// For RTL content, set language attribute instead of direction
-// This approach is more compatible with Three.js
-rootElement.lang = "ar";
+// Use HTML lang attribute for language
+document.documentElement.lang = "ar";
 
-// Make sure document direction is not set to avoid Three.js issues
+// Clear any direction settings that might conflict with Three.js
 document.documentElement.dir = "";
 
 // Preload sound effects

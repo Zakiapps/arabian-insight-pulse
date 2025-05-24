@@ -11,9 +11,60 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import PaymentModal from '@/components/subscription/PaymentModal';
 
+// Fallback plans to show if database fetch fails
+const fallbackPlans = [
+  {
+    id: "1",
+    name: "أساسي",
+    description: "مثالي للأفراد والشركات الناشئة",
+    price_monthly: 19,
+    features: [
+      "تحليل حتى 1000 منشور شهرياً",
+      "تحليل المشاعر الأساسي",
+      "كشف اللهجات",
+      "تقارير أسبوعية",
+      "تنبيهات محدودة"
+    ],
+    is_active: true
+  },
+  {
+    id: "2",
+    name: "احترافي",
+    description: "للشركات الصغيرة والمتوسطة",
+    price_monthly: 49,
+    features: [
+      "تحليل حتى 5000 منشور شهرياً",
+      "تحليل المشاعر المتقدم",
+      "كشف اللهجات المتقدم",
+      "تقارير يومية",
+      "تنبيهات غير محدودة",
+      "واجهة برمجة التطبيقات"
+    ],
+    is_active: true
+  },
+  {
+    id: "3",
+    name: "مؤسسات",
+    description: "للمؤسسات الكبيرة والحكومات",
+    price_monthly: 199,
+    features: [
+      "تحليل منشورات غير محدودة",
+      "تحليل المشاعر الاحترافي",
+      "كشف اللهجات الاحترافي",
+      "تحليل مخصص",
+      "تقارير مخصصة",
+      "دعم على مدار الساعة",
+      "واجهة برمجة تطبيقات متقدمة",
+      "مدير حساب مخصص"
+    ],
+    is_active: true
+  }
+];
+
 const Pricing = () => {
-  const [plans, setPlans] = useState<any[]>([]);
+  const [plans, setPlans] = useState<any[]>(fallbackPlans);
   const [loading, setLoading] = useState(true);
+  const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
   const [selectedPlan, setSelectedPlan] = useState<any>(null);
   
@@ -31,12 +82,25 @@ const Pricing = () => {
           .eq('is_active', true)
           .order('price_monthly', { ascending: true });
         
-        if (error) throw error;
-        
-        setPlans(data || []);
+        if (error) {
+          console.error('Error fetching plans:', error);
+          setDbFetchFailed(true);
+          // Use fallback plans (already set as initial state)
+          toast.error('حدث خطأ أثناء تحميل خطط الاشتراك');
+        } else if (data && data.length > 0) {
+          // Only use DB plans if we successfully got them
+          setPlans(data);
+          setDbFetchFailed(false);
+        } else {
+          // If no plans returned but no error, still use fallback
+          setDbFetchFailed(true);
+          toast.info('تم تحميل خطط الاشتراك الافتراضية');
+        }
       } catch (error) {
-        console.error('Error fetching plans:', error);
-        toast.error('فشل في تحميل خطط الاشتراك');
+        console.error('Exception fetching plans:', error);
+        setDbFetchFailed(true);
+        // Already using fallback plans
+        toast.error('حدث خطأ أثناء الاتصال بالخادم');
       } finally {
         setLoading(false);
       }
@@ -77,6 +141,7 @@ const Pricing = () => {
     }
   };
   
+  // Show simple loading state
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center" dir="rtl">
@@ -98,6 +163,11 @@ const Pricing = () => {
         <p className="text-muted-foreground text-xl max-w-2xl mx-auto">
           اختر الخطة المناسبة لك واستمتع بمميزات تحليل المشاعر والتقارير المتقدمة
         </p>
+        {dbFetchFailed && (
+          <div className="mt-4 p-2 bg-yellow-50 text-yellow-800 rounded-md inline-block">
+            نعرض حالياً الخطط الافتراضية. يرجى تحديث الصفحة للمحاولة مرة أخرى.
+          </div>
+        )}
       </motion.header>
       
       {/* Pricing Cards */}
@@ -127,7 +197,7 @@ const Pricing = () => {
                     <CardTitle className="text-2xl">{plan.name}</CardTitle>
                     <div>
                       <span className="text-3xl font-bold">${plan.price_monthly}</span>
-                      <span className="text-muted-foreground mr-2">/ شهريًا</span>
+                      <span className="text-muted-foreground mr-2">/ شهرياً</span>
                     </div>
                     <CardDescription>{plan.description}</CardDescription>
                   </CardHeader>

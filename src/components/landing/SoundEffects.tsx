@@ -12,31 +12,51 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
   const ambientSoundRef = useRef<HTMLAudioElement | null>(null);
   const interactionSoundRef = useRef<HTMLAudioElement | null>(null);
   const [audioInitialized, setAudioInitialized] = useState(false);
+  const [audioError, setAudioError] = useState(false);
   
-  // Initialize audio with better error handling
+  // Lazy initialize audio
   useEffect(() => {
-    try {
-      // Create ambient background sound - ensure we have a valid audio context
-      const ambient = new Audio();
-      ambient.src = 'https://cdn.freesound.org/previews/573/573660_5674468-lq.mp3';
-      ambient.loop = true;
-      ambient.volume = 0.2;
-      ambientSoundRef.current = ambient;
-    
-      // Create interaction sound for button clicks
-      const interaction = new Audio();
-      interaction.src = 'https://cdn.freesound.org/previews/242/242501_4284968-lq.mp3';
-      interaction.volume = 0.3;
-      interactionSoundRef.current = interaction;
+    // Ignore audio initialization on environments that don't support it well
+    if (typeof window === 'undefined') return;
+
+    const initAudio = () => {
+      try {
+        // Create ambient background sound - ensure we have a valid audio context
+        const ambient = new Audio();
+        ambient.src = 'https://cdn.freesound.org/previews/573/573660_5674468-lq.mp3';
+        ambient.loop = true;
+        ambient.volume = 0.2;
+        ambient.preload = 'none'; // Only load when needed
+        ambientSoundRef.current = ambient;
       
-      setAudioInitialized(true);
-    } catch (error) {
-      console.error("Error initializing audio:", error);
-      setAudioInitialized(false);
-    }
+        // Create interaction sound for button clicks
+        const interaction = new Audio();
+        interaction.src = 'https://cdn.freesound.org/previews/242/242501_4284968-lq.mp3';
+        interaction.volume = 0.3;
+        interaction.preload = 'none'; // Only load when needed
+        interactionSoundRef.current = interaction;
+        
+        setAudioInitialized(true);
+      } catch (error) {
+        console.error("Error initializing audio:", error);
+        setAudioError(true);
+        setAudioInitialized(false);
+      }
+    };
+    
+    // Only initialize on user interaction to avoid autoplay restrictions
+    const handleFirstInteraction = () => {
+      if (!audioInitialized && !audioError) {
+        initAudio();
+      }
+      document.removeEventListener('click', handleFirstInteraction);
+    };
+    
+    document.addEventListener('click', handleFirstInteraction);
     
     // Clean up function
     return () => {
+      document.removeEventListener('click', handleFirstInteraction);
       if (ambientSoundRef.current) {
         ambientSoundRef.current.pause();
         ambientSoundRef.current = null;
@@ -46,19 +66,11 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
       }
       setAudioInitialized(false);
     };
-  }, []);
+  }, [audioInitialized, audioError]);
   
   // Handle audio playback based on muted state - with robust error handling
   useEffect(() => {
-    if (!audioInitialized) return;
-    
-    // Start playing only if autoplay is enabled and not muted
-    if (!muted && autoplay && ambientSoundRef.current) {
-      ambientSoundRef.current.play().catch(err => {
-        console.log('Audio autoplay prevented:', err);
-        setMuted(true); // Set to muted if autoplay fails
-      });
-    }
+    if (!audioInitialized || audioError) return;
     
     // Add click sound to all buttons on the page
     const playInteractionSound = () => {
@@ -67,7 +79,10 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
           // Clone the audio to allow multiple sounds playing at once
           const sound = interactionSoundRef.current.cloneNode() as HTMLAudioElement;
           sound.volume = 0.2;
-          sound.play().catch(err => console.log('Interaction sound prevented:', err));
+          sound.play().catch(err => {
+            console.log('Interaction sound prevented:', err);
+            // Don't set muted here - just fail silently
+          });
         } catch (error) {
           console.error("Error playing interaction sound:", error);
         }
@@ -90,16 +105,21 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
     return () => {
       document.body.removeEventListener('click', handleClick);
     };
-  }, [muted, autoplay, audioInitialized]);
+  }, [muted, audioInitialized, audioError]);
   
   // Handle mute/unmute with better error handling
   useEffect(() => {
-    if (!ambientSoundRef.current || !audioInitialized) return;
+    if (!ambientSoundRef.current || !audioInitialized || audioError) return;
     
     try {
       if (muted) {
         ambientSoundRef.current.pause();
       } else {
+        // Start loading only when unmuted
+        if (ambientSoundRef.current.preload === 'none') {
+          ambientSoundRef.current.preload = 'auto';
+        }
+        
         ambientSoundRef.current.play().catch(err => {
           console.log('Audio play prevented:', err);
           setMuted(true); // Set to muted if play fails
@@ -109,7 +129,10 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
       console.error("Error toggling audio:", error);
       setMuted(true); // Default to muted on error
     }
-  }, [muted, audioInitialized]);
+  }, [muted, audioInitialized, audioError]);
+  
+  // Don't render anything if there are audio errors
+  if (audioError) return null;
   
   return (
     <Button

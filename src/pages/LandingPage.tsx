@@ -1,12 +1,18 @@
-import React, { useEffect } from 'react';
+
+import React, { useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
-import { BarChart3, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Check, ExternalLink } from 'lucide-react';
+import { 
+  BarChart3, ChevronLeft, ChevronRight, ArrowLeft, 
+  ArrowRight, Check, ExternalLink, Users 
+} from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
-import ThreeDScene from '@/components/landing/ThreeDScene';
 import SoundEffects from '@/components/landing/SoundEffects';
+
+// Lazy load the 3D scene component for better performance
+const ThreeDScene = lazy(() => import('@/components/landing/ThreeDScene'));
 
 const LandingPage = () => {
   const { isAuthenticated } = useAuth();
@@ -69,7 +75,7 @@ const LandingPage = () => {
               <Link to="/pricing" className="font-medium transition-colors hover:text-foreground/80">الأسعار</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}>
-              <a href="#testimonials" className="font-medium transition-colors hover:text-foreground/80">آراء العملاء</a>
+              <Link to="/reviews" className="font-medium transition-colors hover:text-foreground/80">آراء العملاء</Link>
             </motion.div>
             
             {isAuthenticated ? (
@@ -166,9 +172,11 @@ const LandingPage = () => {
               variants={floatingAnimation}
               animate="animate"
             >
-              {/* Add 3D scene in background */}
+              {/* Add 3D scene in background - lazily loaded */}
               <div className="absolute inset-0 z-0">
-                <ThreeDScene className="h-full" />
+                <Suspense fallback={<div className="w-full h-full bg-muted/20 animate-pulse rounded-lg"></div>}>
+                  <ThreeDScene className="h-full" />
+                </Suspense>
               </div>
               
               <motion.div 
@@ -181,6 +189,7 @@ const LandingPage = () => {
                   src="/placeholder.svg"
                   alt="لوحة تحكم رؤى عربية"
                   className="mx-auto h-full w-full object-cover rounded-lg bg-muted/50 p-2 sm:p-4 shadow-xl animate-fade-in backdrop-blur-sm"
+                  loading="lazy"
                 />
                 <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/10"></div>
               </motion.div>
@@ -191,9 +200,9 @@ const LandingPage = () => {
 
       {/* المميزات */}
       <section className="py-12 md:py-24 bg-muted/30 relative overflow-hidden">
-        {/* Add subtle 3D background elements */}
+        {/* Add subtle background elements */}
         <div className="absolute inset-0 opacity-20 pointer-events-none">
-          <ThreeDScene className="h-full" />
+          <div className="w-full h-full bg-gradient-to-r from-transparent via-primary/5 to-transparent"></div>
         </div>
         
         <div className="container px-4 md:px-6 relative z-10">
@@ -289,6 +298,26 @@ const LandingPage = () => {
               </Card>
             </motion.div>
           </motion.div>
+          
+          {/* New section for reviews preview */}
+          <motion.div 
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true }}
+            transition={{ duration: 0.6, delay: 0.2 }}
+            className="mt-16 text-center"
+          >
+            <div className="flex items-center justify-center gap-2 mb-6">
+              <Users className="h-6 w-6 text-primary" />
+              <h2 className="text-2xl font-bold">آراء عملائنا</h2>
+            </div>
+            <Link to="/reviews">
+              <Button variant="outline" size="lg" className="group">
+                استعرض آراء العملاء
+                <ArrowLeft className="mr-2 h-4 w-4 transition transform group-hover:translate-x-1" />
+              </Button>
+            </Link>
+          </motion.div>
         </div>
       </section>
 
@@ -302,23 +331,7 @@ const LandingPage = () => {
       >
         {/* Add subtle audio visualization effect in the background */}
         <div className="absolute inset-0 opacity-10 pointer-events-none">
-          <div className="w-full h-full flex items-center justify-center">
-            {Array.from({ length: 10 }).map((_, i) => (
-              <motion.div 
-                key={i}
-                className="h-16 w-2 mx-1 bg-white rounded-full"
-                animate={{ 
-                  height: [40, Math.random() * 100 + 40, 40],
-                  opacity: [0.5, 0.8, 0.5]
-                }}
-                transition={{
-                  repeat: Infinity,
-                  duration: 1.5 + Math.random(),
-                  ease: "easeInOut"
-                }}
-              />
-            ))}
-          </div>
+          <div className="w-full h-full bg-gradient-to-r from-white/10 to-white/0"></div>
         </div>
         
         <div className="container px-4 md:px-6 relative z-10">
@@ -395,7 +408,7 @@ const LandingPage = () => {
               <ul className="space-y-2 text-sm">
                 <li><Link to="/services" className="text-muted-foreground transition-colors hover:text-foreground">الخدمات</Link></li>
                 <li><Link to="/pricing" className="text-muted-foreground transition-colors hover:text-foreground">الأسعار</Link></li>
-                <li><a href="#" className="text-muted-foreground transition-colors hover:text-foreground">المقارنة</a></li>
+                <li><Link to="/reviews" className="text-muted-foreground transition-colors hover:text-foreground">آراء العملاء</Link></li>
               </ul>
             </div>
             <div className="space-y-3">
