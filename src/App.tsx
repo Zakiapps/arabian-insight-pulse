@@ -18,6 +18,11 @@ import Upload from "./pages/Upload";
 import Alerts from "./pages/Alerts";
 import Reports from "./pages/Reports";
 import Settings from "./pages/Settings";
+import SentimentAnalysisPage from "./pages/SentimentAnalysis";
+import CategoryDistributionPage from "./pages/CategoryDistribution";
+import PlatformDistributionPage from "./pages/PlatformDistribution";
+import TopTopicsPage from "./pages/TopTopics";
+import DialectDetectionPage from "./pages/DialectDetection";
 import NotFound from "./pages/NotFound";
 import LandingPage from "./pages/LandingPage";
 import Pricing from "./pages/Pricing";
@@ -71,6 +76,11 @@ const App = () => (
                   <Route path="upload" element={<Upload />} />
                   <Route path="alerts" element={<Alerts />} />
                   <Route path="reports" element={<Reports />} />
+                  <Route path="sentiment" element={<SentimentAnalysisPage />} />
+                  <Route path="categories" element={<CategoryDistributionPage />} />
+                  <Route path="platforms" element={<PlatformDistributionPage />} />
+                  <Route path="topics" element={<TopTopicsPage />} />
+                  <Route path="dialects" element={<DialectDetectionPage />} />
                   <Route path="settings" element={<Settings />} />
                 </Route>
 
