@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -17,7 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
 // Your custom Hugging Face endpoint
-const customEndpoint = 'https://rfi1as56cdxed2vx.us-east-1.aws.endpoints.huggingface.cloud';
+const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
 
 // Arabic text preprocessing
 function preprocessArabicText(text: string): string {
