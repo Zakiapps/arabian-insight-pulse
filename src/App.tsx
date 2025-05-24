@@ -1,3 +1,4 @@
+
 import {
   BrowserRouter as Router,
   Route,
@@ -76,6 +77,7 @@ function App() {
                     <Route path="topics" element={<TopTopics />} />
                     <Route path="dialects" element={<DialectDetection />} />
                     <Route path="settings" element={<Settings />} />
+                    <Route path="analysis-settings" element={<AnalysisSettings />} />
                   </Route>
                   
                   {/* Admin routes with layout */}

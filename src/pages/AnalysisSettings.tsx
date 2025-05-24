@@ -28,7 +28,8 @@ import {
   RotateCcw,
   Zap,
   Shield,
-  Target
+  Target,
+  Bell
 } from "lucide-react";
 
 const AnalysisSettings = () => {
@@ -80,6 +81,7 @@ const AnalysisSettings = () => {
         .from('analysis_settings')
         .upsert({
           user_id: profile?.id,
+          accuracy_level: settings.accuracy_level,
           dialect_detection_enabled: settings.dialect_detection,
           auto_categorization: settings.auto_categorization,
           sentiment_threshold: settings.sentiment_threshold,

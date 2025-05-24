@@ -11,6 +11,7 @@ export type Database = {
     Tables: {
       analysis_settings: {
         Row: {
+          accuracy_level: string | null
           auto_categorization: boolean | null
           created_at: string
           dialect_detection_enabled: boolean | null
@@ -21,6 +22,7 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          accuracy_level?: string | null
           auto_categorization?: boolean | null
           created_at?: string
           dialect_detection_enabled?: boolean | null
@@ -31,6 +33,7 @@ export type Database = {
           user_id: string
         }
         Update: {
+          accuracy_level?: string | null
           auto_categorization?: boolean | null
           created_at?: string
           dialect_detection_enabled?: boolean | null
