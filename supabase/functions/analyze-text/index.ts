@@ -2,7 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { pipeline } from 'https://esm.sh/@huggingface/transformers@3.0.0';
+import { pipeline } from 'https://esm.sh/@huggingface/transformers@2.6.0';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -11,6 +11,10 @@ const corsHeaders = {
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+
+// Cache for model files
+let modelPipeline: any = null;
+let modelLoadError: string | null = null;
 
 // Arabic text preprocessing function
 function preprocessArabicText(text: string): string {
@@ -69,6 +73,134 @@ function validateArabicText(text: string): boolean {
   return arabicPattern.test(text);
 }
 
+// Load AraBERT model from Supabase Storage
+async function loadAraBERTModel(): Promise<any> {
+  if (modelPipeline) return modelPipeline;
+  if (modelLoadError) throw new Error(modelLoadError);
+
+  try {
+    console.log('Loading AraBERT model from Supabase Storage...');
+    
+    const supabase = createClient(supabaseUrl, supabaseServiceKey);
+    
+    // Check if model files exist in cache
+    const modelPath = '/tmp/model';
+    try {
+      await Deno.stat(`${modelPath}/model.onnx`);
+      console.log('Model files found in cache, loading...');
+    } catch {
+      console.log('Downloading model files from Supabase Storage...');
+      await Deno.mkdir(modelPath, { recursive: true });
+      
+      // Download model files from private bucket
+      const files = ['model.onnx', 'tokenizer.json', 'config.json', 'vocab.txt'];
+      
+      for (const fileName of files) {
+        console.log(`Downloading ${fileName}...`);
+        const { data, error } = await supabase.storage
+          .from('model')
+          .download(fileName);
+        
+        if (error) {
+          throw new Error(`Failed to download ${fileName}: ${error.message}`);
+        }
+        
+        if (!data) {
+          throw new Error(`No data received for ${fileName}`);
+        }
+        
+        // Write file to tmp directory
+        const arrayBuffer = await data.arrayBuffer();
+        await Deno.writeFile(`${modelPath}/${fileName}`, new Uint8Array(arrayBuffer));
+        console.log(`Downloaded ${fileName} (${arrayBuffer.byteLength} bytes)`);
+      }
+    }
+    
+    // Initialize the text classification pipeline with the downloaded model
+    console.log('Initializing AraBERT pipeline...');
+    modelPipeline = await pipeline(
+      'text-classification',
+      modelPath,
+      {
+        device: 'cpu',
+        model_file_name: 'model.onnx',
+        config_file_name: 'config.json',
+        tokenizer_file_name: 'tokenizer.json'
+      }
+    );
+    
+    console.log('AraBERT model loaded successfully');
+    return modelPipeline;
+    
+  } catch (error) {
+    console.error('Failed to load AraBERT model:', error);
+    modelLoadError = error.message;
+    throw error;
+  }
+}
+
+// Enhanced keyword-based analysis fallback
+function performKeywordAnalysis(text: string) {
+  const positiveKeywords = [
+    'جيد', 'رائع', 'ممتاز', 'سعيد', 'أحب', 'جميل', 'مفيد', 'إيجابي', 'تمام', 'عال',
+    'حلو', 'زين', 'كويس', 'بحبك', 'فرحان', 'مبسوط', 'حبيبي', 'حياتي', 'شكراً'
+  ];
+  
+  const negativeKeywords = [
+    'سيء', 'فظيع', 'أكره', 'حزين', 'غاضب', 'مؤلم', 'سلبي', 'مشكلة', 'زعلان',
+    'تعبان', 'مضايق', 'بطال', 'وسخ', 'خراب', 'مش كويس', 'بدي أموت', 'زهقان'
+  ];
+  
+  let positiveScore = 0;
+  let negativeScore = 0;
+  
+  const words = text.split(/\s+/);
+  
+  words.forEach(word => {
+    if (positiveKeywords.some(keyword => word.includes(keyword))) {
+      positiveScore++;
+    }
+    if (negativeKeywords.some(keyword => word.includes(keyword))) {
+      negativeScore++;
+    }
+  });
+  
+  // Calculate sentiment and probabilities
+  const totalScore = positiveScore + negativeScore;
+  let sentiment: string;
+  let confidence: number;
+  let positiveProb: number;
+  let negativeProb: number;
+  
+  if (totalScore === 0) {
+    // Neutral case - default to slight positive bias
+    sentiment = 'positive';
+    confidence = 0.55;
+    positiveProb = 0.55;
+    negativeProb = 0.45;
+  } else {
+    if (positiveScore > negativeScore) {
+      sentiment = 'positive';
+      positiveProb = Math.min(0.95, 0.6 + (positiveScore / totalScore) * 0.35);
+      negativeProb = 1 - positiveProb;
+      confidence = positiveProb;
+    } else {
+      sentiment = 'negative';
+      negativeProb = Math.min(0.95, 0.6 + (negativeScore / totalScore) * 0.35);
+      positiveProb = 1 - negativeProb;
+      confidence = negativeProb;
+    }
+  }
+  
+  return {
+    sentiment,
+    confidence: Math.round(confidence * 10000) / 10000,
+    positive_prob: Math.round(positiveProb * 10000) / 10000,
+    negative_prob: Math.round(negativeProb * 10000) / 10000,
+    modelSource: 'enhanced_keyword_analysis'
+  };
+}
+
 serve(async (req) => {
   // Handle CORS preflight requests
   if (req.method === 'OPTIONS') {
@@ -95,97 +227,71 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Preprocessed text:', preprocessedText);
 
-    // Create Supabase client with service role key for admin access to private bucket
-    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
-      auth: {
-        autoRefreshToken: false,
-        persistSession: false
-      }
-    });
+    let analysisResult;
 
     try {
-      // For now, implement a more sophisticated keyword-based sentiment analysis
-      // This will be replaced with the actual model once loaded successfully
-      const positiveKeywords = [
-        'جيد', 'رائع', 'ممتاز', 'سعيد', 'أحب', 'جميل', 'مفيد', 'إيجابي', 'تمام', 'عال',
-        'حلو', 'زين', 'كويس', 'بحبك', 'فرحان', 'مبسوط', 'حبيبي', 'حياتي', 'شكراً'
-      ];
+      // Attempt to load and use AraBERT model
+      console.log('Attempting to load AraBERT model...');
+      const classifier = await loadAraBERTModel();
       
-      const negativeKeywords = [
-        'سيء', 'فظيع', 'أكره', 'حزين', 'غاضب', 'مؤلم', 'سلبي', 'مشكلة', 'زعلان',
-        'تعبان', 'مضايق', 'بطال', 'وسخ', 'خراب', 'مش كويس', 'بدي أموت', 'زهقان'
-      ];
-      
-      let positiveScore = 0;
-      let negativeScore = 0;
-      
-      const words = preprocessedText.split(/\s+/);
-      
-      words.forEach(word => {
-        if (positiveKeywords.some(keyword => word.includes(keyword))) {
-          positiveScore++;
-        }
-        if (negativeKeywords.some(keyword => word.includes(keyword))) {
-          negativeScore++;
-        }
+      // Perform sentiment analysis with AraBERT
+      console.log('Running AraBERT inference...');
+      const results = await classifier(preprocessedText, {
+        max_length: 128,
+        truncation: true
       });
       
-      // Calculate sentiment and probabilities
-      const totalScore = positiveScore + negativeScore;
-      let sentiment: string;
-      let confidence: number;
-      let positiveProb: number;
-      let negativeProb: number;
+      console.log('AraBERT results:', results);
       
-      if (totalScore === 0) {
-        // Neutral case - default to slight positive bias
-        sentiment = 'positive';
-        confidence = 0.55;
-        positiveProb = 0.55;
-        negativeProb = 0.45;
+      // Process results (assuming LABEL_0 = negative, LABEL_1 = positive)
+      const result = Array.isArray(results) ? results[0] : results;
+      
+      const sentiment = result.label === 'LABEL_1' ? 'positive' : 'negative';
+      const confidence = result.score;
+      
+      // Calculate probabilities for both classes
+      let positiveProb, negativeProb;
+      if (sentiment === 'positive') {
+        positiveProb = confidence;
+        negativeProb = 1 - confidence;
       } else {
-        if (positiveScore > negativeScore) {
-          sentiment = 'positive';
-          positiveProb = Math.min(0.95, 0.6 + (positiveScore / totalScore) * 0.35);
-          negativeProb = 1 - positiveProb;
-          confidence = positiveProb;
-        } else {
-          sentiment = 'negative';
-          negativeProb = Math.min(0.95, 0.6 + (negativeScore / totalScore) * 0.35);
-          positiveProb = 1 - negativeProb;
-          confidence = negativeProb;
-        }
+        negativeProb = confidence;
+        positiveProb = 1 - confidence;
       }
       
-      // Detect Jordanian dialect
-      const dialect = detectJordanianDialect(preprocessedText);
+      analysisResult = {
+        sentiment,
+        confidence: Math.round(confidence * 10000) / 10000,
+        positive_prob: Math.round(positiveProb * 10000) / 10000,
+        negative_prob: Math.round(negativeProb * 10000) / 10000,
+        modelSource: 'AraBERT_ONNX'
+      };
       
-      console.log('Analysis result:', { sentiment, confidence, positiveProb, negativeProb, dialect });
-
-      return new Response(
-        JSON.stringify({ 
-          sentiment,
-          confidence: Math.round(confidence * 10000) / 10000,
-          positive_prob: Math.round(positiveProb * 10000) / 10000,
-          negative_prob: Math.round(negativeProb * 10000) / 10000,
-          dialect,
-          modelSource: 'enhanced_keyword_analysis'
-        }),
-        { 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
-
+      console.log('AraBERT analysis completed:', analysisResult);
+      
     } catch (modelError) {
-      console.error('Model analysis error:', modelError);
-      return new Response(
-        JSON.stringify({ error: 'Model analysis failed' }),
-        { 
-          status: 500, 
-          headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
-        }
-      );
+      console.error('AraBERT model error, falling back to keyword analysis:', modelError);
+      
+      // Fallback to enhanced keyword analysis
+      analysisResult = performKeywordAnalysis(preprocessedText);
     }
+    
+    // Detect Jordanian dialect
+    const dialect = detectJordanianDialect(preprocessedText);
+    
+    const finalResult = {
+      ...analysisResult,
+      dialect
+    };
+    
+    console.log('Final analysis result:', finalResult);
+
+    return new Response(
+      JSON.stringify(finalResult),
+      { 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
+      }
+    );
 
   } catch (error) {
     console.error('Error in analyze-text function:', error);

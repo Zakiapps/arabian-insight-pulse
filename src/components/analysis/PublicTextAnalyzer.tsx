@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, TrendingUp, TrendingDown, Globe, Sparkles } from "lucide-react";
+import { MessageSquare, TrendingUp, TrendingDown, Globe, Sparkles, AlertCircle } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 
 interface AnalysisResult {
@@ -15,6 +15,7 @@ interface AnalysisResult {
   positive_prob: number;
   negative_prob: number;
   dialect: string;
+  modelSource?: string;
 }
 
 const PublicTextAnalyzer = () => {
@@ -50,8 +51,8 @@ const PublicTextAnalyzer = () => {
 
       setResult(data);
 
-      // Save to predictions table using type assertion to bypass strict typing
-      const { error: saveError } = await (supabase as any)
+      // Save to predictions table
+      const { error: saveError } = await supabase
         .from('predictions')
         .insert({
           user_id: user?.id || null,
@@ -60,7 +61,8 @@ const PublicTextAnalyzer = () => {
           confidence: data.confidence,
           positive_prob: data.positive_prob,
           negative_prob: data.negative_prob,
-          dialect: data.dialect
+          dialect: data.dialect,
+          model_source: data.modelSource || 'AraBERT_ONNX'
         });
 
       if (saveError) {
@@ -88,7 +90,7 @@ const PublicTextAnalyzer = () => {
             محلل المشاعر العربية
           </CardTitle>
           <p className="text-muted-foreground">
-            اكتشف المشاعر واللهجة في النصوص العربية باستخدام الذكاء الاصطناعي
+            اكتشف المشاعر واللهجة في النصوص العربية باستخدام نموذج AraBERT المدرب
           </p>
         </CardHeader>
         <CardContent className="space-y-6">
@@ -133,7 +135,15 @@ const PublicTextAnalyzer = () => {
 
           {result && (
             <div className="space-y-4 p-6 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border">
-              <h3 className="font-bold text-xl text-center text-gray-800">نتائج التحليل</h3>
+              <div className="flex items-center justify-between">
+                <h3 className="font-bold text-xl text-gray-800">نتائج التحليل</h3>
+                {result.modelSource === 'enhanced_keyword_analysis' && (
+                  <div className="flex items-center gap-1 text-amber-600">
+                    <AlertCircle className="h-4 w-4" />
+                    <span className="text-xs">تحليل احتياطي</span>
+                  </div>
+                )}
+              </div>
               
               <div className="grid gap-4">
                 <div className="flex items-center justify-between p-3 bg-white rounded-lg shadow-sm">
@@ -176,13 +186,16 @@ const PublicTextAnalyzer = () => {
               </div>
 
               <div className="text-center text-xs text-gray-500 mt-4">
-                تم التحليل باستخدام نموذج AraBERT المتخصص في اللغة العربية
+                {result.modelSource === 'AraBERT_ONNX' 
+                  ? 'تم التحليل باستخدام نموذج AraBERT المدرب المتخصص في اللغة العربية'
+                  : 'تم التحليل باستخدام نظام تحليل الكلمات المفتاحية (نظام احتياطي)'
+                }
               </div>
             </div>
           )}
 
           <div className="text-center text-sm text-muted-foreground">
-            <p>جرب نصوص مختلفة لاختبار دقة التحليل</p>
+            <p>جرب نصوص مختلفة لاختبار دقة النموذج المدرب</p>
             <p className="text-xs mt-1">
               أمثلة: "الجو حلو اليوم وأنا مبسوط" | "ما بدي هالحكي الفاضي"
             </p>

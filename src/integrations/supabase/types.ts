@@ -84,6 +84,45 @@ export type Database = {
         }
         Relationships: []
       }
+      predictions: {
+        Row: {
+          confidence: number
+          created_at: string
+          dialect: string
+          id: string
+          model_source: string
+          negative_prob: number
+          positive_prob: number
+          sentiment: string
+          text: string
+          user_id: string | null
+        }
+        Insert: {
+          confidence: number
+          created_at?: string
+          dialect: string
+          id?: string
+          model_source?: string
+          negative_prob: number
+          positive_prob: number
+          sentiment: string
+          text: string
+          user_id?: string | null
+        }
+        Update: {
+          confidence?: number
+          created_at?: string
+          dialect?: string
+          id?: string
+          model_source?: string
+          negative_prob?: number
+          positive_prob?: number
+          sentiment?: string
+          text?: string
+          user_id?: string | null
+        }
+        Relationships: []
+      }
       profiles: {
         Row: {
           avatar_url: string | null

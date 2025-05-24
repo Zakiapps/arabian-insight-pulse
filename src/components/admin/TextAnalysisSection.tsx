@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, TrendingUp, TrendingDown, Globe } from "lucide-react";
+import { MessageSquare, TrendingUp, TrendingDown, Globe, AlertCircle } from "lucide-react";
 
 interface AnalysisResult {
   sentiment: string;
@@ -14,6 +14,7 @@ interface AnalysisResult {
   positive_prob: number;
   negative_prob: number;
   dialect: string;
+  modelSource?: string;
 }
 
 const TextAnalysisSection = () => {
@@ -48,8 +49,8 @@ const TextAnalysisSection = () => {
 
       setResult(data);
 
-      // Save to predictions table using type assertion to bypass strict typing
-      const { error: saveError } = await (supabase as any)
+      // Save to predictions table
+      const { error: saveError } = await supabase
         .from('predictions')
         .insert({
           text: text.trim(),
@@ -57,7 +58,8 @@ const TextAnalysisSection = () => {
           confidence: data.confidence,
           positive_prob: data.positive_prob,
           negative_prob: data.negative_prob,
-          dialect: data.dialect
+          dialect: data.dialect,
+          model_source: data.modelSource || 'AraBERT_ONNX'
         });
 
       if (saveError) {
@@ -81,7 +83,7 @@ const TextAnalysisSection = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <MessageSquare className="h-5 w-5" />
-          تحليل النصوص العربية
+          تحليل النصوص العربية - لوحة الإدارة
         </CardTitle>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -90,10 +92,13 @@ const TextAnalysisSection = () => {
           <Textarea
             value={text}
             onChange={(e) => setText(e.target.value)}
-            placeholder="أدخل النص العربي هنا..."
+            placeholder="مثال: يلا يا زلمة الوضع تمام والجو حلو..."
             className="min-h-[100px]"
             dir="rtl"
           />
+          <p className="text-xs text-muted-foreground mt-1">
+            * يجب أن يكون النص باللغة العربية وأكثر من 3 أحرف
+          </p>
         </div>
         
         <Button 
@@ -112,7 +117,15 @@ const TextAnalysisSection = () => {
 
         {result && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-semibold text-lg">نتائج التحليل:</h3>
+            <div className="flex items-center justify-between">
+              <h3 className="font-semibold text-lg">نتائج التحليل:</h3>
+              {result.modelSource === 'enhanced_keyword_analysis' && (
+                <div className="flex items-center gap-1 text-amber-600">
+                  <AlertCircle className="h-4 w-4" />
+                  <span className="text-xs">تحليل كلمات مفتاحية</span>
+                </div>
+              )}
+            </div>
             
             <div className="grid gap-3">
               <div className="flex items-center justify-between">
@@ -149,6 +162,18 @@ const TextAnalysisSection = () => {
                   </Badge>
                 </div>
               </div>
+
+              {result.modelSource && (
+                <div className="flex items-center justify-between text-xs text-gray-500">
+                  <span>النموذج:</span>
+                  <span>
+                    {result.modelSource === 'AraBERT_ONNX' 
+                      ? 'AraBERT (نموذج مدرب)' 
+                      : 'تحليل كلمات مفتاحية محسن'
+                    }
+                  </span>
+                </div>
+              )}
             </div>
           </div>
         )}
