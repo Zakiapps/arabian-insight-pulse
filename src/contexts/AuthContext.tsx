@@ -1,3 +1,4 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -71,6 +72,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     // Set up auth state listener first to avoid missing auth events
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
       async (event, newSession) => {
+        console.log('Auth state changed:', event, newSession?.user?.email);
         setSession(newSession);
         
         if (event === 'SIGNED_IN' && newSession) {
@@ -82,11 +84,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
               if (userProfile) {
                 setProfile(userProfile);
                 setUser({ ...user, profile: userProfile });
+                console.log('User profile loaded:', userProfile.role);
               } else {
                 setUser(user);
               }
-              setLoading(false);
             }
+            setLoading(false);
           }, 0);
         } else if (event === 'SIGNED_OUT') {
           setUser(null);
@@ -113,6 +116,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             if (userProfile) {
               setProfile(userProfile);
               setUser({ ...user, profile: userProfile });
+              console.log('Initial auth - user profile loaded:', userProfile.role);
             } else {
               setUser(user);
             }
@@ -135,7 +139,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is admin - prioritize email check for admin@arabinsights.com
   const isAdmin = user?.email === 'admin@arabinsights.com' || profile?.role === 'admin';
-  const isAuthenticated = !!user;
+  const isAuthenticated = !!user && !!session;
 
   // Login function - optimized with better error handling
   const login = async (email: string, password: string) => {
@@ -146,6 +150,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       });
       
       if (error) throw error;
+      
+      console.log('Login successful for:', email);
       return { data: data.session, error: null };
     } catch (error) {
       console.error('Login error:', error);
@@ -160,6 +166,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase.auth.signUp({
         email,
         password,
+        options: {
+          data: {
+            full_name: fullName,
+          }
+        }
       });
 
       if (error) throw error;

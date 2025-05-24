@@ -63,6 +63,7 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
+      // Get profiles with user data
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -74,34 +75,16 @@ const UserManagement = () => {
 
       if (profilesError) throw profilesError;
 
-      // Get user emails from auth.users through a function call
-      const usersList: User[] = [];
-      
-      for (const profile of profiles || []) {
-        // Get subscription info
-        const { data: subscription } = await supabase
-          .from('subscriptions')
-          .select(`
-            status,
-            plan:plan_id (
-              name
-            )
-          `)
-          .eq('user_id', profile.id)
-          .eq('status', 'active')
-          .single();
-
-        usersList.push({
-          id: profile.id,
-          email: profile.id, // We'll use a placeholder for now
-          created_at: profile.created_at,
-          profile: {
-            full_name: profile.full_name || '',
-            role: profile.role,
-          },
-          subscription,
-        });
-      }
+      // Transform profiles to user objects
+      const usersList: User[] = (profiles || []).map(profile => ({
+        id: profile.id,
+        email: profile.id, // We'll show the ID as email placeholder
+        created_at: profile.created_at,
+        profile: {
+          full_name: profile.full_name || '',
+          role: profile.role,
+        }
+      }));
 
       setUsers(usersList);
     } catch (error) {
@@ -118,32 +101,20 @@ const UserManagement = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      // Create user through Supabase auth
-      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
-        email: data.email,
-        password: data.password || 'temp123456',
-        email_confirm: true,
+      // Call the admin_create_user function
+      const { data: result, error } = await supabase.rpc('admin_create_user', {
+        email_param: data.email,
+        password_param: data.password || 'temp123456',
+        full_name_param: data.full_name,
+        role_param: data.role
       });
 
-      if (authError) throw authError;
+      if (error) throw error;
 
-      if (authData.user) {
-        // Create profile
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .insert({
-            id: authData.user.id,
-            full_name: data.full_name,
-            role: data.role,
-          });
-
-        if (profileError) throw profileError;
-
-        toast.success('تم إنشاء المستخدم بنجاح');
-        setIsDialogOpen(false);
-        form.reset();
-        fetchUsers();
-      }
+      toast.success('تم إنشاء المستخدم بنجاح');
+      setIsDialogOpen(false);
+      form.reset();
+      fetchUsers();
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast.error(error.message || 'خطأ في إنشاء المستخدم');
@@ -154,7 +125,8 @@ const UserManagement = () => {
     if (!editingUser) return;
 
     try {
-      const { error } = await supabase
+      // Update profile
+      const { error: profileError } = await supabase
         .from('profiles')
         .update({
           full_name: data.full_name,
@@ -162,7 +134,7 @@ const UserManagement = () => {
         })
         .eq('id', editingUser.id);
 
-      if (error) throw error;
+      if (profileError) throw profileError;
 
       toast.success('تم تحديث المستخدم بنجاح');
       setIsDialogOpen(false);
@@ -179,14 +151,18 @@ const UserManagement = () => {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
 
     try {
-      const { error } = await supabase.auth.admin.deleteUser(userId);
+      // Call the admin_delete_user function
+      const { error } = await supabase.rpc('admin_delete_user', {
+        user_id_param: userId
+      });
+
       if (error) throw error;
 
       toast.success('تم حذف المستخدم بنجاح');
       fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error('خطأ في حذف المستخدم');
+      toast.error(error.message || 'خطأ في حذف المستخدم');
     }
   };
 
@@ -347,7 +323,7 @@ const UserManagement = () => {
           <CardDescription>إدارة جميع المستخدمين والصلاحيات</CardDescription>
           <div className="flex gap-4">
             <Input
-              placeholder="البحث بالاسم أو البريد الإلكتروني..."
+              placeholder="البحث بالاسم أو المعرف..."
               value={searchTerm}
               onChange={(e) => setSearchTerm(e.target.value)}
               className="max-w-sm"
@@ -372,7 +348,7 @@ const UserManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>الاسم</TableHead>
-                  <TableHead>البريد الإلكتروني</TableHead>
+                  <TableHead>المعرف</TableHead>
                   <TableHead>الدور</TableHead>
                   <TableHead>الاشتراك</TableHead>
                   <TableHead>تاريخ الإنشاء</TableHead>
@@ -383,7 +359,7 @@ const UserManagement = () => {
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.profile?.full_name || 'غير محدد'}</TableCell>
-                    <TableCell>{user.email}</TableCell>
+                    <TableCell className="font-mono text-xs">{user.id.slice(0, 8)}...</TableCell>
                     <TableCell>
                       <Badge variant={user.profile?.role === 'admin' ? 'destructive' : 'secondary'}>
                         {user.profile?.role === 'admin' ? 'مشرف' : 'مستخدم'}
@@ -410,7 +386,7 @@ const UserManagement = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {user.email !== 'admin@arabinsights.com' && (
+                        {user.id !== 'admin@arabinsights.com' && (
                           <Button
                             variant="outline"
                             size="sm"

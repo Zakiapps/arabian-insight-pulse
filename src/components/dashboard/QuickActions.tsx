@@ -25,16 +25,23 @@ export const QuickActions = () => {
   const navigate = useNavigate();
   const { startTask, completeTask } = useTaskHistory();
   const { createNotification } = useNotifications();
-  const { profile } = useAuth();
+  const { profile, isAuthenticated, user } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
+
+  // Check authentication first
+  const checkAuth = () => {
+    if (!isAuthenticated || !user) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      navigate('/login');
+      return false;
+    }
+    return true;
+  };
 
   const handleUploadData = async () => {
     console.log('Upload data button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
@@ -50,10 +57,7 @@ export const QuickActions = () => {
   const handleCreateReport = async () => {
     console.log('Create report button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('report_generation', 'إنشاء تقرير جديد');
@@ -62,7 +66,7 @@ export const QuickActions = () => {
       const { data: postsData, error } = await supabase
         .from('analyzed_posts')
         .select('*')
-        .eq('user_id', profile.id);
+        .eq('user_id', user.id);
 
       if (error) {
         console.error('Error fetching posts:', error);
@@ -73,7 +77,7 @@ export const QuickActions = () => {
       const { data: reportData, error: reportError } = await supabase
         .from('user_reports')
         .insert({
-          user_id: profile.id,
+          user_id: user.id,
           name: `تقرير ${new Date().toLocaleDateString('ar')}`,
           report_type: 'comprehensive',
           format: 'pdf',
@@ -103,10 +107,7 @@ export const QuickActions = () => {
   const handleSetupAlert = async () => {
     console.log('Setup alert button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('alert_setup', 'إعداد تنبيه جديد');
@@ -115,7 +116,7 @@ export const QuickActions = () => {
       const { data: alertData, error } = await supabase
         .from('user_alerts')
         .insert({
-          user_id: profile.id,
+          user_id: user.id,
           name: 'تنبيه المشاعر الإيجابية',
           metric: 'sentiment',
           condition: 'greater_than',
@@ -143,10 +144,7 @@ export const QuickActions = () => {
   const handleAnalysisSettings = async () => {
     console.log('Analysis settings button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
@@ -162,10 +160,7 @@ export const QuickActions = () => {
   const handleExportData = async () => {
     console.log('Export data button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     setIsExporting(true);
     
@@ -175,7 +170,7 @@ export const QuickActions = () => {
       const { data: postsData, error } = await supabase
         .from('analyzed_posts')
         .select('*')
-        .eq('user_id', profile.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {
@@ -226,10 +221,7 @@ export const QuickActions = () => {
   const handleFilterData = async () => {
     console.log('Filter data button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
@@ -245,10 +237,7 @@ export const QuickActions = () => {
   const handleDownloadReports = async () => {
     console.log('Download reports button clicked');
     
-    if (!profile?.id) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
+    if (!checkAuth()) return;
     
     try {
       const taskId = await startTask('download_reports', 'تنزيل التقارير');
@@ -256,7 +245,7 @@ export const QuickActions = () => {
       const { data: reports, error } = await supabase
         .from('user_reports')
         .select('*')
-        .eq('user_id', profile.id)
+        .eq('user_id', user.id)
         .order('created_at', { ascending: false });
 
       if (error) {

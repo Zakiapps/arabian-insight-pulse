@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
@@ -26,11 +25,6 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Edit, CheckCircle, Tag, Pencil, X, Check } from "lucide-react";
 
-interface Feature {
-  id: string;
-  text: string;
-}
-
 interface Plan {
   id: string;
   name: string;
@@ -56,7 +50,7 @@ export default function AdminPlans() {
     is_active: true,
   });
 
-  // Fetch plans
+  // Fetch plans from Supabase
   const fetchPlans = async () => {
     setLoading(true);
     try {
@@ -72,68 +66,20 @@ export default function AdminPlans() {
         const parsedPlans = data.map(plan => ({
           ...plan,
           features: Array.isArray(plan.features) ? 
-            plan.features.map(feature => String(feature)) : [] // Ensure features are strings
+            plan.features.map(feature => String(feature)) : []
         }));
         setPlans(parsedPlans);
       }
     } catch (error) {
       console.error("Error fetching plans:", error);
-      toast.error("Failed to fetch plans");
+      toast.error("فشل في جلب الخطط");
     } finally {
       setLoading(false);
     }
   };
 
-  // Mock fetching plans
-  const mockFetchPlans = async () => {
-    setLoading(true);
-    try {
-      setTimeout(() => {
-        // Mock plan data
-        const mockPlans = [
-          {
-            id: "1",
-            name: "Basic",
-            description: "Basic features for individual users",
-            price_monthly: 999,
-            price_yearly: 9990,
-            features: ["Basic analytics", "10 reports per month", "Standard support"],
-            is_active: true
-          },
-          {
-            id: "2",
-            name: "Premium",
-            description: "Advanced features for professionals",
-            price_monthly: 1999,
-            price_yearly: 19990,
-            features: ["Advanced analytics", "Unlimited reports", "Priority support", "Custom exports"],
-            is_active: true
-          },
-          {
-            id: "3",
-            name: "Enterprise",
-            description: "Complete solution for businesses",
-            price_monthly: 4999,
-            price_yearly: 49990,
-            features: ["Full analytics suite", "Unlimited everything", "Dedicated support", "Custom integrations", "White labeling"],
-            is_active: true
-          }
-        ];
-        
-        setPlans(mockPlans);
-        setLoading(false);
-      }, 1000);
-    } catch (error) {
-      console.error("Error fetching plans:", error);
-      toast.error("Failed to fetch plans");
-      setLoading(false);
-    }
-  };
-
   useEffect(() => {
-    // In a real app with proper backend, use fetchPlans()
-    // For demo purposes, we use mockFetchPlans
-    mockFetchPlans();
+    fetchPlans();
   }, []);
 
   // Format price to display as currency
@@ -141,7 +87,7 @@ export default function AdminPlans() {
     return new Intl.NumberFormat('en-US', {
       style: 'currency',
       currency: 'USD'
-    }).format(price / 100); // Convert cents to dollars
+    }).format(price / 100);
   };
 
   // Handle create plan
@@ -198,7 +144,7 @@ export default function AdminPlans() {
     });
   };
 
-  // Save plan
+  // Save plan to Supabase
   const savePlan = async (isNew: boolean) => {
     try {
       // Filter out empty features
@@ -214,57 +160,48 @@ export default function AdminPlans() {
       };
 
       if (isNew) {
-        // In a real app, this would create a new plan
-        // For demo, we'll just add to local state with a mock ID
-        const newPlan = {
-          id: `temp-${Date.now()}`,
-          ...planData
-        };
+        const { error } = await supabase
+          .from('subscription_plans')
+          .insert(planData);
+
+        if (error) throw error;
         
-        setPlans([...plans, newPlan]);
-        toast.success("Plan created successfully");
+        toast.success("تم إنشاء الخطة بنجاح");
         setIsCreateDialogOpen(false);
       } else if (selectedPlan) {
-        // In a real app, this would update the plan
-        // For demo, update local state
-        setPlans(plans.map(p => {
-          if (p.id === selectedPlan.id) {
-            return {
-              ...p,
-              ...planData
-            };
-          }
-          return p;
-        }));
+        const { error } = await supabase
+          .from('subscription_plans')
+          .update(planData)
+          .eq('id', selectedPlan.id);
+
+        if (error) throw error;
         
-        toast.success("Plan updated successfully");
+        toast.success("تم تحديث الخطة بنجاح");
         setIsEditDialogOpen(false);
       }
+
+      fetchPlans(); // Refresh the plans list
     } catch (error) {
       console.error("Error saving plan:", error);
-      toast.error("Failed to save plan");
+      toast.error("فشل في حفظ الخطة");
     }
   };
 
   // Toggle plan active status
   const togglePlanStatus = async (plan: Plan) => {
     try {
-      // In a real app, this would update the plan in the database
-      // For demo, update local state
-      setPlans(plans.map(p => {
-        if (p.id === plan.id) {
-          return {
-            ...p,
-            is_active: !p.is_active
-          };
-        }
-        return p;
-      }));
+      const { error } = await supabase
+        .from('subscription_plans')
+        .update({ is_active: !plan.is_active })
+        .eq('id', plan.id);
+
+      if (error) throw error;
       
-      toast.success(`Plan ${plan.is_active ? "deactivated" : "activated"} successfully`);
+      toast.success(`تم ${plan.is_active ? "إلغاء تفعيل" : "تفعيل"} الخطة بنجاح`);
+      fetchPlans(); // Refresh the plans list
     } catch (error) {
       console.error("Error toggling plan status:", error);
-      toast.error("Failed to update plan status");
+      toast.error("فشل في تحديث حالة الخطة");
     }
   };
 
@@ -371,6 +308,7 @@ export default function AdminPlans() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            
             <div className="grid gap-2">
               <Label htmlFor="plan-name">اسم الخطة</Label>
               <Input
@@ -476,6 +414,7 @@ export default function AdminPlans() {
             </DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            
             <div className="grid gap-2">
               <Label htmlFor="edit-plan-name">اسم الخطة</Label>
               <Input
