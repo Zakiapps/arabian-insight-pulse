@@ -36,7 +36,9 @@ export const usePlans = () => {
           name: plan.name,
           description: plan.description || '',
           price_monthly: plan.price_monthly,
-          features: Array.isArray(plan.features) ? plan.features : [],
+          features: Array.isArray(plan.features) 
+            ? plan.features.map(feature => String(feature)) 
+            : [],
           created_at: plan.created_at,
           price_yearly: plan.price_yearly,
           is_active: plan.is_active

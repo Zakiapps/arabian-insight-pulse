@@ -101,7 +101,9 @@ const Pricing = () => {
             name: plan.name,
             description: plan.description || '',
             price_monthly: plan.price_monthly,
-            features: Array.isArray(plan.features) ? plan.features : [],
+            features: Array.isArray(plan.features) 
+              ? plan.features.map(feature => String(feature)) 
+              : [],
             is_active: plan.is_active
           }));
           setPlans(transformedPlans);
