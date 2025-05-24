@@ -1,14 +1,14 @@
 
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import StatsCards from "@/components/dashboard/StatsCards";
 import SentimentAnalysis from "@/components/dashboard/SentimentAnalysis";
 import CategoryDistribution from "@/components/dashboard/CategoryDistribution";
-import PlatformDistribution from "@/components/dashboard/PlatformDistribution";
-import TopTopics from "@/components/dashboard/TopTopics";
-import DialectDetection from "@/components/dashboard/DialectDetection";
-import ThreeDInsightCard from "@/components/dashboard/ThreeDInsightCard";
+import { PlatformDistribution } from "@/components/dashboard/PlatformDistribution";
+import { TopTopics } from "@/components/dashboard/TopTopics";
+import { DialectDetection } from "@/components/dashboard/DialectDetection";
+import { ThreeDInsightCard } from "@/components/dashboard/ThreeDInsightCard";
 import AdminUsersManagement from "@/pages/admin/AdminUsersManagement";
 
 const Dashboard = () => {
