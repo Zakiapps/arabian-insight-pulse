@@ -19,11 +19,16 @@ const Cube: React.FC<{
 
 // Simplified visualization
 const DataVisualization: React.FC = () => {
+  // Define fixed positions with the correct type [number, number, number]
+  const position1: [number, number, number] = [-2, 0, 0];
+  const position2: [number, number, number] = [0, 0, 0];
+  const position3: [number, number, number] = [2, 0, 0];
+  
   return (
     <group>
-      <Cube position={[-2, 0, 0]} color="#4285F4" />
-      <Cube position={[0, 0, 0]} color="#34A853" />
-      <Cube position={[2, 0, 0]} color="#EA4335" />
+      <Cube position={position1} color="#4285F4" />
+      <Cube position={position2} color="#34A853" />
+      <Cube position={position3} color="#EA4335" />
     </group>
   );
 };
