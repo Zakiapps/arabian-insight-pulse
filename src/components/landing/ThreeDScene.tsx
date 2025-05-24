@@ -1,46 +1,32 @@
 
-import React, { useRef } from 'react';
-import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, Stars } from '@react-three/drei';
+import React from 'react';
+import { Canvas } from '@react-three/fiber';
+import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Rotating cube component
-const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
-  // Use correct TypeScript type that matches the expected ref type
-  const cubeRef = useRef<THREE.Mesh>(null);
-  
-  useFrame((state, delta) => {
-    if (!cubeRef.current) return;
-    cubeRef.current.rotation.x += delta * 0.2;
-    cubeRef.current.rotation.y += delta * 0.3;
-  });
-  
+// Simple animated cube component with proper typing
+const AnimatedCube: React.FC<{
+  position?: [number, number, number];
+  color?: string;
+}> = ({ position = [0, 0, 0], color = '#0077ff' }) => {
+  // Using a simpler approach without refs to avoid type issues
   return (
-    <mesh ref={cubeRef} position={position as [number, number, number]}>
+    <mesh position={position} rotation={[Math.PI / 4, Math.PI / 4, 0]}>
       <boxGeometry args={[1, 1, 1]} />
       <meshStandardMaterial color={color} />
     </mesh>
   );
 };
 
-// Floating text that represents data analytics
-const DataVisualization = () => {
-  // Use correct TypeScript type that matches the expected ref type
-  const groupRef = useRef<THREE.Group>(null);
-  
-  useFrame((state) => {
-    if (!groupRef.current) return;
-    groupRef.current.rotation.y += 0.001;
-    groupRef.current.position.y = Math.sin(state.clock.elapsedTime * 0.5) * 0.2;
-  });
-  
+// Simplified data visualization without complex animations that might cause issues
+const DataVisualization: React.FC = () => {
   return (
-    <group ref={groupRef}>
+    <group>
       <AnimatedCube position={[-2, 0, 0]} color="#4285F4" />
       <AnimatedCube position={[0, 0, 0]} color="#34A853" />
       <AnimatedCube position={[2, 0, 0]} color="#EA4335" />
       
-      {/* Lines connecting the data points */}
+      {/* Simple line connecting cubes */}
       <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
         <cylinderGeometry args={[0.05, 0.05, 4, 16]} />
         <meshBasicMaterial color="#ffffff" opacity={0.3} transparent />
@@ -49,7 +35,7 @@ const DataVisualization = () => {
   );
 };
 
-// Create a simpler version of the 3D scene that doesn't use advanced features
+// Simplified 3D scene with minimal features to reduce incompatibility risks
 const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={`${className} w-full h-full`}>
@@ -59,7 +45,6 @@ const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        {/* Removed Stars component which might be causing compatibility issues */}
         <DataVisualization />
         <OrbitControls 
           enableZoom={false}

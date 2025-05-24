@@ -4,15 +4,18 @@ import App from './App.tsx'
 import './index.css'
 import preloadSounds from './utils/preloadSounds.ts'
 
-// Only add RTL to the root element, don't set it on document.documentElement
-// This prevents conflicts with Three.js which expects LTR for 3D rendering
+// Create root element
 const rootElement = document.getElementById("root")!;
+
+// Apply RTL only to the root container, not to document.documentElement
+// This prevents conflicts with Three.js which expects LTR for rendering
 rootElement.dir = "rtl";
 
-// Reset default direction for document to avoid conflicts with Three.js
+// Make sure document direction is not set, which could interfere with Three.js
 document.documentElement.dir = "";
 
 // Preload sound effects
 preloadSounds();
 
+// Render the app
 createRoot(rootElement).render(<App />);

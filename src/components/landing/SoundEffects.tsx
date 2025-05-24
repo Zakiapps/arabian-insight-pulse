@@ -13,9 +13,10 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
   const interactionSoundRef = useRef<HTMLAudioElement | null>(null);
   const [audioInitialized, setAudioInitialized] = useState(false);
   
+  // Initialize audio with better error handling
   useEffect(() => {
-    // Create ambient background sound with error handling
     try {
+      // Create ambient background sound
       ambientSoundRef.current = new Audio('https://cdn.freesound.org/previews/573/573660_5674468-lq.mp3');
       if (ambientSoundRef.current) {
         ambientSoundRef.current.loop = true;
@@ -34,15 +35,32 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
       setAudioInitialized(false);
     }
     
-    // Start playing only if autoplay is enabled and audio was initialized successfully
-    if (!muted && autoplay && ambientSoundRef.current && audioInitialized) {
+    // Clean up function
+    return () => {
+      if (ambientSoundRef.current) {
+        ambientSoundRef.current.pause();
+        ambientSoundRef.current = null;
+      }
+      if (interactionSoundRef.current) {
+        interactionSoundRef.current = null;
+      }
+      setAudioInitialized(false);
+    };
+  }, []);
+  
+  // Handle audio playback based on muted state
+  useEffect(() => {
+    if (!audioInitialized) return;
+    
+    // Start playing only if autoplay is enabled and not muted
+    if (!muted && autoplay && ambientSoundRef.current) {
       ambientSoundRef.current.play().catch(err => {
         console.log('Audio autoplay prevented:', err);
         setMuted(true); // Set to muted if autoplay fails
       });
     }
     
-    // Add click sound to all buttons on the page with better error handling
+    // Add click sound to all buttons on the page
     const playInteractionSound = () => {
       if (!muted && interactionSoundRef.current && audioInitialized) {
         try {
@@ -56,27 +74,23 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
       }
     };
     
-    // Use a safer way to add event listeners to buttons
-    const buttons = document.querySelectorAll('button, a');
-    buttons.forEach(button => {
-      button.addEventListener('click', playInteractionSound);
+    // Use event delegation for better performance
+    document.body.addEventListener('click', (e) => {
+      if (e.target instanceof HTMLElement && 
+          (e.target.tagName === 'BUTTON' || 
+           e.target.tagName === 'A' || 
+           e.target.closest('button') || 
+           e.target.closest('a'))) {
+        playInteractionSound();
+      }
     });
     
     return () => {
-      if (ambientSoundRef.current) {
-        ambientSoundRef.current.pause();
-        ambientSoundRef.current = null;
-      }
-      if (interactionSoundRef.current) {
-        interactionSoundRef.current = null;
-      }
-      buttons.forEach(button => {
-        button.removeEventListener('click', playInteractionSound);
-      });
-      setAudioInitialized(false);
+      document.body.removeEventListener('click', playInteractionSound);
     };
   }, [muted, autoplay, audioInitialized]);
   
+  // Handle mute/unmute
   useEffect(() => {
     if (ambientSoundRef.current && audioInitialized) {
       if (muted) {
