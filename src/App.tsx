@@ -52,12 +52,12 @@ function App() {
   return (
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light">
-        <AuthProvider>
-          <LanguageProvider>
-            <SubscriptionProvider>
-              <TooltipProvider>
-                <Toaster />
-                <BrowserRouter>
+        <LanguageProvider>
+          <SubscriptionProvider>
+            <TooltipProvider>
+              <Toaster />
+              <BrowserRouter>
+                <AuthProvider>
                   <Routes>
                     {/* Public routes */}
                     <Route path="/" element={<Index />} />
@@ -98,11 +98,11 @@ function App() {
                     {/* 404 route */}
                     <Route path="*" element={<NotFound />} />
                   </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
-            </SubscriptionProvider>
-          </LanguageProvider>
-        </AuthProvider>
+                </AuthProvider>
+              </BrowserRouter>
+            </TooltipProvider>
+          </SubscriptionProvider>
+        </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
   );
