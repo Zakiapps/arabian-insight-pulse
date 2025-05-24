@@ -130,13 +130,13 @@ const AppSidebar = () => {
   ];
 
   return (
-    <Sidebar side="right" className="border-l bg-card">
+    <Sidebar side="right" className="border-l bg-card" collapsible="icon">
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground shrink-0">
             <BarChart3 className="h-5 w-5" />
           </div>
-          <div className="flex-1">
+          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <h2 className="font-bold text-lg">Arab Insights</h2>
             <p className="text-xs text-muted-foreground">تحليل البيانات الاجتماعية</p>
           </div>
@@ -145,28 +145,17 @@ const AppSidebar = () => {
 
       <SidebarContent className="px-2 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2">
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
             الميزات الرئيسية
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.url}>
-                      <Button 
-                        variant="ghost"
-                        className={`justify-start w-full h-10 ${
-                          isActive(item.url) 
-                            ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
-                            : 'hover:bg-muted/50'
-                        }`}
-                        dir={isRTL ? "rtl" : "ltr"}
-                      >
-                        <item.icon className="h-4 w-4 mr-3" />
-                        <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
-                      </Button>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -176,28 +165,17 @@ const AppSidebar = () => {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2">
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
             أدوات التحليل
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {analysisMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.url}>
-                      <Button 
-                        variant="ghost"
-                        className={`justify-start w-full h-10 ${
-                          isActive(item.url) 
-                            ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
-                            : 'hover:bg-muted/50'
-                        }`}
-                        dir={isRTL ? "rtl" : "ltr"}
-                      >
-                        <item.icon className="h-4 w-4 mr-3" />
-                        <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
-                      </Button>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -208,30 +186,19 @@ const AppSidebar = () => {
 
         {isAdmin && (
           <SidebarGroup>
-            <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2">
-              <Shield className="h-4 w-4" />
-              إدارة النظام
-              <Badge variant="destructive" className="text-xs">مشرف</Badge>
+            <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2 px-2">
+              <Shield className="h-4 w-4 shrink-0" />
+              <span className="group-data-[collapsible=icon]:hidden">إدارة النظام</span>
+              <Badge variant="destructive" className="text-xs group-data-[collapsible=icon]:hidden">مشرف</Badge>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
                 {adminMenuItems.map((item) => (
                   <SidebarMenuItem key={item.title}>
-                    <SidebarMenuButton asChild>
-                      <Link to={item.url}>
-                        <Button 
-                          variant="ghost"
-                          className={`justify-start w-full h-10 ${
-                            isActive(item.url) 
-                              ? 'bg-destructive/10 text-destructive font-medium border-l-2 border-destructive' 
-                              : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
-                          }`}
-                          dir={isRTL ? "rtl" : "ltr"}
-                        >
-                          <item.icon className="h-4 w-4 mr-3" />
-                          <span className="flex-1 text-right">{item.title}</span>
-                          {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
-                        </Button>
+                    <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                      <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
+                        <item.icon className="h-4 w-4 shrink-0" />
+                        <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
                       </Link>
                     </SidebarMenuButton>
                   </SidebarMenuItem>
@@ -245,21 +212,10 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link to="/dashboard/settings">
-                    <Button 
-                      variant="ghost"
-                      className={`justify-start w-full h-10 ${
-                        isActive('/dashboard/settings') 
-                          ? 'bg-primary/10 text-primary font-medium border-l-2 border-primary' 
-                          : 'hover:bg-muted/50'
-                      }`}
-                      dir={isRTL ? "rtl" : "ltr"}
-                    >
-                      <Settings className="h-4 w-4 mr-3" />
-                      <span className="flex-1 text-right">الإعدادات</span>
-                      {isActive('/dashboard/settings') && <ChevronLeft className="h-4 w-4 ml-2" />}
-                    </Button>
+                <SidebarMenuButton asChild isActive={isActive('/dashboard/settings')} tooltip="الإعدادات">
+                  <Link to="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
+                    <Settings className="h-4 w-4 shrink-0" />
+                    <span className="group-data-[collapsible=icon]:hidden">الإعدادات</span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -270,13 +226,13 @@ const AppSidebar = () => {
 
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
+          <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={profile?.avatar_url} />
             <AvatarFallback>
               {profile?.full_name?.charAt(0) || 'U'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
+          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="text-sm font-medium truncate">
               {profile?.full_name || 'مستخدم'}
             </p>
