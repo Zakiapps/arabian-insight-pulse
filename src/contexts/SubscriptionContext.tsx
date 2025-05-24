@@ -71,8 +71,8 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
         setSubscribed(true);
         
         // Get the subscription tier from the plan
-        const { data: planData } = await supabase
-          .from('plans')
+        const { data: planData, error: planError } = await supabase
+          .from('subscription_plans')
           .select('name')
           .eq('id', data.plan_id)
           .single();
