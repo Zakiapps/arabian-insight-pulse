@@ -30,7 +30,7 @@ const LandingPage = () => {
       transition: {
         duration: 3,
         repeat: Infinity,
-        repeatType: "mirror" as const
+        repeatType: "mirror"
       }
     }
   };
@@ -69,9 +69,15 @@ const LandingPage = () => {
             </motion.div>
             
             {isAuthenticated ? (
-              <motion.div whileHover={{ scale: 1.05 }}>
+              <motion.div 
+                whileHover={{ scale: 1.05 }}
+                whileTap={{ scale: 0.95 }}
+              >
                 <Link to="/dashboard">
-                  <Button>لوحة التحكم</Button>
+                  <Button className="bg-gradient-to-r from-primary to-primary-dark hover:opacity-90">
+                    لوحة التحكم
+                    <ArrowLeft className="ml-2 h-4 w-4" />
+                  </Button>
                 </Link>
               </motion.div>
             ) : (
@@ -284,8 +290,8 @@ const LandingPage = () => {
           <motion.div 
             initial={{ y: 50, opacity: 0 }}
             whileInView={{ y: 0, opacity: 1 }}
-            transition={{ duration: 0.6 }}
             viewport={{ once: true }}
+            transition={{ duration: 0.6 }}
             className="flex flex-col items-center justify-center space-y-4 text-center"
           >
             <div className="space-y-2">
@@ -303,19 +309,30 @@ const LandingPage = () => {
               {isAuthenticated ? (
                 <motion.div variants={fadeIn}>
                   <Link to="/dashboard">
-                    <Button size="lg" variant="secondary">الذهاب للوحة التحكم</Button>
+                    <Button size="lg" variant="secondary" className="group relative overflow-hidden">
+                      <span className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
+                      الذهاب للوحة التحكم
+                      <ArrowLeft className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
                   </Link>
                 </motion.div>
               ) : (
                 <motion.div variants={fadeIn}>
                   <Link to="/register">
-                    <Button size="lg" variant="secondary">البدء مجاناً</Button>
+                    <Button size="lg" variant="secondary" className="group relative overflow-hidden">
+                      <span className="absolute inset-0 bg-white/10 transform -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700"></span>
+                      البدء مجاناً
+                      <ArrowLeft className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    </Button>
                   </Link>
                 </motion.div>
               )}
               <motion.div variants={fadeIn}>
                 <Link to="/pricing">
-                  <Button size="lg" variant="outline" className="border-primary-foreground">عرض الأسعار</Button>
+                  <Button size="lg" variant="outline" className="border-primary-foreground group">
+                    عرض الأسعار
+                    <span className="ml-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">→</span>
+                  </Button>
                 </Link>
               </motion.div>
             </motion.div>
