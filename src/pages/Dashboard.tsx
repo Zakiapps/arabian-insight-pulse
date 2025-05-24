@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ClearPostsButton from "@/components/dashboard/ClearPostsButton";
 import {
   BarChart3,
   TrendingUp,
@@ -90,13 +91,13 @@ const Dashboard = () => {
 
   return (
     <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
-      {/* Header Section - Brandwatch Style */}
+      {/* Header Section - Enhanced with Clear Posts Button */}
       <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold text-foreground">لوحة التحكم الرئيسية</h1>
           <p className="text-muted-foreground mt-1">مراقبة وتحليل المحتوى الاجتماعي في الوقت الفعلي</p>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
           <div className="relative">
             <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input placeholder="البحث في البيانات..." className="pl-10 w-64" />
@@ -105,6 +106,7 @@ const Dashboard = () => {
             <Filter className="h-4 w-4 mr-2" />
             تصفية
           </Button>
+          <ClearPostsButton />
           <Button variant="outline" size="sm" onClick={handleExportData}>
             <Download className="h-4 w-4 mr-2" />
             تصدير

@@ -1,4 +1,3 @@
-
 import {
   BrowserRouter as Router,
   Route,
@@ -28,6 +27,7 @@ import CategoryDistribution from "./pages/CategoryDistribution";
 import PlatformDistribution from "./pages/PlatformDistribution";
 import TopTopics from "./pages/TopTopics";
 import DialectDetection from "./pages/DialectDetection";
+import AnalysisSettings from "./pages/AnalysisSettings";
 import { Toaster } from "sonner";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import AdminUsers from "./pages/admin/AdminUsers";
