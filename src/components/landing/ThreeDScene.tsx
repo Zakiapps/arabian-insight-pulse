@@ -1,41 +1,36 @@
 
-import React from 'react';
+import React, { useRef } from 'react';
 import { Canvas } from '@react-three/fiber';
-import { OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 
-// Simple animated cube component with proper typing
-const AnimatedCube: React.FC<{
+// Simple cube component without OrbitControls to avoid compatibility issues
+const Cube: React.FC<{
   position?: [number, number, number];
   color?: string;
-}> = ({ position = [0, 0, 0], color = '#0077ff' }) => {
-  // Using a simpler approach without refs to avoid type issues
+  size?: number;
+}> = ({ position = [0, 0, 0], color = '#0077ff', size = 1 }) => {
+  const meshRef = useRef<THREE.Mesh>(null);
+
   return (
-    <mesh position={position} rotation={[Math.PI / 4, Math.PI / 4, 0]}>
-      <boxGeometry args={[1, 1, 1]} />
+    <mesh position={position} ref={meshRef}>
+      <boxGeometry args={[size, size, size]} />
       <meshStandardMaterial color={color} />
     </mesh>
   );
 };
 
-// Simplified data visualization without complex animations that might cause issues
+// Simplified visualization without OrbitControls
 const DataVisualization: React.FC = () => {
   return (
     <group>
-      <AnimatedCube position={[-2, 0, 0]} color="#4285F4" />
-      <AnimatedCube position={[0, 0, 0]} color="#34A853" />
-      <AnimatedCube position={[2, 0, 0]} color="#EA4335" />
-      
-      {/* Simple line connecting cubes */}
-      <mesh position={[0, 0, 0]} rotation={[0, 0, Math.PI / 2]}>
-        <cylinderGeometry args={[0.05, 0.05, 4, 16]} />
-        <meshBasicMaterial color="#ffffff" opacity={0.3} transparent />
-      </mesh>
+      <Cube position={[-2, 0, 0]} color="#4285F4" />
+      <Cube position={[0, 0, 0]} color="#34A853" />
+      <Cube position={[2, 0, 0]} color="#EA4335" />
     </group>
   );
 };
 
-// Simplified 3D scene with minimal features to reduce incompatibility risks
+// Simplified 3D scene without OrbitControls
 const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={`${className} w-full h-full`}>
@@ -46,14 +41,6 @@ const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
         <DataVisualization />
-        <OrbitControls 
-          enableZoom={false}
-          enablePan={false}
-          autoRotate
-          autoRotateSpeed={0.5}
-          maxPolarAngle={Math.PI / 2}
-          minPolarAngle={Math.PI / 2}
-        />
       </Canvas>
     </div>
   );

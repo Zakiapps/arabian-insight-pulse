@@ -16,18 +16,18 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
   // Initialize audio with better error handling
   useEffect(() => {
     try {
-      // Create ambient background sound
-      ambientSoundRef.current = new Audio('https://cdn.freesound.org/previews/573/573660_5674468-lq.mp3');
-      if (ambientSoundRef.current) {
-        ambientSoundRef.current.loop = true;
-        ambientSoundRef.current.volume = 0.2;
-      }
+      // Create ambient background sound - ensure we have a valid audio context
+      const ambient = new Audio();
+      ambient.src = 'https://cdn.freesound.org/previews/573/573660_5674468-lq.mp3';
+      ambient.loop = true;
+      ambient.volume = 0.2;
+      ambientSoundRef.current = ambient;
     
       // Create interaction sound for button clicks
-      interactionSoundRef.current = new Audio('https://cdn.freesound.org/previews/242/242501_4284968-lq.mp3');
-      if (interactionSoundRef.current) {
-        interactionSoundRef.current.volume = 0.3;
-      }
+      const interaction = new Audio();
+      interaction.src = 'https://cdn.freesound.org/previews/242/242501_4284968-lq.mp3';
+      interaction.volume = 0.3;
+      interactionSoundRef.current = interaction;
       
       setAudioInitialized(true);
     } catch (error) {
@@ -48,7 +48,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
     };
   }, []);
   
-  // Handle audio playback based on muted state
+  // Handle audio playback based on muted state - with robust error handling
   useEffect(() => {
     if (!audioInitialized) return;
     
@@ -75,7 +75,7 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
     };
     
     // Use event delegation for better performance
-    document.body.addEventListener('click', (e) => {
+    const handleClick = (e: MouseEvent) => {
       if (e.target instanceof HTMLElement && 
           (e.target.tagName === 'BUTTON' || 
            e.target.tagName === 'A' || 
@@ -83,16 +83,20 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
            e.target.closest('a'))) {
         playInteractionSound();
       }
-    });
+    };
+    
+    document.body.addEventListener('click', handleClick);
     
     return () => {
-      document.body.removeEventListener('click', playInteractionSound);
+      document.body.removeEventListener('click', handleClick);
     };
   }, [muted, autoplay, audioInitialized]);
   
-  // Handle mute/unmute
+  // Handle mute/unmute with better error handling
   useEffect(() => {
-    if (ambientSoundRef.current && audioInitialized) {
+    if (!ambientSoundRef.current || !audioInitialized) return;
+    
+    try {
       if (muted) {
         ambientSoundRef.current.pause();
       } else {
@@ -101,6 +105,9 @@ const SoundEffects: React.FC<SoundEffectsProps> = ({ autoplay = false }) => {
           setMuted(true); // Set to muted if play fails
         });
       }
+    } catch (error) {
+      console.error("Error toggling audio:", error);
+      setMuted(true); // Default to muted on error
     }
   }, [muted, audioInitialized]);
   
