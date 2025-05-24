@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import ClearPostsButton from "@/components/dashboard/ClearPostsButton";
+import { QuickActions } from "@/components/dashboard/QuickActions";
 import { useTaskHistory } from "@/hooks/useTaskHistory";
 import { useNotifications } from "@/hooks/useNotifications";
 import {
@@ -19,11 +21,21 @@ import {
   Users,
   Globe,
   Heart,
+  Share,
+  Eye,
+  Calendar,
+  Filter,
+  Download,
   Plus,
+  Search,
+  Bell,
+  Settings,
   Upload,
   Sparkles,
-  Activity
+  Activity,
+  Trash2
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
 
 const Dashboard = () => {
@@ -70,19 +82,20 @@ const Dashboard = () => {
   const totalPosts = postsData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
+  const neutralPosts = postsData?.filter(post => post.sentiment === 'neutral').length || 0;
   const jordanianPosts = postsData?.filter(post => post.is_jordanian_dialect === true).length || 0;
   const totalUsers = usersData?.length || 0;
 
   const sentimentPercentage = totalPosts > 0 ? {
     positive: Math.round((positivePosts / totalPosts) * 100),
     negative: Math.round((negativePosts / totalPosts) * 100),
-    neutral: Math.round(((totalPosts - positivePosts - negativePosts) / totalPosts) * 100)
+    neutral: Math.round((neutralPosts / totalPosts) * 100)
   } : { positive: 0, negative: 0, neutral: 0 };
 
   // Recent posts for activity feed - only real data
   const recentPosts = postsData?.slice(0, 5) || [];
 
-  // Enhanced handler function for new analysis
+  // Enhanced handler functions with task tracking and real functionality
   const handleNewAnalysis = async () => {
     if (!profile?.id) return;
     
@@ -93,6 +106,36 @@ const Dashboard = () => {
       await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة رفع وتحليل البيانات', 'info');
     } catch (error) {
       await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleFilterData = async () => {
+    if (!profile?.id) return;
+    
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
+    try {
+      navigate('/dashboard/posts');
+      await completeTask(taskId, { page: 'posts' });
+      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة المنشورات المحللة', 'info');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleClearData = async () => {
+    if (!profile?.id) return;
+    
+    const taskId = await startTask('clear_data', 'مسح جميع البيانات');
+    try {
+      const { error } = await supabase.rpc('clear_user_posts');
+      if (error) throw error;
+
+      await refetchPosts();
+      await completeTask(taskId, { clearedPosts: totalPosts });
+      await createNotification('تم المسح', 'تم مسح جميع البيانات بنجاح', 'success');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في مسح البيانات');
+      await createNotification('خطأ في المسح', 'فشل في مسح البيانات', 'error');
     }
   };
 
@@ -112,7 +155,19 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">مراقبة وتحليل المحتوى الاجتماعي بالذكاء الاصطناعي</p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-3 flex-wrap">
+          <div className="relative">
+            <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
+            <Input placeholder="البحث في البيانات..." className="pl-10 w-64" />
+          </div>
+          <ButtonRTL variant="outline" size="sm" onClick={handleFilterData}>
+            <Filter className="h-4 w-4 mr-2" />
+            تصفية
+          </ButtonRTL>
+          <ButtonRTL variant="outline" size="sm" onClick={handleClearData} className="text-red-600 border-red-200 hover:bg-red-50">
+            <Trash2 className="h-4 w-4 mr-2" />
+            مسح البيانات
+          </ButtonRTL>
           <ButtonRTL size="sm" onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
@@ -335,8 +390,11 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Right Column - Enhanced Summary */}
+        {/* Right Column - Enhanced Quick Actions & Summary */}
         <div className="space-y-6">
+          {/* Enhanced Quick Actions */}
+          <QuickActions />
+
           {/* Enhanced Platform Summary */}
           <Card>
             <CardHeader>

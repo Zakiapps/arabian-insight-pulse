@@ -18,15 +18,6 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   const { isLoading: subscriptionLoading, canAccessFeature } = useSubscription();
   const location = useLocation();
 
-  console.log('ProtectedRoute check:', {
-    loading,
-    isAuthenticated,
-    isAdmin,
-    adminOnly,
-    userEmail: user?.email,
-    currentPath: location.pathname
-  });
-
   // Use a simpler loading indicator to improve performance
   if (loading || subscriptionLoading) {
     return (
@@ -38,19 +29,16 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   if (!isAuthenticated) {
     // Redirect to login page if not authenticated
-    console.log('Not authenticated, redirecting to login');
     return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
   if (adminOnly && !isAdmin) {
     // Redirect to dashboard if not an admin
-    console.log('Not admin, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
   // Admin bypass: admin@arabinsights.com gets full access to everything
-  if (user?.email === 'admin@arabinsights.com') {
-    console.log('Admin user detected, granting full access');
+  if (user?.email === 'admin@arabinsights.com' || isAdmin) {
     return <>{children}</>;
   }
 
