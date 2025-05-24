@@ -35,16 +35,19 @@ const DataVisualization: React.FC = () => {
 
 // Performance optimized 3D scene
 const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
+  // Specify the exact type for the pointLight position
+  const lightPosition: [number, number, number] = [10, 10, 10];
+  
   return (
     <div className={`${className} w-full h-full`}>
       <Canvas
-        camera={{ position: [0, 0, 6], fov: 50 }}
+        camera={{ position: [0, 0, 6] as [number, number, number], fov: 50 }}
         style={{ background: 'transparent' }}
         frameloop="demand" // Render only when needed for better performance
         dpr={[1, 2]} // Limit pixel ratio for better performance
       >
         <ambientLight intensity={0.5} />
-        <pointLight position={[10, 10, 10]} intensity={1} />
+        <pointLight position={lightPosition} intensity={1} />
         <DataVisualization />
       </Canvas>
     </div>
