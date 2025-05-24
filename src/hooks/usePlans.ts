@@ -8,6 +8,9 @@ interface Plan {
   description: string;
   price_monthly: number;
   features: string[];
+  created_at?: string;
+  price_yearly?: number;
+  is_active?: boolean;
 }
 
 export const usePlans = () => {
@@ -27,7 +30,19 @@ export const usePlans = () => {
 
         if (error) throw error;
 
-        setPlans(data || []);
+        // Transform the data to match our Plan interface
+        const transformedPlans: Plan[] = (data || []).map(plan => ({
+          id: plan.id,
+          name: plan.name,
+          description: plan.description || '',
+          price_monthly: plan.price_monthly,
+          features: Array.isArray(plan.features) ? plan.features : [],
+          created_at: plan.created_at,
+          price_yearly: plan.price_yearly,
+          is_active: plan.is_active
+        }));
+
+        setPlans(transformedPlans);
       } catch (err: any) {
         console.error('Error fetching plans:', err);
         setError(err.message);

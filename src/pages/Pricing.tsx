@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Check, ArrowRight, CreditCard } from 'lucide-react';
@@ -11,8 +10,17 @@ import { useSubscription } from '@/contexts/SubscriptionContext';
 import { supabase } from '@/integrations/supabase/client';
 import PaymentModal from '@/components/subscription/PaymentModal';
 
+interface Plan {
+  id: string;
+  name: string;
+  description: string;
+  price_monthly: number;
+  features: string[];
+  is_active?: boolean;
+}
+
 // Fallback plans to show if database fetch fails
-const fallbackPlans = [
+const fallbackPlans: Plan[] = [
   {
     id: "1",
     name: "أساسي",
@@ -62,11 +70,11 @@ const fallbackPlans = [
 ];
 
 const Pricing = () => {
-  const [plans, setPlans] = useState<any[]>(fallbackPlans);
+  const [plans, setPlans] = useState<Plan[]>(fallbackPlans);
   const [loading, setLoading] = useState(true);
   const [dbFetchFailed, setDbFetchFailed] = useState(false);
   const [paymentModalOpen, setPaymentModalOpen] = useState(false);
-  const [selectedPlan, setSelectedPlan] = useState<any>(null);
+  const [selectedPlan, setSelectedPlan] = useState<Plan | null>(null);
   
   const { isAuthenticated } = useAuth();
   const { subscriptionTier } = useSubscription();
@@ -85,21 +93,26 @@ const Pricing = () => {
         if (error) {
           console.error('Error fetching plans:', error);
           setDbFetchFailed(true);
-          // Use fallback plans (already set as initial state)
           toast.error('حدث خطأ أثناء تحميل خطط الاشتراك');
         } else if (data && data.length > 0) {
-          // Only use DB plans if we successfully got them
-          setPlans(data);
+          // Transform the data to match our Plan interface
+          const transformedPlans: Plan[] = data.map(plan => ({
+            id: plan.id,
+            name: plan.name,
+            description: plan.description || '',
+            price_monthly: plan.price_monthly,
+            features: Array.isArray(plan.features) ? plan.features : [],
+            is_active: plan.is_active
+          }));
+          setPlans(transformedPlans);
           setDbFetchFailed(false);
         } else {
-          // If no plans returned but no error, still use fallback
           setDbFetchFailed(true);
           toast.info('تم تحميل خطط الاشتراك الافتراضية');
         }
       } catch (error) {
         console.error('Exception fetching plans:', error);
         setDbFetchFailed(true);
-        // Already using fallback plans
         toast.error('حدث خطأ أثناء الاتصال بالخادم');
       } finally {
         setLoading(false);
@@ -109,7 +122,7 @@ const Pricing = () => {
     fetchPlans();
   }, []);
   
-  const handleSubscribe = (plan: any) => {
+  const handleSubscribe = (plan: Plan) => {
     if (!isAuthenticated) {
       navigate('/login', { state: { from: '/pricing' } });
       return;
@@ -203,7 +216,7 @@ const Pricing = () => {
                   </CardHeader>
                   <CardContent className="flex-1">
                     <ul className="grid gap-2">
-                      {plan.features && Array.isArray(plan.features) && plan.features.map((feature: string, i: number) => (
+                      {plan.features.map((feature: string, i: number) => (
                         <motion.li
                           key={i}
                           initial={{ opacity: 0, x: -10 }}
