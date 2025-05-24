@@ -166,7 +166,12 @@ export const socialMediaService = {
       .order('created_at', { ascending: false });
 
     if (error) throw error;
-    return data || [];
+    
+    // Type cast the data to ensure frequency is properly typed
+    return (data || []).map(subscription => ({
+      ...subscription,
+      frequency: subscription.frequency as 'daily' | 'weekly' | 'urgent'
+    }));
   },
 
   async createAlertSubscription(subscription: Omit<AlertSubscription, 'id'>): Promise<void> {
