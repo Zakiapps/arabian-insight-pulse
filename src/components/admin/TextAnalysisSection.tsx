@@ -6,7 +6,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { MessageSquare, TrendingUp, TrendingDown, Globe, AlertCircle } from "lucide-react";
+import { Brain, TrendingUp, TrendingDown, Globe, AlertTriangle } from "lucide-react";
 
 interface AnalysisResult {
   sentiment: string;
@@ -66,7 +66,7 @@ const TextAnalysisSection = () => {
         console.error('Error saving prediction:', saveError);
         toast.error('تم التحليل بنجاح ولكن فشل في حفظ النتيجة');
       } else {
-        toast.success('تم التحليل والحفظ بنجاح');
+        toast.success('تم التحليل والحفظ بنجاح باستخدام نموذج AraBERT');
       }
 
     } catch (err: any) {
@@ -82,9 +82,12 @@ const TextAnalysisSection = () => {
     <Card className="w-full">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
-          <MessageSquare className="h-5 w-5" />
-          تحليل النصوص العربية - لوحة الإدارة
+          <Brain className="h-5 w-5" />
+          تحليل النصوص العربية - نموذج AraBERT ONNX
         </CardTitle>
+        <p className="text-sm text-muted-foreground">
+          لوحة إدارة تحليل المشاعر باستخدام نموذج AraBERT المدرب المتخصص
+        </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <div>
@@ -106,25 +109,36 @@ const TextAnalysisSection = () => {
           disabled={isAnalyzing || !text.trim()}
           className="w-full"
         >
-          {isAnalyzing ? 'جاري التحليل...' : 'تحليل النص'}
+          {isAnalyzing ? (
+            <>
+              <Brain className="h-4 w-4 animate-pulse ml-2" />
+              جاري التحليل بنموذج AraBERT...
+            </>
+          ) : (
+            <>
+              <Brain className="h-4 w-4 ml-2" />
+              تحليل بنموذج AraBERT ONNX
+            </>
+          )}
         </Button>
 
         {error && (
           <div className="p-4 bg-red-50 border border-red-200 rounded-lg">
-            <p className="text-red-700 font-medium">خطأ: {error}</p>
+            <div className="flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-red-600" />
+              <p className="text-red-700 font-medium">خطأ: {error}</p>
+            </div>
           </div>
         )}
 
         {result && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg">نتائج التحليل:</h3>
-              {result.modelSource === 'enhanced_keyword_analysis' && (
-                <div className="flex items-center gap-1 text-amber-600">
-                  <AlertCircle className="h-4 w-4" />
-                  <span className="text-xs">تحليل كلمات مفتاحية</span>
-                </div>
-              )}
+              <h3 className="font-semibold text-lg">نتائج تحليل AraBERT:</h3>
+              <div className="flex items-center gap-1 text-blue-600">
+                <Brain className="h-4 w-4" />
+                <span className="text-xs">نموذج ONNX متقدم</span>
+              </div>
             </div>
             
             <div className="grid gap-3">
@@ -147,10 +161,20 @@ const TextAnalysisSection = () => {
 
               <div className="flex items-center justify-between">
                 <span className="font-medium">الاحتمالات:</span>
-                <span className="text-sm">
-                  إيجابي ({(result.positive_prob * 100).toFixed(1)}%), 
-                  سلبي ({(result.negative_prob * 100).toFixed(1)}%)
-                </span>
+                <div className="grid grid-cols-2 gap-2 text-sm">
+                  <div className="text-center p-2 bg-green-100 rounded">
+                    <div className="font-bold text-green-700">
+                      {(result.positive_prob * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-green-600">إيجابي</div>
+                  </div>
+                  <div className="text-center p-2 bg-red-100 rounded">
+                    <div className="font-bold text-red-700">
+                      {(result.negative_prob * 100).toFixed(1)}%
+                    </div>
+                    <div className="text-red-600">سلبي</div>
+                  </div>
+                </div>
               </div>
 
               <div className="flex items-center justify-between">
@@ -163,17 +187,13 @@ const TextAnalysisSection = () => {
                 </div>
               </div>
 
-              {result.modelSource && (
-                <div className="flex items-center justify-between text-xs text-gray-500">
-                  <span>النموذج:</span>
-                  <span>
-                    {result.modelSource === 'AraBERT_ONNX' 
-                      ? 'AraBERT (نموذج مدرب)' 
-                      : 'تحليل كلمات مفتاحية محسن'
-                    }
-                  </span>
-                </div>
-              )}
+              <div className="flex items-center justify-between text-xs text-gray-500">
+                <span>النموذج:</span>
+                <span className="flex items-center gap-1">
+                  <Brain className="h-3 w-3" />
+                  {result.modelSource || 'AraBERT_ONNX'} (نموذج متقدم)
+                </span>
+              </div>
             </div>
           </div>
         )}

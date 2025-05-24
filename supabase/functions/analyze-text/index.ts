@@ -13,19 +13,20 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Minimal memory cache - only store essential data
-let tokenCache: {
+// Global cache for model components
+let modelCache: {
   vocab?: Map<string, number>;
   clsTokenId?: number;
   sepTokenId?: number;
   padTokenId?: number;
   unkTokenId?: number;
+  tokenizerConfig?: any;
+  specialTokensMap?: any;
   loaded?: boolean;
 } = {};
 
 // Advanced Arabic text preprocessing
 function preprocessArabicText(text: string): string {
-  // Remove diacritics and normalize in one pass
   return text
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '')
     .replace(/[أإآ]/g, 'ا')
@@ -35,106 +36,139 @@ function preprocessArabicText(text: string): string {
     .trim();
 }
 
-// Optimized Jordanian dialect detection with early return
+// Enhanced Jordanian dialect detection
 function detectJordanianDialect(text: string): string {
-  const quickTerms = ['زلمة', 'هسا', 'شو', 'بدك', 'يلا', 'تمام'];
+  const jordanianPatterns = [
+    /\b(زلمة|هسا|هسه|شو|بدك|يلا|تمام|خلاص|مش|ولا|هيك|مبين)\b/g,
+    /\b(كيفك|وينك|شوفك|ايمتى|وين)\b/g,
+    /\b(بحكي|بقول|بفكر|بشوف|بعرف)\b/g
+  ];
   
-  // Quick check first
-  for (const term of quickTerms) {
-    if (text.includes(term)) return 'Jordanian';
+  let matchCount = 0;
+  for (const pattern of jordanianPatterns) {
+    const matches = text.match(pattern);
+    if (matches) matchCount += matches.length;
   }
   
-  // Pattern check only if quick terms not found
-  if (/\b(شو|كيف|وين|بدك|مش|هسا|هسه)\b/.test(text)) {
-    return 'Jordanian';
-  }
-  
-  return 'Non-Jordanian';
+  return matchCount >= 2 ? 'Jordanian' : 'Non-Jordanian';
 }
 
-// Validate Arabic text efficiently
+// Validate Arabic text
 function validateArabicText(text: string): boolean {
   return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
 }
 
-// Memory-efficient vocab loader with streaming
-async function loadVocabEfficiently() {
-  if (tokenCache.vocab && tokenCache.loaded) {
+// Load all model components
+async function loadModelComponents() {
+  if (modelCache.loaded) {
     return true;
   }
 
   try {
-    console.log('Loading vocab with memory optimization...');
+    console.log('Loading model components...');
     
-    const { data: vocabData, error } = await supabase.storage
+    // Load vocab
+    const { data: vocabData, error: vocabError } = await supabase.storage
       .from('private-model')
       .download('vocab.txt');
     
-    if (error || !vocabData) {
-      throw new Error(`Vocab load failed: ${error?.message}`);
+    if (vocabError || !vocabData) {
+      throw new Error(`Vocab load failed: ${vocabError?.message}`);
     }
     
-    // Stream processing to avoid memory spikes
     const vocabText = await vocabData.text();
-    const lines = vocabText.split('\n');
+    const vocabLines = vocabText.split('\n').filter(line => line.trim());
     
-    // Pre-allocate Map with estimated size
-    tokenCache.vocab = new Map(lines.length);
+    modelCache.vocab = new Map();
+    vocabLines.forEach((token, index) => {
+      modelCache.vocab!.set(token.trim(), index);
+    });
     
-    // Process in chunks to prevent memory spikes
-    const chunkSize = 1000;
-    for (let i = 0; i < lines.length; i += chunkSize) {
-      const chunk = lines.slice(i, i + chunkSize);
-      chunk.forEach((token, idx) => {
-        const trimmed = token.trim();
-        if (trimmed) {
-          tokenCache.vocab!.set(trimmed, i + idx);
-        }
-      });
+    // Set special tokens
+    modelCache.clsTokenId = modelCache.vocab.get('[CLS]') || 101;
+    modelCache.sepTokenId = modelCache.vocab.get('[SEP]') || 102;
+    modelCache.padTokenId = modelCache.vocab.get('[PAD]') || 0;
+    modelCache.unkTokenId = modelCache.vocab.get('[UNK]') || 100;
+    
+    // Load tokenizer config
+    try {
+      const { data: tokenizerConfigData } = await supabase.storage
+        .from('private-model')
+        .download('tokenizer_config.json');
       
-      // Allow garbage collection between chunks
-      if (i % 5000 === 0) {
-        await new Promise(resolve => setTimeout(resolve, 0));
+      if (tokenizerConfigData) {
+        const configText = await tokenizerConfigData.text();
+        modelCache.tokenizerConfig = JSON.parse(configText);
       }
+    } catch (e) {
+      console.warn('Could not load tokenizer config:', e);
     }
     
-    // Set special token IDs
-    tokenCache.clsTokenId = tokenCache.vocab.get('[CLS]') || 101;
-    tokenCache.sepTokenId = tokenCache.vocab.get('[SEP]') || 102;
-    tokenCache.padTokenId = tokenCache.vocab.get('[PAD]') || 0;
-    tokenCache.unkTokenId = tokenCache.vocab.get('[UNK]') || 100;
-    tokenCache.loaded = true;
+    // Load special tokens map
+    try {
+      const { data: specialTokensData } = await supabase.storage
+        .from('private-model')
+        .download('special_tokens_map.json');
+      
+      if (specialTokensData) {
+        const specialTokensText = await specialTokensData.text();
+        modelCache.specialTokensMap = JSON.parse(specialTokensText);
+      }
+    } catch (e) {
+      console.warn('Could not load special tokens map:', e);
+    }
     
-    console.log(`Vocab loaded: ${tokenCache.vocab.size} tokens`);
+    modelCache.loaded = true;
+    console.log(`Model components loaded successfully. Vocab size: ${modelCache.vocab.size}`);
     return true;
     
   } catch (error) {
-    console.error('Vocab loading error:', error);
-    return false;
+    console.error('Model loading error:', error);
+    throw new Error('Failed to load model components');
   }
 }
 
-// Highly optimized tokenization
-function tokenizeTextFast(text: string, maxLength: number = 128): number[] {
-  const { vocab, clsTokenId, sepTokenId, padTokenId, unkTokenId } = tokenCache;
+// Enhanced tokenization using AraBERT tokenizer
+function tokenizeTextAraBERT(text: string, maxLength: number = 128): number[] {
+  const { vocab, clsTokenId, sepTokenId, padTokenId, unkTokenId } = modelCache;
   
   if (!vocab) {
-    return createFallbackTokenization(text, maxLength);
+    throw new Error('Vocabulary not loaded');
   }
   
   const tokens = [clsTokenId!];
+  
+  // Simple word-level tokenization (can be enhanced with subword tokenization)
   const words = text.split(/\s+/);
   
   for (const word of words) {
     if (tokens.length >= maxLength - 1) break;
     
-    // Direct lookup first
-    const tokenId = vocab.get(word) || vocab.get(`##${word}`) || unkTokenId!;
+    // Try exact match first
+    let tokenId = vocab.get(word);
+    
+    if (!tokenId) {
+      // Try with ## prefix for subword
+      tokenId = vocab.get(`##${word}`);
+    }
+    
+    if (!tokenId) {
+      // Try lowercase
+      tokenId = vocab.get(word.toLowerCase());
+    }
+    
+    if (!tokenId) {
+      // Use UNK token
+      tokenId = unkTokenId!;
+    }
+    
     tokens.push(tokenId);
   }
   
-  // Add SEP and pad efficiently
+  // Add SEP token
   tokens.push(sepTokenId!);
+  
+  // Pad to max length
   while (tokens.length < maxLength) {
     tokens.push(padTokenId!);
   }
@@ -142,23 +176,8 @@ function tokenizeTextFast(text: string, maxLength: number = 128): number[] {
   return tokens.slice(0, maxLength);
 }
 
-// Fallback tokenization
-function createFallbackTokenization(text: string, maxLength: number): number[] {
-  const tokens = [101]; // CLS
-  const chars = Array.from(text.substring(0, maxLength - 2));
-  
-  chars.forEach(char => {
-    tokens.push((char.charCodeAt(0) % 30000) + 1);
-  });
-  
-  tokens.push(102); // SEP
-  while (tokens.length < maxLength) tokens.push(0);
-  
-  return tokens.slice(0, maxLength);
-}
-
-// Memory-optimized ONNX inference with cleanup
-async function runOptimizedONNXInference(inputIds: number[]): Promise<{
+// ONNX model inference
+async function runONNXInference(inputIds: number[]): Promise<{
   sentiment: string;
   confidence: number;
   positive_prob: number;
@@ -167,9 +186,8 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
   let session: any = null;
   
   try {
-    console.log('Starting optimized ONNX inference...');
+    console.log('Loading ONNX model...');
     
-    // Load model with stream processing
     const { data: modelData, error } = await supabase.storage
       .from('private-model')
       .download('model.onnx');
@@ -181,10 +199,10 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
     const modelBuffer = await modelData.arrayBuffer();
     console.log(`Model loaded: ${(modelBuffer.byteLength / 1024 / 1024).toFixed(2)}MB`);
     
-    // Import ONNX with memory optimization
+    // Import ONNX Runtime
     const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js');
     
-    // Configure session with memory limits
+    // Create session with optimized settings
     const sessionOptions = {
       executionProviders: ['wasm'],
       graphOptimizationLevel: 'all',
@@ -193,8 +211,9 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
     };
     
     session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
+    console.log('ONNX session created successfully');
     
-    // Create tensors efficiently
+    // Prepare input tensors
     const inputTensor = new ort.Tensor('int64', 
       BigInt64Array.from(inputIds.map(x => BigInt(x))), 
       [1, inputIds.length]
@@ -205,29 +224,24 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
       [1, inputIds.length]
     );
     
-    // Prepare feeds based on model inputs
+    // Prepare feeds
     const feeds: Record<string, any> = {};
     const inputNames = session.inputNames;
     
-    if (inputNames.includes('input_ids')) {
-      feeds['input_ids'] = inputTensor;
-    } else {
-      feeds[inputNames[0]] = inputTensor;
+    feeds[inputNames[0]] = inputTensor;
+    if (inputNames.length > 1) {
+      feeds[inputNames[1]] = attentionMask;
     }
     
-    if (inputNames.includes('attention_mask')) {
-      feeds['attention_mask'] = attentionMask;
-    }
-    
-    console.log('Running inference...');
+    console.log('Running ONNX inference...');
     const results = await session.run(feeds);
     
-    // Extract results efficiently
+    // Extract results
     const outputKey = Object.keys(results)[0];
     const logits = results[outputKey];
     const logitsData = logits.data as Float32Array;
     
-    // Calculate probabilities with numerical stability
+    // Calculate probabilities with softmax
     const [neg_logit, pos_logit] = [logitsData[0], logitsData[1]];
     const max_logit = Math.max(neg_logit, pos_logit);
     const exp_neg = Math.exp(neg_logit - max_logit);
@@ -238,6 +252,8 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
     const positive_prob = exp_pos / sum_exp;
     const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
     const confidence = Math.max(positive_prob, negative_prob);
+    
+    console.log('ONNX inference completed successfully');
     
     return {
       sentiment,
@@ -250,11 +266,10 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
     console.error('ONNX inference error:', error);
     throw error;
   } finally {
-    // Critical: Always cleanup session
     if (session) {
       try {
         session.release();
-        console.log('Session cleaned up');
+        console.log('ONNX session released');
       } catch (e) {
         console.error('Session cleanup error:', e);
       }
@@ -267,54 +282,6 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
   }
 }
 
-// Enhanced keyword analysis with optimized scoring
-function performEnhancedKeywordAnalysis(text: string) {
-  const positiveTerms = ['جيد', 'رائع', 'ممتاز', 'سعيد', 'أحب', 'جميل', 'تمام', 'عال', 'حلو', 'كويس'];
-  const negativeTerms = ['سيء', 'فظيع', 'أكره', 'حزين', 'غاضب', 'بطال', 'وسخ', 'مش كويس', 'زعلان'];
-  
-  let positiveScore = 0;
-  let negativeScore = 0;
-  
-  // Optimized single-pass scoring
-  for (const term of positiveTerms) {
-    if (text.includes(term)) positiveScore++;
-  }
-  for (const term of negativeTerms) {
-    if (text.includes(term)) negativeScore++;
-  }
-  
-  const totalScore = positiveScore + negativeScore;
-  let sentiment: string;
-  let confidence: number;
-  let positiveProb: number;
-  let negativeProb: number;
-  
-  if (totalScore === 0) {
-    sentiment = 'positive';
-    confidence = 0.55;
-    positiveProb = 0.55;
-    negativeProb = 0.45;
-  } else if (positiveScore > negativeScore) {
-    sentiment = 'positive';
-    positiveProb = Math.min(0.95, 0.6 + (positiveScore / totalScore) * 0.35);
-    negativeProb = 1 - positiveProb;
-    confidence = positiveProb;
-  } else {
-    sentiment = 'negative';
-    negativeProb = Math.min(0.95, 0.6 + (negativeScore / totalScore) * 0.35);
-    positiveProb = 1 - negativeProb;
-    confidence = negativeProb;
-  }
-  
-  return {
-    sentiment,
-    confidence: Math.round(confidence * 10000) / 10000,
-    positive_prob: Math.round(positiveProb * 10000) / 10000,
-    negative_prob: Math.round(negativeProb * 10000) / 10000,
-    modelSource: 'enhanced_keyword_analysis'
-  };
-}
-
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -325,7 +292,7 @@ serve(async (req) => {
     const { text } = await req.json();
     console.log('Processing text:', text?.substring(0, 50) + '...');
 
-    // Quick validation
+    // Validate input
     if (!validateArabicText(text)) {
       return new Response(
         JSON.stringify({ error: 'Text is empty, too short, or not Arabic' }),
@@ -337,41 +304,25 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed');
 
-    let analysisResult;
-
-    try {
-      // Load vocab efficiently
-      const vocabLoaded = await loadVocabEfficiently();
-      
-      if (!vocabLoaded) {
-        throw new Error('Vocab loading failed');
-      }
-      
-      // Fast tokenization
-      const tokenIds = tokenizeTextFast(preprocessedText, 128);
-      console.log('Tokenization completed');
-      
-      // Run optimized ONNX inference
-      const onnxResult = await runOptimizedONNXInference(tokenIds);
-      
-      analysisResult = {
-        ...onnxResult,
-        modelSource: 'AraBERT_ONNX'
-      };
-      
-      console.log('ONNX analysis successful');
-      
-    } catch (modelError) {
-      console.error('ONNX failed, using fallback:', modelError);
-      analysisResult = performEnhancedKeywordAnalysis(preprocessedText);
-    }
+    // Load model components
+    await loadModelComponents();
+    console.log('Model components loaded');
     
-    // Detect dialect efficiently
+    // Tokenize text
+    const tokenIds = tokenizeTextAraBERT(preprocessedText, 128);
+    console.log('Text tokenized');
+    
+    // Run ONNX inference
+    const analysisResult = await runONNXInference(tokenIds);
+    console.log('ONNX analysis completed');
+    
+    // Detect dialect
     const dialect = detectJordanianDialect(preprocessedText);
     
     const finalResult = {
       ...analysisResult,
-      dialect
+      dialect,
+      modelSource: 'AraBERT_ONNX'
     };
     
     console.log('Analysis completed successfully');
@@ -384,7 +335,10 @@ serve(async (req) => {
   } catch (error) {
     console.error('Function error:', error);
     return new Response(
-      JSON.stringify({ error: 'Internal server error' }),
+      JSON.stringify({ 
+        error: 'ONNX model analysis failed',
+        details: error.message 
+      }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
     );
   }
