@@ -605,23 +605,6 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
-      admin_create_user: {
-        Args: {
-          email_param: string
-          password_param: string
-          full_name_param: string
-          role_param?: string
-        }
-        Returns: Json
-      }
-      admin_delete_user: {
-        Args: { user_id_param: string }
-        Returns: undefined
-      }
-      admin_update_user_role: {
-        Args: { user_id_param: string; new_role: string }
-        Returns: undefined
-      }
       cleanup_old_notifications: {
         Args: Record<PropertyKey, never>
         Returns: undefined

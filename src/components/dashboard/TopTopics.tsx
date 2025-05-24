@@ -71,20 +71,13 @@ export const TopTopics = () => {
       .filter(([keyword, count]) => count >= 2)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 8)
-      .map(([keyword, mentions], index) => {
-        // Generate a simple positive trend percentage - ensure all values are numbers
-        const baseValue = 15;
-        const randomValue = Math.floor(Math.random() * 30);
-        const trendValue = baseValue + randomValue;
-        
-        return {
-          topic: keyword,
-          mentions: Number(mentions), // Ensure mentions is a number
-          trend: `+${trendValue}%`,
-          sentiment: getSentimentForTopic(keyword, postsData),
-          rank: index + 1
-        };
-      });
+      .map(([keyword, mentions], index) => ({
+        topic: keyword,
+        mentions,
+        trend: '+' + (15 + Math.floor(Math.random() * 30)) + '%',
+        sentiment: getSentimentForTopic(keyword, postsData),
+        rank: index + 1
+      }));
   };
 
   const getSentimentForTopic = (topic: string, posts: any[]) => {
@@ -95,13 +88,12 @@ export const TopTopics = () => {
     if (topicPosts.length === 0) return 'neutral';
     
     const sentimentCounts = topicPosts.reduce((acc, post) => {
-      const currentCount = Number(acc[post.sentiment] || 0);
-      acc[post.sentiment] = currentCount + 1;
+      acc[post.sentiment] = (acc[post.sentiment] || 0) + 1;
       return acc;
     }, {} as Record<string, number>);
     
     return Object.entries(sentimentCounts)
-      .sort(([,a], [,b]) => Number(b) - Number(a))[0]?.[0] || 'neutral';
+      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'neutral';
   };
 
   const topTopics = extractTopics();

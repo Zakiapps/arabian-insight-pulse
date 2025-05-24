@@ -44,7 +44,6 @@ const AdminLayout = () => {
   return (
     <SidebarProvider defaultOpen={isDesktop}>
       <div className="min-h-screen flex w-full bg-background" dir={isRTL ? "rtl" : "ltr"}>
-        <AppSidebar />
         <div className="flex flex-col flex-1 min-w-0">
           <Navbar />
           <main className="flex-1 p-4 md:p-6 overflow-auto bg-muted/20">
@@ -53,6 +52,7 @@ const AdminLayout = () => {
             </div>
           </main>
         </div>
+        <AppSidebar />
       </div>
     </SidebarProvider>
   );
