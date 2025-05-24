@@ -52,7 +52,8 @@ import {
   Trash2,
   Eye,
   CreditCard,
-  Circle
+  Circle,
+  Save
 } from "lucide-react";
 import { format } from "date-fns";
 
@@ -85,6 +86,7 @@ export default function AdminUsersManagement() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isClearDataDialogOpen, setIsClearDataDialogOpen] = useState(false);
   const [isPaymentDialogOpen, setIsPaymentDialogOpen] = useState(false);
+  const [isAddPaymentDialogOpen, setIsAddPaymentDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<AdminUser | null>(null);
   const [userPaymentMethods, setUserPaymentMethods] = useState<PaymentMethod[]>([]);
   const [editFormData, setEditFormData] = useState({
@@ -92,6 +94,12 @@ export default function AdminUsersManagement() {
     email: "",
     role: "user",
     subscription_plan: "free",
+  });
+  const [newPaymentMethod, setNewPaymentMethod] = useState({
+    type: "credit_card",
+    last_four: "",
+    brand: "",
+    is_default: false,
   });
   const [filter, setFilter] = useState('all');
   const [avatarFile, setAvatarFile] = useState<File | null>(null);
@@ -106,6 +114,7 @@ export default function AdminUsersManagement() {
       if (error) throw error;
       
       setUsers(data || []);
+      console.log('Fetched users:', data);
     } catch (error) {
       console.error("Error fetching users:", error);
       toast.error("فشل في جلب بيانات المستخدمين");
@@ -125,13 +134,14 @@ export default function AdminUsersManagement() {
       if (error) throw error;
       
       setUserPaymentMethods(data || []);
+      console.log('Fetched payment methods:', data);
     } catch (error) {
       console.error("Error fetching payment methods:", error);
       toast.error("فشل في جلب طرق الدفع");
     }
   };
 
-  // Set up real-time subscription for online status
+  // Set up real-time subscription for online status and refresh every 30 seconds
   useEffect(() => {
     fetchUsers();
 
@@ -146,14 +156,18 @@ export default function AdminUsersManagement() {
           table: 'user_sessions'
         },
         () => {
-          // Refresh users when session data changes
+          console.log('Real-time update received');
           fetchUsers();
         }
       )
       .subscribe();
 
+    // Refresh users every 30 seconds for real-time status
+    const interval = setInterval(fetchUsers, 30000);
+
     return () => {
       supabase.removeChannel(channel);
+      clearInterval(interval);
     };
   }, []);
 
@@ -244,15 +258,64 @@ export default function AdminUsersManagement() {
 
       if (profileError) throw profileError;
 
-      // Note: Email updates require special handling with Supabase Auth
-      // For now, we'll skip email updates as they require admin auth
-      
       toast.success("تم تحديث بيانات المستخدم بنجاح");
       fetchUsers();
       setIsEditDialogOpen(false);
     } catch (error) {
       console.error("Error updating user:", error);
       toast.error("فشل في تحديث بيانات المستخدم");
+    }
+  };
+
+  // Add payment method
+  const addPaymentMethod = async () => {
+    if (!selectedUser) return;
+    
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .insert({
+          user_id: selectedUser.id,
+          type: newPaymentMethod.type,
+          last_four: newPaymentMethod.last_four,
+          brand: newPaymentMethod.brand,
+          is_default: newPaymentMethod.is_default,
+        });
+
+      if (error) throw error;
+      
+      toast.success("تم إضافة طريقة الدفع بنجاح");
+      await fetchUserPaymentMethods(selectedUser.id);
+      setIsAddPaymentDialogOpen(false);
+      setNewPaymentMethod({
+        type: "credit_card",
+        last_four: "",
+        brand: "",
+        is_default: false,
+      });
+    } catch (error) {
+      console.error("Error adding payment method:", error);
+      toast.error("فشل في إضافة طريقة الدفع");
+    }
+  };
+
+  // Remove payment method
+  const removePaymentMethod = async (paymentMethodId: string) => {
+    try {
+      const { error } = await supabase
+        .from('payment_methods')
+        .delete()
+        .eq('id', paymentMethodId);
+
+      if (error) throw error;
+      
+      toast.success("تم حذف طريقة الدفع بنجاح");
+      if (selectedUser) {
+        await fetchUserPaymentMethods(selectedUser.id);
+      }
+    } catch (error) {
+      console.error("Error removing payment method:", error);
+      toast.error("فشل في حذف طريقة الدفع");
     }
   };
 
@@ -295,7 +358,7 @@ export default function AdminUsersManagement() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6" dir="rtl">
       <div className="flex items-center justify-between">
         <h1 className="text-2xl font-bold">إدارة المستخدمين</h1>
         <div className="flex gap-2">
@@ -312,10 +375,10 @@ export default function AdminUsersManagement() {
       
       <Card>
         <CardHeader>
-          <CardTitle>المستخدمون النشطون</CardTitle>
+          <CardTitle>المستخدمون النشطون ({filteredUsers.length})</CardTitle>
         </CardHeader>
         <CardContent className="p-6">
-          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between mb-6">
             <div className="relative flex-1 max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
@@ -350,11 +413,12 @@ export default function AdminUsersManagement() {
             </div>
           </div>
       
-          <div className="rounded-md border mt-6">
+          <div className="rounded-md border">
             <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>المستخدم</TableHead>
+                  <TableHead>البريد الإلكتروني</TableHead>
                   <TableHead>الدور</TableHead>
                   <TableHead>خطة الاشتراك</TableHead>
                   <TableHead>طرق الدفع</TableHead>
@@ -367,7 +431,7 @@ export default function AdminUsersManagement() {
               <TableBody>
                 {loading ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       <div className="flex justify-center">
                         <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
                       </div>
@@ -375,13 +439,13 @@ export default function AdminUsersManagement() {
                   </TableRow>
                 ) : filteredUsers.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8">
+                    <TableCell colSpan={9} className="text-center py-8">
                       لم يتم العثور على مستخدمين.
                     </TableCell>
                   </TableRow>
                 ) : (
                   filteredUsers.map(user => (
-                    <TableRow key={user.id}>
+                    <TableRow key={user.id} className="cursor-pointer hover:bg-muted/50" onClick={() => handleEditUser(user)}>
                       <TableCell className="font-medium">
                         <div className="flex items-center gap-3">
                           <Avatar className="h-10 w-10">
@@ -392,10 +456,10 @@ export default function AdminUsersManagement() {
                           </Avatar>
                           <div>
                             <div>{user.full_name || "غير معروف"}</div>
-                            <div className="text-sm text-muted-foreground">{user.email}</div>
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell>{user.email}</TableCell>
                       <TableCell>
                         {user.role === "admin" ? (
                           <Badge variant="secondary" className="flex items-center gap-1 w-fit bg-primary text-primary-foreground">
@@ -420,7 +484,10 @@ export default function AdminUsersManagement() {
                         <Button
                           variant="ghost"
                           size="sm"
-                          onClick={() => handleViewPayments(user)}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleViewPayments(user);
+                          }}
                           className="flex items-center gap-1"
                         >
                           <CreditCard className="h-4 w-4" />
@@ -445,24 +512,31 @@ export default function AdminUsersManagement() {
                       </TableCell>
                       <TableCell>
                         <DropdownMenu>
-                          <DropdownMenuTrigger asChild>
+                          <DropdownMenuTrigger asChild onClick={(e) => e.stopPropagation()}>
                             <Button variant="ghost" size="icon">
                               <MoreHorizontal className="h-4 w-4" />
                               <span className="sr-only">فتح القائمة</span>
                             </Button>
                           </DropdownMenuTrigger>
                           <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleEditUser(user);
+                            }}>
                               <Edit className="ml-2 h-4 w-4" />
                               تعديل
                             </DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => handleViewPayments(user)}>
+                            <DropdownMenuItem onClick={(e) => {
+                              e.stopPropagation();
+                              handleViewPayments(user);
+                            }}>
                               <CreditCard className="ml-2 h-4 w-4" />
                               طرق الدفع
                             </DropdownMenuItem>
                             {user.email !== 'admin@arabinsights.com' && (
                               <DropdownMenuItem 
-                                onClick={() => {
+                                onClick={(e) => {
+                                  e.stopPropagation();
                                   setSelectedUser(user);
                                   setIsDeleteDialogOpen(true);
                                 }}
@@ -573,6 +647,7 @@ export default function AdminUsersManagement() {
               إلغاء
             </Button>
             <Button onClick={saveUserChanges}>
+              <Save className="ml-2 h-4 w-4" />
               حفظ التغييرات
             </Button>
           </DialogFooter>
@@ -581,12 +656,19 @@ export default function AdminUsersManagement() {
 
       {/* Payment Methods Dialog */}
       <Dialog open={isPaymentDialogOpen} onOpenChange={setIsPaymentDialogOpen}>
-        <DialogContent>
+        <DialogContent className="max-w-lg">
           <DialogHeader>
             <DialogTitle>طرق الدفع - {selectedUser?.full_name}</DialogTitle>
             <DialogDescription>إدارة طرق الدفع للمستخدم</DialogDescription>
           </DialogHeader>
           <div className="space-y-4">
+            <div className="flex justify-between items-center">
+              <h4 className="font-medium">طرق الدفع المسجلة</h4>
+              <Button onClick={() => setIsAddPaymentDialogOpen(true)} size="sm">
+                <CreditCard className="ml-2 h-4 w-4" />
+                إضافة طريقة دفع
+              </Button>
+            </div>
             {userPaymentMethods.length === 0 ? (
               <p className="text-center text-muted-foreground py-4">لا توجد طرق دفع مسجلة</p>
             ) : (
@@ -607,9 +689,18 @@ export default function AdminUsersManagement() {
                       )}
                     </div>
                   </div>
-                  {method.is_default && (
-                    <Badge variant="outline">افتراضي</Badge>
-                  )}
+                  <div className="flex items-center gap-2">
+                    {method.is_default && (
+                      <Badge variant="outline">افتراضي</Badge>
+                    )}
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => removePaymentMethod(method.id)}
+                    >
+                      <Trash className="h-4 w-4" />
+                    </Button>
+                  </div>
                 </div>
               ))
             )}
@@ -617,6 +708,70 @@ export default function AdminUsersManagement() {
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsPaymentDialogOpen(false)}>
               إغلاق
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Payment Method Dialog */}
+      <Dialog open={isAddPaymentDialogOpen} onOpenChange={setIsAddPaymentDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>إضافة طريقة دفع جديدة</DialogTitle>
+            <DialogDescription>إضافة طريقة دفع للمستخدم</DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">نوع طريقة الدفع</label>
+              <Select
+                value={newPaymentMethod.type}
+                onValueChange={(value) => setNewPaymentMethod({...newPaymentMethod, type: value})}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="credit_card">بطاقة ائتمان</SelectItem>
+                  <SelectItem value="paypal">PayPal</SelectItem>
+                  <SelectItem value="bank_transfer">تحويل بنكي</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">آخر 4 أرقام</label>
+              <Input
+                value={newPaymentMethod.last_four}
+                onChange={(e) => setNewPaymentMethod({...newPaymentMethod, last_four: e.target.value})}
+                placeholder="1234"
+                maxLength={4}
+              />
+            </div>
+            <div className="grid gap-2">
+              <label className="text-sm font-medium">العلامة التجارية</label>
+              <Input
+                value={newPaymentMethod.brand}
+                onChange={(e) => setNewPaymentMethod({...newPaymentMethod, brand: e.target.value})}
+                placeholder="Visa, Mastercard, etc."
+              />
+            </div>
+            <div className="flex items-center space-x-2">
+              <input
+                type="checkbox"
+                id="is_default"
+                checked={newPaymentMethod.is_default}
+                onChange={(e) => setNewPaymentMethod({...newPaymentMethod, is_default: e.target.checked})}
+              />
+              <label htmlFor="is_default" className="text-sm font-medium">
+                جعل هذه الطريقة افتراضية
+              </label>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setIsAddPaymentDialogOpen(false)}>
+              إلغاء
+            </Button>
+            <Button onClick={addPaymentMethod}>
+              إضافة
             </Button>
           </DialogFooter>
         </DialogContent>

@@ -1,3 +1,4 @@
+
 import { useEffect } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -18,6 +19,7 @@ export const useUserSession = () => {
           session_id_param: sessionId,
           is_online_param: isOnline
         });
+        console.log(`Updated session status: ${isOnline ? 'online' : 'offline'}`);
       } catch (error) {
         console.error('Error updating session status:', error);
       }
