@@ -6,7 +6,7 @@ import * as THREE from 'three';
 
 // Rotating cube component
 const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
-  // Fix TypeScript error by using the correct type
+  // Use correct TypeScript type that matches the expected ref type
   const cubeRef = useRef<THREE.Mesh>(null);
   
   useFrame((state, delta) => {
@@ -25,7 +25,7 @@ const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
 
 // Floating text that represents data analytics
 const DataVisualization = () => {
-  // Fix TypeScript error by using the correct type
+  // Use correct TypeScript type that matches the expected ref type
   const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
@@ -49,7 +49,7 @@ const DataVisualization = () => {
   );
 };
 
-// Main component
+// Create a simpler version of the 3D scene that doesn't use advanced features
 const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
   return (
     <div className={`${className} w-full h-full`}>
@@ -59,7 +59,7 @@ const ThreeDScene: React.FC<{ className?: string }> = ({ className }) => {
       >
         <ambientLight intensity={0.5} />
         <pointLight position={[10, 10, 10]} intensity={1} />
-        <Stars radius={100} depth={50} count={500} factor={4} fade speed={1} />
+        {/* Removed Stars component which might be causing compatibility issues */}
         <DataVisualization />
         <OrbitControls 
           enableZoom={false}
