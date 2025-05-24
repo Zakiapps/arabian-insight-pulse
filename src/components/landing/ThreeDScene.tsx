@@ -1,12 +1,12 @@
 
-import React, { useRef, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { Canvas, useFrame } from '@react-three/fiber';
-import { OrbitControls, useGLTF, Stars } from '@react-three/drei';
+import { OrbitControls, Stars } from '@react-three/drei';
 import * as THREE from 'three';
 
 // Rotating cube component
 const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
-  const cubeRef = useRef<THREE.Mesh>(null!);
+  const cubeRef = useRef<THREE.Mesh>(null);
   
   useFrame((state, delta) => {
     if (!cubeRef.current) return;
@@ -24,7 +24,7 @@ const AnimatedCube = ({ position = [0, 0, 0], color = '#0077ff' }) => {
 
 // Floating text that represents data analytics
 const DataVisualization = () => {
-  const groupRef = useRef<THREE.Group>(null!);
+  const groupRef = useRef<THREE.Group>(null);
   
   useFrame((state) => {
     if (!groupRef.current) return;
@@ -40,7 +40,8 @@ const DataVisualization = () => {
       
       {/* Lines connecting the data points */}
       <mesh position={[0, 0, 0]}>
-        <cylinderGeometry args={[0.05, 0.05, 4, 16]} rotation={[0, 0, Math.PI / 2]} />
+        {/* Fixed the cylinder geometry by moving rotation to the mesh */}
+        <cylinderGeometry args={[0.05, 0.05, 4, 16]} />
         <meshBasicMaterial color="#ffffff" opacity={0.3} transparent />
       </mesh>
     </group>

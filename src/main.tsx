@@ -6,7 +6,9 @@ import preloadSounds from './utils/preloadSounds.ts'
 
 // Add dir="rtl" to the root element for RTL support by default
 const rootElement = document.getElementById("root")!;
-rootElement.dir = "rtl"; // Set RTL direction by default for Arabic
+// Set RTL direction only for the root element, not for all elements
+// This prevents conflicts with Three.js which expects LTR for 3D rendering
+document.documentElement.dir = "rtl";
 
 // Preload sound effects
 preloadSounds();

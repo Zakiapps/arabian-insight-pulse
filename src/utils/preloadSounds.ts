@@ -10,10 +10,14 @@ export const preloadSounds = () => {
   ];
   
   soundUrls.forEach(url => {
-    const audio = new Audio();
-    audio.src = url;
-    // Just start loading, don't actually play
-    audio.load();
+    try {
+      const audio = new Audio();
+      audio.src = url;
+      // Just start loading, don't actually play
+      audio.load();
+    } catch (error) {
+      console.error(`Failed to preload audio: ${url}`, error);
+    }
   });
 };
 
