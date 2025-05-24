@@ -23,16 +23,16 @@ import { QuickActionButton } from './QuickActionButton';
 
 export const QuickActions = () => {
   const navigate = useNavigate();
-  const { startTask, completeTask } = useTaskHistory();
+  const taskHistory = useTaskHistory();
   const { createNotification } = useNotifications();
   const { checkAuth, user } = useAuthCheck();
   const [isExporting, setIsExporting] = useState(false);
 
-  // Create action handlers
-  const navigationActions = createNavigationAction(navigate, { startTask, completeTask });
-  const dataActions = user ? createDataActions(user, { startTask, completeTask }) : null;
-  const reportActions = user ? createReportActions(user, navigate, { startTask, completeTask }) : null;
-  const alertActions = user ? createAlertActions(user, navigate, { startTask, completeTask }) : null;
+  // Create action handlers with complete task history object
+  const navigationActions = createNavigationAction(navigate, taskHistory);
+  const dataActions = user ? createDataActions(user, taskHistory) : null;
+  const reportActions = user ? createReportActions(user, navigate, taskHistory) : null;
+  const alertActions = user ? createAlertActions(user, navigate, taskHistory) : null;
 
   // Wrapper function to check auth before executing actions
   const executeWithAuth = (action: () => Promise<void>) => async () => {
