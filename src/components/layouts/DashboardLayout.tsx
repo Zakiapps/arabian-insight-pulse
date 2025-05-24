@@ -25,12 +25,14 @@ const DashboardLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-muted/20" dir={isRTL ? "rtl" : "ltr"}>
+      <div className="min-h-screen flex w-full bg-background" dir={isRTL ? "rtl" : "ltr"}>
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
-            <Outlet />
+          <main className="flex-1 p-4 md:p-6 overflow-auto bg-muted/20">
+            <div className="max-w-7xl mx-auto">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

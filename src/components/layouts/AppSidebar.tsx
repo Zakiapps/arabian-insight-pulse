@@ -10,29 +10,42 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
+  SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
   ChevronRight,
   LayoutDashboard,
-  FileText,
+  MessageSquare,
   Upload,
   Bell,
+  FileText,
   BarChart3,
-  Settings,
-  MessageSquare,
-  TrendingUp,
-  Users,
+  PieChart,
   Globe,
+  TrendingUp,
+  Languages,
+  Settings,
+  Users2,
+  CreditCard,
+  DollarSign,
+  Receipt,
+  BadgePercent,
+  Shield,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Badge } from "@/components/ui/badge";
 
 const AppSidebar = () => {
   const location = useLocation();
-  const { profile } = useAuth();
+  const { profile, isAdmin } = useAuth();
+  const { isRTL } = useLanguage();
 
-  const isActive = (path: string) => location.pathname === path;
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
 
-  const mainFeatures = [
+  const mainMenuItems = [
     {
       title: "لوحة التحكم",
       url: "/dashboard",
@@ -41,7 +54,7 @@ const AppSidebar = () => {
     {
       title: "المنشورات",
       url: "/dashboard/posts",
-      icon: FileText,
+      icon: MessageSquare,
     },
     {
       title: "رفع البيانات",
@@ -56,20 +69,20 @@ const AppSidebar = () => {
     {
       title: "التقارير",
       url: "/dashboard/reports",
-      icon: BarChart3,
+      icon: FileText,
     },
   ];
 
-  const analysisFeatures = [
+  const analysisMenuItems = [
     {
       title: "تحليل المشاعر",
       url: "/dashboard/sentiment",
-      icon: TrendingUp,
+      icon: BarChart3,
     },
     {
       title: "توزيع الفئات",
       url: "/dashboard/categories",
-      icon: BarChart3,
+      icon: PieChart,
     },
     {
       title: "توزيع المنصات",
@@ -79,42 +92,80 @@ const AppSidebar = () => {
     {
       title: "المواضيع الشائعة",
       url: "/dashboard/topics",
-      icon: MessageSquare,
+      icon: TrendingUp,
     },
     {
-      title: "كشف اللهجة",
+      title: "كشف اللهجات",
       url: "/dashboard/dialects",
-      icon: Users,
+      icon: Languages,
+    },
+  ];
+
+  const adminMenuItems = [
+    {
+      title: "إدارة المستخدمين",
+      url: "/admin/users",
+      icon: Users2,
+    },
+    {
+      title: "خطط الاشتراك",
+      url: "/admin/plans",
+      icon: BadgePercent,
+    },
+    {
+      title: "الاشتراكات",
+      url: "/admin/subscriptions",
+      icon: CreditCard,
+    },
+    {
+      title: "المعاملات",
+      url: "/admin/transactions",
+      icon: Receipt,
+    },
+    {
+      title: "إعدادات النظام",
+      url: "/admin/settings",
+      icon: Settings,
     },
   ];
 
   return (
-    <Sidebar>
-      <SidebarContent className="pt-6">
-        <div className="mb-4 px-4">
-          <h2 className="font-bold text-lg tracking-tight mb-1">أراب إنسايتس</h2>
-          <p className="text-sm text-muted-foreground mb-4">تحليل البيانات الاجتماعية</p>
-          <div className="flex items-center gap-2 mb-2">
-            <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
-            <p className="text-xs text-muted-foreground">{profile?.role || 'مستخدم'}</p>
+    <Sidebar side="left" className="border-r bg-card">
+      <SidebarHeader className="border-b p-4">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-primary text-primary-foreground">
+            <BarChart3 className="h-5 w-5" />
+          </div>
+          <div className="flex-1">
+            <h2 className="font-bold text-lg">Arab Insights</h2>
+            <p className="text-xs text-muted-foreground">تحليل البيانات الاجتماعية</p>
           </div>
         </div>
+      </SidebarHeader>
 
+      <SidebarContent className="px-2 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel>الميزات الرئيسية</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2">
+            الميزات الرئيسية
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {mainFeatures.map((item) => (
-                <SidebarMenuItem key={item.url}>
+              {mainMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link to={item.url}>
                       <Button 
                         variant="ghost"
-                        className={`justify-start w-full ${isActive(item.url) ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                        className={`justify-start w-full h-10 ${
+                          isActive(item.url) 
+                            ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                            : 'hover:bg-muted/50'
+                        }`}
+                        dir={isRTL ? "rtl" : "ltr"}
                       >
-                        <item.icon className="h-4 w-4 ml-2" />
-                        <span>{item.title}</span>
-                        <ChevronRight className="h-4 w-4 mr-auto" />
+                        <item.icon className="h-4 w-4 ml-3" />
+                        <span className="flex-1 text-right">{item.title}</span>
+                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
                       </Button>
                     </Link>
                   </SidebarMenuButton>
@@ -125,20 +176,27 @@ const AppSidebar = () => {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel>أدوات التحليل</SidebarGroupLabel>
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2">
+            أدوات التحليل
+          </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {analysisFeatures.map((item) => (
-                <SidebarMenuItem key={item.url}>
+              {analysisMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild>
                     <Link to={item.url}>
                       <Button 
                         variant="ghost"
-                        className={`justify-start w-full ${isActive(item.url) ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                        className={`justify-start w-full h-10 ${
+                          isActive(item.url) 
+                            ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                            : 'hover:bg-muted/50'
+                        }`}
+                        dir={isRTL ? "rtl" : "ltr"}
                       >
-                        <item.icon className="h-4 w-4 ml-2" />
-                        <span>{item.title}</span>
-                        <ChevronRight className="h-4 w-4 mr-auto" />
+                        <item.icon className="h-4 w-4 ml-3" />
+                        <span className="flex-1 text-right">{item.title}</span>
+                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
                       </Button>
                     </Link>
                   </SidebarMenuButton>
@@ -148,8 +206,42 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
 
+        {isAdmin && (
+          <SidebarGroup>
+            <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2">
+              <Shield className="h-4 w-4" />
+              إدارة النظام
+              <Badge variant="destructive" className="text-xs">مشرف</Badge>
+            </SidebarGroupLabel>
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {adminMenuItems.map((item) => (
+                  <SidebarMenuItem key={item.title}>
+                    <SidebarMenuButton asChild>
+                      <Link to={item.url}>
+                        <Button 
+                          variant="ghost"
+                          className={`justify-start w-full h-10 ${
+                            isActive(item.url) 
+                              ? 'bg-destructive/10 text-destructive font-medium border-r-2 border-destructive' 
+                              : 'hover:bg-muted/50 text-muted-foreground hover:text-foreground'
+                          }`}
+                          dir={isRTL ? "rtl" : "ltr"}
+                        >
+                          <item.icon className="h-4 w-4 ml-3" />
+                          <span className="flex-1 text-right">{item.title}</span>
+                          {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
+                        </Button>
+                      </Link>
+                    </SidebarMenuButton>
+                  </SidebarMenuItem>
+                ))}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        )}
+
         <SidebarGroup>
-          <SidebarGroupLabel>الإعدادات</SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
@@ -157,11 +249,16 @@ const AppSidebar = () => {
                   <Link to="/dashboard/settings">
                     <Button 
                       variant="ghost"
-                      className={`justify-start w-full ${isActive('/dashboard/settings') ? 'bg-primary/10 text-primary font-medium' : ''}`}
+                      className={`justify-start w-full h-10 ${
+                        isActive('/dashboard/settings') 
+                          ? 'bg-primary/10 text-primary font-medium border-r-2 border-primary' 
+                          : 'hover:bg-muted/50'
+                      }`}
+                      dir={isRTL ? "rtl" : "ltr"}
                     >
-                      <Settings className="h-4 w-4 ml-2" />
-                      <span>إعدادات الحساب</span>
-                      <ChevronRight className="h-4 w-4 mr-auto" />
+                      <Settings className="h-4 w-4 ml-3" />
+                      <span className="flex-1 text-right">الإعدادات</span>
+                      {isActive('/dashboard/settings') && <ChevronRight className="h-4 w-4 mr-2" />}
                     </Button>
                   </Link>
                 </SidebarMenuButton>
@@ -170,6 +267,29 @@ const AppSidebar = () => {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+
+      <SidebarFooter className="border-t p-4">
+        <div className="flex items-center gap-3">
+          <Avatar className="h-8 w-8">
+            <AvatarImage src={profile?.avatar_url} />
+            <AvatarFallback>
+              {profile?.full_name?.charAt(0) || 'U'}
+            </AvatarFallback>
+          </Avatar>
+          <div className="flex-1 min-w-0">
+            <p className="text-sm font-medium truncate">
+              {profile?.full_name || 'مستخدم'}
+            </p>
+            <div className="flex items-center gap-2">
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
+              <p className="text-xs text-muted-foreground">متصل</p>
+              {isAdmin && (
+                <Badge variant="destructive" className="text-xs">مشرف</Badge>
+              )}
+            </div>
+          </div>
+        </div>
+      </SidebarFooter>
     </Sidebar>
   );
 };

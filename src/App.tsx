@@ -39,8 +39,8 @@ import PaymentSettings from "./pages/admin/PaymentSettings";
 const queryClient = new QueryClient({
   defaultOptions: {
     queries: {
-      retry: false, // Don't retry failed queries automatically
-      refetchOnWindowFocus: false // Don't refetch on window focus for better performance
+      retry: false,
+      refetchOnWindowFocus: false
     }
   }
 });
