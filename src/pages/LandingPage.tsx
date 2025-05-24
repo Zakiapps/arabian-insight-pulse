@@ -1,4 +1,3 @@
-
 import React, { useEffect } from 'react';
 import { Link } from 'react-router-dom';
 import { BarChart3, ChevronLeft, ChevronRight, ArrowLeft, ArrowRight, Check, ExternalLink } from 'lucide-react';
@@ -30,7 +29,7 @@ const LandingPage = () => {
       transition: {
         duration: 3,
         repeat: Infinity,
-        repeatType: "mirror"
+        repeatType: "mirror" as const
       }
     }
   };
