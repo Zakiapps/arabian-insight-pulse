@@ -24,31 +24,27 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isAdmin,
     adminOnly,
     userEmail: user?.email,
-    currentPath: location.pathname,
-    requiredFeature
+    currentPath: location.pathname
   });
 
-  // Show loading indicator while checking authentication
+  // Use a simpler loading indicator to improve performance
   if (loading || subscriptionLoading) {
     return (
       <div className="flex min-h-screen items-center justify-center">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p className="text-gray-600">جاري التحقق من الصلاحيات...</p>
-        </div>
+        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
 
-  // Check if user is authenticated
   if (!isAuthenticated) {
-    console.log('Not authenticated, redirecting to signin');
-    return <Navigate to="/signin" state={{ from: location }} replace />;
+    // Redirect to login page if not authenticated
+    console.log('Not authenticated, redirecting to login');
+    return <Navigate to="/login" state={{ from: location }} replace />;
   }
 
-  // Check admin access for admin-only routes
   if (adminOnly && !isAdmin) {
-    console.log('Admin required but user is not admin, redirecting to dashboard');
+    // Redirect to dashboard if not an admin
+    console.log('Not admin, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
 
@@ -60,11 +56,10 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
 
   // Check feature access if a required feature is specified (only for non-admin users)
   if (requiredFeature && !canAccessFeature(requiredFeature)) {
-    console.log('Feature access denied, redirecting to pricing');
+    // Redirect to pricing page for subscription upgrade
     return <Navigate to="/pricing" replace />;
   }
 
-  console.log('Access granted');
   return <>{children}</>;
 };
 

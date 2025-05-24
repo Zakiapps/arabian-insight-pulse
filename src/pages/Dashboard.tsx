@@ -9,6 +9,8 @@ import { Button } from "@/components/ui/button";
 import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { useTaskHistory } from "@/hooks/useTaskHistory";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   BarChart3,
   TrendingUp,
@@ -23,14 +25,13 @@ import {
   Activity
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
 
 const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
+  const { startTask, completeTask } = useTaskHistory();
+  const { createNotification } = useNotifications();
 
   // Fetch real data from Supabase - user's own data only
   const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useQuery({
@@ -81,14 +82,17 @@ const Dashboard = () => {
   // Recent posts for activity feed - only real data
   const recentPosts = postsData?.slice(0, 5) || [];
 
-  // Handle new analysis button click
-  const handleNewAnalysis = () => {
+  // Enhanced handler function for new analysis
+  const handleNewAnalysis = async () => {
+    if (!profile?.id) return;
+    
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التحليل');
     try {
       navigate('/dashboard/upload');
-      toast.success('تم الانتقال إلى صفحة رفع وتحليل البيانات');
+      await completeTask(taskId, { page: 'upload' });
+      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة رفع وتحليل البيانات', 'info');
     } catch (error) {
-      console.error('Navigation error:', error);
-      toast.error('حدث خطأ في الانتقال');
+      await completeTask(taskId, null, 'فشل في الانتقال');
     }
   };
 
@@ -109,11 +113,7 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ButtonRTL 
-            size="sm" 
-            onClick={handleNewAnalysis} 
-            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-          >
+          <ButtonRTL size="sm" onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
           </ButtonRTL>
@@ -286,7 +286,7 @@ const Dashboard = () => {
                     </div>
                     <h3 className="text-lg font-medium mb-2">لا توجد منشورات حالياً</h3>
                     <p className="text-sm mb-4">ابدأ بتحليل بعض البيانات لرؤية النتائج هنا</p>
-                    <Button onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600">
+                    <Button onClick={() => navigate('/dashboard/upload')} className="bg-gradient-to-r from-primary to-blue-600">
                       <Upload className="h-4 w-4 mr-2" />
                       رفع بيانات جديدة
                     </Button>

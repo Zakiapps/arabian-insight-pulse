@@ -15,36 +15,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setSession: () => {} // This will be handled by useAuthState
   });
 
-  // Enhanced admin check with proper fallback
-  const isAdmin = React.useMemo(() => {
-    // Primary check: admin email
-    if (user?.email === 'admin@arabinsights.com') {
-      return true;
-    }
-    
-    // Secondary check: profile role (only if email matches)
-    if (user?.email === 'admin@arabinsights.com' && profile?.role === 'admin') {
-      return true;
-    }
-    
-    return false;
-  }, [user?.email, profile?.role]);
+  // Check if user is admin - prioritize email check for admin@arabinsights.com
+  // Fixed: Make sure admin check works properly
+  const isAdmin = user?.email === 'admin@arabinsights.com' || 
+    (profile?.role === 'admin' && user?.email === 'admin@arabinsights.com');
   
-  // Enhanced authentication check - more flexible for admin users
-  const isAuthenticated = React.useMemo(() => {
-    if (loading) return false;
-    
-    // Must have user and session
-    if (!user || !session) return false;
-    
-    // For admin user, profile is optional
-    if (user.email === 'admin@arabinsights.com') {
-      return true;
-    }
-    
-    // For regular users, profile is required
-    return !!profile;
-  }, [loading, user, session, profile]);
+  // More robust authentication check - ensure we have all required data
+  // Fixed: For admin users, don't require profile if user email is admin@arabinsights.com
+  const isAuthenticated = !loading && !!user && !!session && 
+    (user?.email === 'admin@arabinsights.com' || !!profile);
 
   console.log('Auth state check:', {
     loading,
@@ -53,8 +32,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     hasProfile: !!profile,
     isAuthenticated,
     isAdmin,
-    userEmail: user?.email,
-    profileRole: profile?.role
+    userEmail: user?.email
   });
 
   const value = {

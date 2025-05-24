@@ -5,8 +5,7 @@ import {
   BarChart3, ChevronLeft, ChevronRight, ArrowLeft, 
   ArrowRight, Check, ExternalLink, Users, MessageSquare,
   TrendingUp, Globe, Languages, Bell, Shield, Zap,
-  Target, Eye, Heart, Share2, FileText, Upload,
-  Star, Award, Sparkles, Brain, Lightbulb, Clock
+  Target, Eye, Heart, Share2, FileText, Upload
 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -48,112 +47,130 @@ const LandingPage = () => {
 
   const features = [
     {
-      icon: Brain,
-      title: "تحليل المشاعر بالذكاء الاصطناعي",
-      description: "تحليل دقيق ومتطور للمشاعر باستخدام أحدث تقنيات الذكاء الاصطناعي والتعلم العميق",
-      color: "bg-gradient-to-br from-blue-500 to-blue-600"
+      icon: BarChart3,
+      title: "تحليل المشاعر المتقدم",
+      description: "تحليل دقيق للمشاعر في النصوص العربية باستخدام نماذج الذكاء الاصطناعي المتطورة",
+      color: "bg-blue-500"
     },
     {
-      icon: Globe,
-      title: "كشف اللهجات العربية",
-      description: "تمييز وتحليل اللهجات العربية المختلفة مع التركيز على اللهجة الأردنية بدقة عالية",
-      color: "bg-gradient-to-br from-emerald-500 to-emerald-600"
+      icon: MessageSquare,
+      title: "تحليل المحتوى الاجتماعي",
+      description: "مراقبة وتحليل المنشورات على جميع منصات التواصل الاجتماعي في الوقت الفعلي",
+      color: "bg-green-500"
     },
     {
       icon: TrendingUp,
-      title: "تحليل البيانات المتقدم",
-      description: "رؤى عميقة وتقارير تفاعلية مع تصورات بيانية متطورة لفهم الاتجاهات",
-      color: "bg-gradient-to-br from-purple-500 to-purple-600"
+      title: "التقارير والإحصائيات",
+      description: "تقارير تفاعلية مفصلة مع رؤى قيمة حول اتجاهات الرأي العام",
+      color: "bg-purple-500"
     },
     {
-      icon: Zap,
-      title: "معالجة فورية",
-      description: "تحليل سريع للنصوص في الوقت الفعلي مع نتائج دقيقة ومفصلة",
-      color: "bg-gradient-to-br from-orange-500 to-orange-600"
+      icon: Globe,
+      title: "تغطية متعددة المنصات",
+      description: "تحليل شامل عبر تويتر، فيسبوك، إنستغرام، ولينكدإن",
+      color: "bg-orange-500"
     },
     {
-      icon: Shield,
-      title: "أمان وخصوصية",
-      description: "حماية كاملة للبيانات مع التزام صارم بمعايير الأمان والخصوصية",
-      color: "bg-gradient-to-br from-red-500 to-red-600"
+      icon: Languages,
+      title: "كشف اللهجات العربية",
+      description: "تمييز وتحليل اللهجات العربية المختلفة بدقة عالية",
+      color: "bg-pink-500"
     },
     {
-      icon: Award,
-      title: "دقة استثنائية",
-      description: "معدل دقة يصل إلى 99.9% في تحليل المشاعر والنصوص العربية",
-      color: "bg-gradient-to-br from-indigo-500 to-indigo-600"
+      icon: Bell,
+      title: "تنبيهات ذكية",
+      description: "تنبيهات فورية عند تغيرات مهمة في المشاعر أو الاتجاهات",
+      color: "bg-red-500"
     }
   ];
 
   const stats = [
-    { number: "1M+", label: "تحليل مكتمل", icon: BarChart3 },
-    { number: "500+", label: "عميل راضي", icon: Users },
-    { number: "15+", label: "منصة مدعومة", icon: Globe },
-    { number: "99.9%", label: "دقة التحليل", icon: Target }
+    { number: "1M+", label: "منشور محلل" },
+    { number: "500+", label: "عميل راضي" },
+    { number: "15+", label: "منصة مدعومة" },
+    { number: "99.9%", label: "دقة التحليل" }
   ];
 
-  const testimonials = [
+  const pricingPlans = [
     {
-      name: "أحمد محمد",
-      role: "مدير التسويق الرقمي",
-      company: "شركة الرؤية التقنية",
-      content: "Arab Insights غيّر طريقة فهمنا لآراء العملاء. التحليل دقيق والتقارير مفصلة جداً.",
-      rating: 5
+      name: "المجاني",
+      price: "0",
+      period: "شهرياً",
+      features: [
+        "100 تحليل شهرياً",
+        "تحليل المشاعر الأساسي",
+        "دعم بريد إلكتروني",
+        "تقارير أساسية"
+      ],
+      buttonText: "ابدأ مجاناً",
+      popular: false
     },
     {
-      name: "سارة أحمد",
-      role: "محللة البيانات",
-      company: "مؤسسة الابتكار",
-      content: "أداة ممتازة لتحليل المشاعر. واجهة سهلة ونتائج موثوقة تساعدنا في اتخاذ القرارات.",
-      rating: 5
+      name: "المحترف",
+      price: "99",
+      period: "شهرياً",
+      features: [
+        "10,000 تحليل شهرياً",
+        "تحليل متقدم للمشاعر",
+        "كشف اللهجات",
+        "تنبيهات ذكية",
+        "تقارير مفصلة",
+        "دعم هاتفي"
+      ],
+      buttonText: "اشترك الآن",
+      popular: true
     },
     {
-      name: "محمد علي",
-      role: "رئيس قسم البحوث",
-      company: "معهد الدراسات الاستراتيجية",
-      content: "الدقة في كشف اللهجات العربية مذهلة. أصبح تحليل البيانات أسهل وأكثر فعالية.",
-      rating: 5
+      name: "المؤسسي",
+      price: "299",
+      period: "شهرياً",
+      features: [
+        "تحليل غير محدود",
+        "جميع الميزات المتقدمة",
+        "واجهة برمجة تطبيقات",
+        "تكامل مخصص",
+        "مدير حساب مخصص",
+        "دعم 24/7"
+      ],
+      buttonText: "تواصل معنا",
+      popular: false
     }
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col" dir="rtl">
+    <div className="min-h-screen bg-background flex flex-col" dir="rtl">
       {/* Sound effects component */}
       <SoundEffects autoplay={false} />
 
-      {/* الهيدر المحسن */}
+      {/* الهيدر */}
       <motion.header 
         initial={{ y: -100 }}
         animate={{ y: 0 }}
         transition={{ duration: 0.6, type: "spring", stiffness: 100 }}
-        className="border-b sticky top-0 z-50 w-full bg-white/80 backdrop-blur-lg supports-[backdrop-filter]:bg-white/60 shadow-sm"
+        className="border-b sticky top-0 z-50 w-full bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60"
       >
-        <div className="container flex h-20 items-center justify-between py-4">
+        <div className="container flex h-16 items-center justify-between py-4">
           <motion.div 
             whileHover={{ scale: 1.05 }} 
-            className="flex items-center gap-3"
+            className="flex items-center gap-2"
           >
-            <div className="rounded-xl bg-gradient-to-br from-primary to-blue-600 p-2.5 shadow-lg">
-              <BarChart3 className="h-6 w-6 text-white" />
+            <div className="rounded-md bg-primary p-1.5">
+              <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Arab Insights</span>
-              <div className="text-xs text-muted-foreground">منصة تحليل المشاعر العربية</div>
-            </div>
+            <span className="font-semibold text-xl">Arab Insights</span>
           </motion.div>
-          
-          <nav className="hidden md:flex items-center gap-8 text-sm font-medium">
+          <nav className="hidden md:flex items-center gap-5 text-sm">
             <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">الرئيسية</Link>
+              <Link to="/" className="font-medium transition-colors hover:text-foreground/80">الرئيسية</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/services" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">خدماتنا</Link>
+              <Link to="/services" className="font-medium transition-colors hover:text-foreground/80">خدماتنا</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/pricing" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">الأسعار</Link>
+              <Link to="/pricing" className="font-medium transition-colors hover:text-foreground/80">الأسعار</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/reviews" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">آراء العملاء</Link>
+              <Link to="/reviews" className="font-medium transition-colors hover:text-foreground/80">آراء العملاء</Link>
             </motion.div>
             
             {isAuthenticated ? (
@@ -162,173 +179,119 @@ const LandingPage = () => {
                 whileTap={{ scale: 0.95 }}
               >
                 <Link to="/dashboard">
-                  <Button className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg">
+                  <Button className="bg-gradient-to-r from-primary to-primary-dark hover:opacity-90">
                     لوحة التحكم
                     <ArrowLeft className="ml-2 h-4 w-4" />
                   </Button>
                 </Link>
               </motion.div>
             ) : (
-              <div className="flex items-center gap-4">
+              <>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Link to="/signin" className="font-medium transition-colors hover:text-primary">تسجيل الدخول</Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }}>
                   <Link to="/signup">
-                    <Button className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg">إنشاء حساب</Button>
+                    <Button>إنشاء حساب</Button>
                   </Link>
                 </motion.div>
-              </div>
+              </>
             )}
           </nav>
         </div>
       </motion.header>
 
-      {/* القسم الرئيسي المحسن */}
-      <section className="py-32 md:py-40 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/api/placeholder/1920/1080')] opacity-5"></div>
-        <div className="container px-4 md:px-6 relative z-10">
-          <div className="grid gap-8 lg:grid-cols-2 lg:gap-16 xl:gap-20 items-center">
+      {/* قسم الترحيب الرئيسي */}
+      <section className="py-24 md:py-32 bg-gradient-to-b from-white to-muted/30">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-6 lg:grid-cols-2 lg:gap-12 xl:gap-16">
             <motion.div 
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ duration: 0.8 }}
-              className="space-y-8"
+              className="space-y-4"
             >
               <motion.div 
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
+                className="inline-block rounded-lg bg-muted px-3 py-1 text-sm"
               >
-                <Sparkles className="h-4 w-4" />
-                منصة الذكاء الاصطناعي الرائدة في تحليل المشاعر العربية
+                #1 منصة تحليل المشاعر العربية
               </motion.div>
-              
               <motion.h1 
                 variants={fadeIn}
                 initial="initial"
                 animate="animate"
-                className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl"
+                className="text-4xl font-bold tracking-tighter sm:text-5xl md:text-6xl"
               >
-                <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
-                  اكتشف قوة
-                </span>
-                <br />
-                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                  تحليل المشاعر العربية
-                </span>
+                اكتشف آراء وتوجهات الجمهور العربي
               </motion.h1>
-              
               <motion.p 
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}
                 transition={{ delay: 0.5, duration: 0.8 }}
-                className="text-xl text-muted-foreground leading-relaxed max-w-2xl"
+                className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed"
               >
-                منصة Arab Insights تستخدم أحدث تقنيات الذكاء الاصطناعي لتحليل المشاعر والآراء في النصوص العربية مع دقة استثنائية وكشف متطور للهجات العربية المختلفة.
+                منصة Arab Insights تمكنك من تحليل مشاعر المستخدمين على وسائل التواصل الاجتماعي باللهجة العربية مع رؤى عميقة وتقارير شاملة.
               </motion.p>
-              
               <motion.div 
                 variants={staggerContainer}
                 initial="initial"
                 animate="animate"
-                className="flex flex-col sm:flex-row gap-4"
+                className="flex flex-col gap-2 min-[400px]:flex-row"
               >
                 <motion.div variants={fadeIn}>
                   {isAuthenticated ? (
                     <Link to="/dashboard">
-                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl">
-                        الذهاب للوحة التحكم
-                        <ArrowLeft className="ml-2 h-5 w-5" />
-                      </Button>
+                      <Button size="lg">الذهاب للوحة التحكم</Button>
                     </Link>
                   ) : (
                     <Link to="/signup">
-                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl">
-                        ابدأ التحليل مجاناً
-                        <Sparkles className="ml-2 h-5 w-5" />
-                      </Button>
+                      <Button size="lg">البدء مجاناً</Button>
                     </Link>
                   )}
                 </motion.div>
                 <motion.div variants={fadeIn}>
                   <Link to="/text-analysis">
-                    <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-2 hover:bg-primary/5">
-                      جرب التحليل الآن
-                      <Eye className="ml-2 h-5 w-5" />
-                    </Button>
+                    <Button size="lg" variant="outline">جرب التحليل مجاناً</Button>
                   </Link>
                 </motion.div>
               </motion.div>
-
-              <motion.div 
-                initial={{ opacity: 0, y: 20 }}
-                animate={{ opacity: 1, y: 0 }}
-                transition={{ delay: 0.8 }}
-                className="flex items-center gap-6 pt-4"
-              >
-                <div className="flex -space-x-2">
-                  {[...Array(4)].map((_, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 border-2 border-white"></div>
-                  ))}
-                </div>
-                <div>
-                  <div className="flex items-center gap-1">
-                    {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
-                    ))}
-                  </div>
-                  <p className="text-sm text-muted-foreground">أكثر من 500+ عميل راضي</p>
-                </div>
-              </motion.div>
             </motion.div>
-            
             <motion.div 
-              className="relative"
+              className="flex items-center justify-center relative"
               variants={floatingAnimation}
               animate="animate"
             >
-              <div className="absolute inset-0 bg-gradient-to-r from-primary/20 to-blue-600/20 rounded-3xl blur-3xl"></div>
+              <div className="absolute inset-0 z-0">
+                <Suspense fallback={<div className="w-full h-full bg-muted/20 animate-pulse rounded-lg"></div>}>
+                  <ThreeDScene className="h-full" />
+                </Suspense>
+              </div>
+              
               <motion.div 
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="relative bg-white rounded-3xl shadow-2xl p-8 border"
+                className="relative h-[350px] w-full md:h-[420px] lg:h-[650px] z-10"
               >
-                <div className="space-y-6">
-                  <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold">تحليل نص تجريبي</h3>
-                    <Badge className="bg-green-100 text-green-700">جاهز للتحليل</Badge>
-                  </div>
-                  <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-6">
-                    <p className="text-lg leading-relaxed">"هذا المنتج رائع حقاً وأنصح الجميع بتجربته. الجودة عالية والخدمة ممتازة."</p>
-                  </div>
-                  <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-green-50 rounded-xl">
-                      <div className="text-2xl font-bold text-green-600">إيجابي</div>
-                      <div className="text-sm text-green-600/70">المشاعر</div>
-                    </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-xl">
-                      <div className="text-2xl font-bold text-blue-600">أردني</div>
-                      <div className="text-sm text-blue-600/70">اللهجة</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <div className="text-2xl font-bold text-purple-600">98%</div>
-                      <div className="text-sm text-purple-600/70">الدقة</div>
-                    </div>
-                  </div>
-                </div>
+                <img
+                  src="/placeholder.svg"
+                  alt="لوحة تحكم Arab Insights"
+                  className="mx-auto h-full w-full object-cover rounded-lg bg-muted/50 p-2 sm:p-4 shadow-xl animate-fade-in backdrop-blur-sm"
+                  loading="lazy"
+                />
+                <div className="absolute inset-0 rounded-lg ring-1 ring-inset ring-primary/10"></div>
               </motion.div>
             </motion.div>
           </div>
         </div>
       </section>
 
-      {/* إحصائيات محسنة */}
-      <section className="py-20 bg-gradient-to-r from-primary to-blue-600 text-white relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/api/placeholder/1920/400')] opacity-10"></div>
-        <div className="container px-4 md:px-6 relative z-10">
+      {/* إحصائيات سريعة */}
+      <section className="py-12 bg-primary text-primary-foreground">
+        <div className="container px-4 md:px-6">
           <div className="grid grid-cols-2 md:grid-cols-4 gap-8">
             {stats.map((stat, index) => (
               <motion.div
@@ -337,48 +300,36 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                className="text-center group cursor-pointer"
-                whileHover={{ scale: 1.05 }}
+                className="text-center"
               >
-                <div className="flex justify-center mb-4">
-                  <div className="p-4 bg-white/10 rounded-2xl group-hover:bg-white/20 transition-colors">
-                    <stat.icon className="h-8 w-8" />
-                  </div>
-                </div>
-                <div className="text-4xl md:text-5xl font-bold mb-2">{stat.number}</div>
-                <div className="text-lg opacity-90">{stat.label}</div>
+                <div className="text-3xl md:text-4xl font-bold mb-2">{stat.number}</div>
+                <div className="text-sm opacity-90">{stat.label}</div>
               </motion.div>
             ))}
           </div>
         </div>
       </section>
 
-      {/* المميزات المحسنة */}
-      <section className="py-24 md:py-32 bg-gradient-to-b from-white to-slate-50">
+      {/* المميزات الشاملة */}
+      <section className="py-16 md:py-24 bg-muted/30">
         <div className="container px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
             whileInView={{ opacity: 1, y: 0 }}
             viewport={{ once: true }}
             transition={{ duration: 0.6 }}
-            className="text-center mb-20"
+            className="text-center mb-16"
           >
-            <Badge className="mb-6 text-base px-4 py-2">مميزاتنا الاستثنائية</Badge>
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              <span className="bg-gradient-to-r from-gray-900 to-gray-600 bg-clip-text text-transparent">
-                تقنيات متطورة لتحليل
-              </span>
-              <br />
-              <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                المشاعر العربية
-              </span>
+            <Badge className="mb-4">مميزاتنا الشاملة</Badge>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
+              كل ما تحتاجه لتحليل المشاعر العربية
             </h2>
-            <p className="mx-auto max-w-3xl text-xl text-muted-foreground leading-relaxed">
-              اكتشف مجموعة شاملة من الأدوات والتقنيات المتقدمة التي تمكنك من فهم الرأي العام والمشاعر في المحتوى العربي بدقة لا مثيل لها
+            <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed">
+              مجموعة شاملة من الأدوات والميزات لفهم الرأي العام والمشاعر في المحتوى العربي
             </p>
           </motion.div>
           
-          <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-3">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
             {features.map((feature, index) => (
               <motion.div
                 key={index}
@@ -386,18 +337,17 @@ const LandingPage = () => {
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
                 transition={{ delay: index * 0.1 }}
-                whileHover={{ y: -10, scale: 1.02 }}
-                className="group"
+                whileHover={{ y: -5, scale: 1.02 }}
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
-                  <CardHeader className="pb-4">
-                    <div className={`w-16 h-16 rounded-2xl ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
-                      <feature.icon className="h-8 w-8 text-white" />
+                <Card className="h-full transition-all duration-300 hover:shadow-lg">
+                  <CardHeader>
+                    <div className={`w-12 h-12 rounded-lg ${feature.color} flex items-center justify-center mb-4`}>
+                      <feature.icon className="h-6 w-6 text-white" />
                     </div>
-                    <CardTitle className="text-2xl mb-3">{feature.title}</CardTitle>
+                    <CardTitle className="text-xl">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
-                    <p className="text-muted-foreground text-lg leading-relaxed">{feature.description}</p>
+                    <p className="text-muted-foreground">{feature.description}</p>
                   </CardContent>
                 </Card>
               </motion.div>
@@ -406,8 +356,8 @@ const LandingPage = () => {
         </div>
       </section>
 
-      {/* شهادات العملاء */}
-      <section className="py-24 bg-gradient-to-b from-slate-50 to-white">
+      {/* خطط الأسعار */}
+      <section className="py-16 md:py-24">
         <div className="container px-4 md:px-6">
           <motion.div 
             initial={{ opacity: 0, y: 30 }}
@@ -415,43 +365,107 @@ const LandingPage = () => {
             viewport={{ once: true }}
             className="text-center mb-16"
           >
-            <Badge className="mb-4">شهادات العملاء</Badge>
-            <h2 className="text-4xl font-bold tracking-tight mb-4">ماذا يقول عملاؤنا؟</h2>
-            <p className="mx-auto max-w-2xl text-muted-foreground text-xl">
-              اكتشف تجارب عملائنا الحقيقية مع منصة Arab Insights
+            <Badge className="mb-4">خطط الأسعار</Badge>
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
+              اختر الخطة المناسبة لك
+            </h2>
+            <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed">
+              خطط مرنة تناسب جميع الاحتياجات من الأفراد إلى المؤسسات الكبيرة
             </p>
           </motion.div>
 
           <div className="grid gap-8 md:grid-cols-3">
-            {testimonials.map((testimonial, index) => (
+            {pricingPlans.map((plan, index) => (
               <motion.div
                 key={index}
                 initial={{ opacity: 0, y: 20 }}
                 whileInView={{ opacity: 1, y: 0 }}
                 viewport={{ once: true }}
-                transition={{ delay: index * 0.2 }}
-                whileHover={{ y: -5 }}
+                transition={{ delay: index * 0.1 }}
+                className="relative"
               >
-                <Card className="h-full border-0 shadow-lg hover:shadow-xl transition-all duration-300">
-                  <CardContent className="p-8">
-                    <div className="flex items-center mb-4">
-                      {[...Array(testimonial.rating)].map((_, i) => (
-                        <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
+                {plan.popular && (
+                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary">
+                    الأكثر شعبية
+                  </Badge>
+                )}
+                <Card className={`h-full ${plan.popular ? 'border-primary shadow-lg scale-105' : ''}`}>
+                  <CardHeader className="text-center">
+                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
+                    <div className="text-4xl font-bold">
+                      ${plan.price}
+                      <span className="text-lg font-normal text-muted-foreground">/{plan.period}</span>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <ul className="space-y-3">
+                      {plan.features.map((feature, featureIndex) => (
+                        <li key={featureIndex} className="flex items-center gap-2">
+                          <Check className="h-4 w-4 text-green-500" />
+                          <span className="text-sm">{feature}</span>
+                        </li>
                       ))}
-                    </div>
-                    <p className="text-lg mb-6 leading-relaxed">"{testimonial.content}"</p>
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-primary to-blue-600"></div>
-                      <div>
-                        <div className="font-semibold">{testimonial.name}</div>
-                        <div className="text-sm text-muted-foreground">{testimonial.role}</div>
-                        <div className="text-xs text-muted-foreground">{testimonial.company}</div>
-                      </div>
-                    </div>
+                    </ul>
+                    <Button 
+                      className="w-full" 
+                      variant={plan.popular ? "default" : "outline"}
+                      asChild
+                    >
+                      <Link to={plan.name === "المجاني" ? "/signup" : "/pricing"}>
+                        {plan.buttonText}
+                      </Link>
+                    </Button>
                   </CardContent>
                 </Card>
               </motion.div>
             ))}
+          </div>
+        </div>
+      </section>
+
+      {/* روابط سريعة */}
+      <section className="py-12 bg-muted/50">
+        <div className="container px-4 md:px-6">
+          <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-4">
+            <Link to="/text-analysis" className="group">
+              <Card className="transition-all hover:shadow-md group-hover:scale-105">
+                <CardContent className="p-6 text-center">
+                  <Upload className="h-8 w-8 mx-auto mb-4 text-primary" />
+                  <h3 className="font-semibold mb-2">جرب التحليل</h3>
+                  <p className="text-sm text-muted-foreground">اختبر خدمة تحليل النصوص مجاناً</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/services" className="group">
+              <Card className="transition-all hover:shadow-md group-hover:scale-105">
+                <CardContent className="p-6 text-center">
+                  <Target className="h-8 w-8 mx-auto mb-4 text-primary" />
+                  <h3 className="font-semibold mb-2">خدماتنا</h3>
+                  <p className="text-sm text-muted-foreground">اكتشف جميع الخدمات المتاحة</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/reviews" className="group">
+              <Card className="transition-all hover:shadow-md group-hover:scale-105">
+                <CardContent className="p-6 text-center">
+                  <Users className="h-8 w-8 mx-auto mb-4 text-primary" />
+                  <h3 className="font-semibold mb-2">آراء العملاء</h3>
+                  <p className="text-sm text-muted-foreground">اقرأ تجارب عملائنا</p>
+                </CardContent>
+              </Card>
+            </Link>
+            
+            <Link to="/pricing" className="group">
+              <Card className="transition-all hover:shadow-md group-hover:scale-105">
+                <CardContent className="p-6 text-center">
+                  <Eye className="h-8 w-8 mx-auto mb-4 text-primary" />
+                  <h3 className="font-semibold mb-2">تفاصيل الأسعار</h3>
+                  <p className="text-sm text-muted-foreground">مقارنة مفصلة للخطط</p>
+                </CardContent>
+              </Card>
+            </Link>
           </div>
         </div>
       </section>
@@ -462,9 +476,12 @@ const LandingPage = () => {
         whileInView={{ opacity: 1 }}
         viewport={{ once: true }}
         transition={{ duration: 0.8 }}
-        className="py-24 md:py-32 bg-gradient-to-br from-primary via-blue-600 to-indigo-700 text-white relative overflow-hidden"
+        className="py-16 md:py-24 bg-primary text-primary-foreground relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-[url('/api/placeholder/1920/600')] opacity-10"></div>
+        <div className="absolute inset-0 opacity-10 pointer-events-none">
+          <div className="w-full h-full bg-gradient-to-r from-white/10 to-white/0"></div>
+        </div>
+        
         <div className="container px-4 md:px-6 relative z-10">
           <motion.div 
             initial={{ y: 50, opacity: 0 }}
@@ -473,32 +490,31 @@ const LandingPage = () => {
             transition={{ duration: 0.6 }}
             className="text-center"
           >
-            <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              ابدأ رحلتك مع Arab Insights
+            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
+              ابدأ رحلتك مع Arab Insights اليوم
             </h2>
-            <p className="mx-auto max-w-3xl text-xl md:text-2xl mb-10 opacity-90 leading-relaxed">
-              انضم إلى مئات الشركات والمؤسسات التي تستخدم منصتنا المتطورة لفهم الرأي العام العربي واتخاذ قرارات مدروسة ومبنية على البيانات
+            <p className="mx-auto max-w-[600px] text-primary-foreground/80 md:text-xl mb-8">
+              انضم إلى مئات الشركات التي تستخدم منصتنا لفهم الرأي العام العربي واتخاذ قرارات مدروسة
             </p>
-            <div className="flex flex-col sm:flex-row gap-6 justify-center">
+            <div className="flex flex-col sm:flex-row gap-4 justify-center">
               {isAuthenticated ? (
                 <Link to="/dashboard">
-                  <Button size="lg" variant="secondary" className="text-lg px-10 py-6 group shadow-xl">
+                  <Button size="lg" variant="secondary" className="group">
                     الذهاب للوحة التحكم
-                    <ArrowLeft className="ml-2 h-5 w-5 group-hover:translate-x-1 transition-transform" />
+                    <ArrowLeft className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
               ) : (
                 <Link to="/signup">
-                  <Button size="lg" variant="secondary" className="text-lg px-10 py-6 group shadow-xl">
-                    ابدأ التحليل مجاناً
-                    <Sparkles className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform" />
+                  <Button size="lg" variant="secondary" className="group">
+                    البدء مجاناً الآن
+                    <ArrowLeft className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
                   </Button>
                 </Link>
               )}
               <Link to="/text-analysis">
-                <Button size="lg" variant="outline" className="border-white text-white hover:bg-white hover:text-primary text-lg px-10 py-6">
-                  جرب التحليل الآن
-                  <Eye className="ml-2 h-5 w-5" />
+                <Button size="lg" variant="outline" className="border-primary-foreground text-primary-foreground hover:bg-primary-foreground hover:text-primary">
+                  جرب التحليل مجاناً
                 </Button>
               </Link>
             </div>
@@ -506,52 +522,52 @@ const LandingPage = () => {
         </div>
       </motion.section>
 
-      {/* التذييل المحسن */}
-      <footer className="border-t py-16 bg-slate-900 text-slate-300">
+      {/* التذييل */}
+      <footer className="border-t py-12 bg-background">
         <div className="container px-4 md:px-6">
           <div className="grid gap-8 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-6">
-              <div className="flex items-center gap-3">
-                <div className="rounded-xl bg-gradient-to-br from-primary to-blue-600 p-2">
-                  <BarChart3 className="h-5 w-5 text-white" />
+            <div className="space-y-4">
+              <div className="flex items-center gap-2">
+                <div className="rounded-md bg-primary p-1">
+                  <BarChart3 className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-bold text-xl text-white">Arab Insights</span>
+                <span className="font-semibold">Arab Insights</span>
               </div>
-              <p className="text-slate-400 leading-relaxed">
-                منصة متطورة لتحليل المشاعر والبيانات الاجتماعية باللغة العربية باستخدام أحدث تقنيات الذكاء الاصطناعي
+              <p className="text-sm text-muted-foreground">
+                منصة متطورة لتحليل المشاعر والبيانات الاجتماعية باللغة العربية
               </p>
-              <p className="text-xs text-slate-500">
+              <p className="text-xs text-muted-foreground">
                 © 2025 Arab Insights. جميع الحقوق محفوظة.
               </p>
             </div>
             
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">المنتج</h3>
-              <ul className="space-y-3 text-sm">
-                <li><Link to="/services" className="hover:text-white transition-colors hover:underline">الخدمات</Link></li>
-                <li><Link to="/pricing" className="hover:text-white transition-colors hover:underline">الأسعار</Link></li>
-                <li><Link to="/text-analysis" className="hover:text-white transition-colors hover:underline">جرب مجاناً</Link></li>
-                <li><Link to="/reviews" className="hover:text-white transition-colors hover:underline">آراء العملاء</Link></li>
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">المنتج</h3>
+              <ul className="space-y-2 text-sm">
+                <li><Link to="/services" className="text-muted-foreground hover:text-foreground transition-colors">الخدمات</Link></li>
+                <li><Link to="/pricing" className="text-muted-foreground hover:text-foreground transition-colors">الأسعار</Link></li>
+                <li><Link to="/text-analysis" className="text-muted-foreground hover:text-foreground transition-colors">جرب مجاناً</Link></li>
+                <li><Link to="/reviews" className="text-muted-foreground hover:text-foreground transition-colors">آراء العملاء</Link></li>
               </ul>
             </div>
             
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">الدعم</h3>
-              <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">المساعدة</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">التوثيق</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">اتصل بنا</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">حالة النظام</a></li>
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">الدعم</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">المساعدة</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">التوثيق</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">اتصل بنا</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">حالة النظام</a></li>
               </ul>
             </div>
             
-            <div className="space-y-4">
-              <h3 className="text-lg font-semibold text-white">الشركة</h3>
-              <ul className="space-y-3 text-sm">
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">حولنا</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">المدونة</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">الوظائف</a></li>
-                <li><a href="#" className="hover:text-white transition-colors hover:underline">الخصوصية</a></li>
+            <div className="space-y-3">
+              <h3 className="text-sm font-medium">الشركة</h3>
+              <ul className="space-y-2 text-sm">
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">حولنا</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">المدونة</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">الوظائف</a></li>
+                <li><a href="#" className="text-muted-foreground hover:text-foreground transition-colors">الخصوصية</a></li>
               </ul>
             </div>
           </div>

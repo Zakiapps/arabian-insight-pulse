@@ -1,4 +1,5 @@
 
+import { useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 import { UserWithProfile, Profile } from '@/types/auth';
 import { authService } from '@/services/authService';
@@ -12,6 +13,8 @@ interface UseAuthActionsProps {
 }
 
 export const useAuthActions = ({ user, setUser, setProfile, setSession }: UseAuthActionsProps) => {
+  const navigate = useNavigate();
+
   const login = async (email: string, password: string) => {
     return await authService.login(email, password);
   };
@@ -45,8 +48,8 @@ export const useAuthActions = ({ user, setUser, setProfile, setSession }: UseAut
     setUser(null);
     setProfile(null);
     setSession(null);
+    navigate('/login');
     toast.success('تم تسجيل الخروج بنجاح');
-    // Navigation will be handled by the component that calls logout
   };
 
   return {
