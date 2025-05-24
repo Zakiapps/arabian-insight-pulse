@@ -35,7 +35,7 @@ const featureAccess: Record<string, SubscriptionTier[]> = {
 };
 
 export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) => {
-  const { user, isAuthenticated } = useAuth();
+  const { user, isAuthenticated, isAdmin } = useAuth();
   const [subscribed, setSubscribed] = useState<boolean>(false);
   const [subscriptionTier, setSubscriptionTier] = useState<SubscriptionTier>(null);
   const [subscriptionEnd, setSubscriptionEnd] = useState<string | null>(null);
@@ -44,6 +44,15 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
 
   // Optimized function to check subscription status
   const checkSubscription = async () => {
+    // Admin gets enterprise-level access without subscription checks
+    if (isAdmin) {
+      setSubscribed(true);
+      setSubscriptionTier('enterprise');
+      setSubscriptionEnd(null);
+      setIsLoading(false);
+      return;
+    }
+
     // Set free tier for non-authenticated users
     if (!isAuthenticated || !user) {
       setSubscribed(false);
@@ -132,7 +141,7 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
   // Optimized feature access check - uses in-memory data
   const canAccessFeature = (feature: string): boolean => {
     // Admin can access all features
-    if (user?.profile?.role === 'admin') return true;
+    if (isAdmin) return true;
     
     // Feature doesn't exist in the mapping
     if (!featureAccess[feature]) return false;
@@ -146,7 +155,7 @@ export const SubscriptionProvider = ({ children }: SubscriptionProviderProps) =>
     // Clear cache when auth state changes
     setCachedSubscriptionData(null);
     checkSubscription();
-  }, [isAuthenticated, user]);
+  }, [isAuthenticated, user, isAdmin]);
 
   const value = {
     subscribed,

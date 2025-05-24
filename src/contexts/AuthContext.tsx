@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { Session, User } from '@supabase/supabase-js';
 import { supabase } from '@/integrations/supabase/client';
@@ -134,8 +133,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     };
   }, []);
 
-  // Check if user is admin
-  const isAdmin = profile?.role === 'admin';
+  // Check if user is admin - prioritize email check for admin@arabinsights.com
+  const isAdmin = user?.email === 'admin@arabinsights.com' || profile?.role === 'admin';
   const isAuthenticated = !!user;
 
   // Login function - optimized with better error handling

@@ -14,7 +14,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
   adminOnly = false,
   requiredFeature
 }) => {
-  const { isAuthenticated, isAdmin, loading } = useAuth();
+  const { isAuthenticated, isAdmin, loading, user } = useAuth();
   const { isLoading: subscriptionLoading, canAccessFeature } = useSubscription();
   const location = useLocation();
 
@@ -37,7 +37,12 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/dashboard" replace />;
   }
 
-  // Check feature access if a required feature is specified
+  // Admin bypass: admin@arabinsights.com gets full access to everything
+  if (user?.email === 'admin@arabinsights.com' || isAdmin) {
+    return <>{children}</>;
+  }
+
+  // Check feature access if a required feature is specified (only for non-admin users)
   if (requiredFeature && !canAccessFeature(requiredFeature)) {
     // Redirect to pricing page for subscription upgrade
     return <Navigate to="/pricing" replace />;
