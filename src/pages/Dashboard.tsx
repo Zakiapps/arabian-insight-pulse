@@ -9,22 +9,11 @@ import { PlatformDistribution } from "@/components/dashboard/PlatformDistributio
 import { TopTopics } from "@/components/dashboard/TopTopics";
 import { DialectDetection } from "@/components/dashboard/DialectDetection";
 import { ThreeDInsightCard } from "@/components/dashboard/ThreeDInsightCard";
-import AdminUsersManagement from "@/pages/admin/AdminUsersManagement";
 
 const Dashboard = () => {
   const { isRTL } = useLanguage();
-  const { isAdmin } = useAuth();
 
-  // If user is admin, show the admin users management interface
-  if (isAdmin) {
-    return (
-      <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
-        <AdminUsersManagement />
-      </div>
-    );
-  }
-
-  // Regular user dashboard
+  // Always show the regular dashboard, regardless of user role
   return (
     <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
       <DashboardHeader />
