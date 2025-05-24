@@ -9,6 +9,39 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analysis_settings: {
+        Row: {
+          auto_categorization: boolean | null
+          created_at: string
+          dialect_detection_enabled: boolean | null
+          email_notifications: boolean | null
+          id: string
+          sentiment_threshold: number | null
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          auto_categorization?: boolean | null
+          created_at?: string
+          dialect_detection_enabled?: boolean | null
+          email_notifications?: boolean | null
+          id?: string
+          sentiment_threshold?: number | null
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          auto_categorization?: boolean | null
+          created_at?: string
+          dialect_detection_enabled?: boolean | null
+          email_notifications?: boolean | null
+          id?: string
+          sentiment_threshold?: number | null
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       analyzed_posts: {
         Row: {
           analyzed_at: string | null
@@ -47,6 +80,44 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      notification_history: {
+        Row: {
+          alert_id: string | null
+          id: string
+          message: string | null
+          sent_at: string
+          status: string | null
+          type: string
+          user_id: string
+        }
+        Insert: {
+          alert_id?: string | null
+          id?: string
+          message?: string | null
+          sent_at?: string
+          status?: string | null
+          type: string
+          user_id: string
+        }
+        Update: {
+          alert_id?: string | null
+          id?: string
+          message?: string | null
+          sent_at?: string
+          status?: string | null
+          type?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "notification_history_alert_id_fkey"
+            columns: ["alert_id"]
+            isOneToOne: false
+            referencedRelation: "user_alerts"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       payment_methods: {
         Row: {
@@ -150,6 +221,39 @@ export type Database = {
           role?: string
           subscription_plan?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      sendgrid_settings: {
+        Row: {
+          api_key: string | null
+          created_at: string
+          enabled: boolean | null
+          from_email: string | null
+          from_name: string | null
+          id: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          api_key?: string | null
+          created_at?: string
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          api_key?: string | null
+          created_at?: string
+          enabled?: boolean | null
+          from_email?: string | null
+          from_name?: string | null
+          id?: string
+          updated_at?: string
+          user_id?: string
         }
         Relationships: []
       }
@@ -396,7 +500,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      clear_all_posts: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
       clear_dummy_data: {
+        Args: Record<PropertyKey, never>
+        Returns: undefined
+      }
+      clear_user_posts: {
         Args: Record<PropertyKey, never>
         Returns: undefined
       }
@@ -417,6 +529,16 @@ export type Database = {
           last_sign_in_at: string
           is_online: boolean
           payment_methods_count: number
+        }[]
+      }
+      get_sentiment_stats: {
+        Args: { user_id_param?: string }
+        Returns: {
+          total_posts: number
+          positive_posts: number
+          negative_posts: number
+          neutral_posts: number
+          jordanian_posts: number
         }[]
       }
       get_total_revenue: {

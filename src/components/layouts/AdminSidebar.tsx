@@ -14,7 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  ChevronRight,
+  ChevronLeft,
   LayoutDashboard,
   Users2,
   CreditCard,
@@ -74,7 +74,7 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <Sidebar side="left" className="border-r bg-card">
+    <Sidebar side="right" className="border-l bg-card w-64 min-w-64">
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-3">
           <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive text-destructive-foreground">
@@ -104,13 +104,13 @@ const AdminSidebar = () => {
                         variant="ghost"
                         className={`justify-start w-full h-10 ${
                           isActive(item.url) 
-                            ? 'bg-destructive/10 text-destructive font-medium border-r-2 border-destructive' 
+                            ? 'bg-destructive/10 text-destructive font-medium border-l-2 border-destructive' 
                             : 'hover:bg-muted/50'
                         }`}
                       >
-                        <item.icon className="h-4 w-4 ml-3" />
+                        {isActive(item.url) && <ChevronLeft className="h-4 w-4 ml-2" />}
                         <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
+                        <item.icon className="h-4 w-4 mr-3" />
                       </Button>
                     </Link>
                   </SidebarMenuButton>
@@ -133,8 +133,8 @@ const AdminSidebar = () => {
                       variant="ghost"
                       className="justify-start w-full h-10 hover:bg-primary/10 hover:text-primary"
                     >
-                      <BarChart3 className="h-4 w-4 ml-3" />
                       <span className="flex-1 text-right">لوحة التحكم الرئيسية</span>
+                      <BarChart3 className="h-4 w-4 mr-3" />
                     </Button>
                   </Link>
                 </SidebarMenuButton>
