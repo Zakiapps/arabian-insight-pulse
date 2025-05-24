@@ -95,12 +95,13 @@ export const TopTopics = () => {
     if (topicPosts.length === 0) return 'neutral';
     
     const sentimentCounts = topicPosts.reduce((acc, post) => {
-      acc[post.sentiment] = (acc[post.sentiment] || 0) + 1;
+      const currentCount = Number(acc[post.sentiment] || 0);
+      acc[post.sentiment] = currentCount + 1;
       return acc;
     }, {} as Record<string, number>);
     
     return Object.entries(sentimentCounts)
-      .sort(([,a], [,b]) => b - a)[0]?.[0] || 'neutral';
+      .sort(([,a], [,b]) => Number(b) - Number(a))[0]?.[0] || 'neutral';
   };
 
   const topTopics = extractTopics();
