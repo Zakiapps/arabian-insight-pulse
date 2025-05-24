@@ -20,25 +20,25 @@ import AdminLayout from "@/components/layouts/AdminLayout";
 
 // Dashboard pages
 import Dashboard from "@/pages/Dashboard";
-import PostsPage from "@/pages/PostsPage";
-import UploadPage from "@/pages/UploadPage";
-import AlertsPage from "@/pages/AlertsPage";
-import ReportsPage from "@/pages/ReportsPage";
-import SentimentAnalysisPage from "@/pages/SentimentAnalysisPage";
-import CategoryDistributionPage from "@/pages/CategoryDistributionPage";
-import PlatformDistributionPage from "@/pages/PlatformDistributionPage";
-import TopTopicsPage from "@/pages/TopTopicsPage";
-import DialectDetectionPage from "@/pages/DialectDetection";
-import SettingsPage from "@/pages/SettingsPage";
+import Posts from "@/pages/Posts";
+import Upload from "@/pages/Upload";
+import Alerts from "@/pages/Alerts";
+import Reports from "@/pages/Reports";
+import SentimentAnalysis from "@/pages/SentimentAnalysis";
+import CategoryDistribution from "@/pages/CategoryDistribution";
+import PlatformDistribution from "@/pages/PlatformDistribution";
+import TopTopics from "@/pages/TopTopics";
+import DialectDetection from "@/pages/DialectDetection";
+import Settings from "@/pages/Settings";
 
 // Admin pages
-import AdminDashboard from "@/pages/AdminDashboard";
-import AdminUsers from "@/pages/AdminUsers";
-import AdminPlans from "@/pages/AdminPlans";
-import AdminSubscriptions from "@/pages/AdminSubscriptions";
-import AdminTransactions from "@/pages/AdminTransactions";
-import AdminSettings from "@/pages/AdminSettings";
-import AdminPaymentSettings from "@/pages/AdminPaymentSettings";
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminPlans from "@/pages/admin/AdminPlans";
+import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
+import AdminTransactions from "@/pages/admin/AdminTransactions";
+import AdminSettings from "@/pages/admin/AdminSettings";
+import PaymentSettings from "@/pages/admin/PaymentSettings";
 
 const queryClient = new QueryClient();
 
@@ -55,6 +55,7 @@ function App() {
                   <Routes>
                     {/* Public routes */}
                     <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
                     <Route path="/landing" element={<LandingPage />} />
                     <Route path="/text-analysis" element={<TextAnalysis />} />
                     <Route path="/signin" element={<SignIn />} />
@@ -68,16 +69,16 @@ function App() {
                       </ProtectedRoute>
                     }>
                       <Route index element={<Dashboard />} />
-                      <Route path="posts" element={<PostsPage />} />
-                      <Route path="upload" element={<UploadPage />} />
-                      <Route path="alerts" element={<AlertsPage />} />
-                      <Route path="reports" element={<ReportsPage />} />
-                      <Route path="sentiment" element={<SentimentAnalysisPage />} />
-                      <Route path="categories" element={<CategoryDistributionPage />} />
-                      <Route path="platforms" element={<PlatformDistributionPage />} />
-                      <Route path="topics" element={<TopTopicsPage />} />
-                      <Route path="dialects" element={<DialectDetectionPage />} />
-                      <Route path="settings" element={<SettingsPage />} />
+                      <Route path="posts" element={<Posts />} />
+                      <Route path="upload" element={<Upload />} />
+                      <Route path="alerts" element={<Alerts />} />
+                      <Route path="reports" element={<Reports />} />
+                      <Route path="sentiment" element={<SentimentAnalysis />} />
+                      <Route path="categories" element={<CategoryDistribution />} />
+                      <Route path="platforms" element={<PlatformDistribution />} />
+                      <Route path="topics" element={<TopTopics />} />
+                      <Route path="dialects" element={<DialectDetection />} />
+                      <Route path="settings" element={<Settings />} />
                     </Route>
 
                     {/* Protected Admin routes */}
@@ -92,7 +93,7 @@ function App() {
                       <Route path="subscriptions" element={<AdminSubscriptions />} />
                       <Route path="transactions" element={<AdminTransactions />} />
                       <Route path="settings" element={<AdminSettings />} />
-                      <Route path="payment-settings" element={<AdminPaymentSettings />} />
+                      <Route path="payment-settings" element={<PaymentSettings />} />
                     </Route>
                   </Routes>
                 </BrowserRouter>
