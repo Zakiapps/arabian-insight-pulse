@@ -32,7 +32,7 @@ const TextAnalysis = () => {
         <div className="text-center mb-8">
           <h1 className="text-4xl font-bold mb-4">جرب تحليل المشاعر مجاناً</h1>
           <p className="text-xl text-muted-foreground max-w-2xl mx-auto">
-            اختبر قوة نموذج AraBERT في تحليل المشاعر واكتشاف اللهجات العربية
+            اختبر قوة نموذج MARBERT في تحليل المشاعر واكتشاف اللهجة الأردنية
           </p>
         </div>
 
@@ -42,7 +42,7 @@ const TextAnalysis = () => {
         <div className="text-center mt-12 p-8 bg-primary/10 rounded-lg">
           <h2 className="text-2xl font-bold mb-4">أعجبك التحليل؟</h2>
           <p className="text-muted-foreground mb-6">
-            انضم إلى منصة Arab Insights للحصول على المزيد من الميزات المتقدمة
+            انضم إلى منصة Arab Insights للحصول على المزيد من الميزات المتقدمة باستخدام MARBERT
           </p>
           <div className="flex gap-4 justify-center">
             <Link to="/signup">

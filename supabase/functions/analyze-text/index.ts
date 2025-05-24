@@ -16,6 +16,9 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 // Get Hugging Face API token
 const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
+// Your custom Hugging Face endpoint
+const customEndpoint = 'https://rfi1as56cdxed2vx.us-east-1.aws.endpoints.huggingface.cloud';
+
 // Arabic text preprocessing
 function preprocessArabicText(text: string): string {
   return text
@@ -44,65 +47,70 @@ function validateArabicText(text: string): boolean {
   return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
 }
 
-// Hugging Face Inference API for sentiment analysis using mofawzy/bert-ajgt
-async function analyzeWithHuggingFace(text: string): Promise<{
+// Custom Hugging Face endpoint for MARBERT sentiment analysis
+async function analyzeWithCustomEndpoint(text: string): Promise<{
   sentiment: string;
   confidence: number;
   positive_prob: number;
   negative_prob: number;
 }> {
   try {
-    console.log('Starting Hugging Face inference with mofawzy/bert-ajgt model...');
+    console.log('Starting sentiment analysis with custom MARBERT endpoint...');
     
-    const response = await fetch(
-      'https://api-inference.huggingface.co/models/mofawzy/bert-ajgt',
-      {
-        method: 'POST',
-        headers: {
-          'Authorization': `Bearer ${hfToken}`,
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          inputs: text,
-          options: {
-            wait_for_model: true
-          }
-        }),
-      }
-    );
+    const response = await fetch(customEndpoint, {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${hfToken}`,
+        'Content-Type': 'application/json',
+      },
+      body: JSON.stringify({
+        inputs: text,
+        parameters: {
+          return_all_scores: true
+        }
+      }),
+    });
 
     if (!response.ok) {
       const errorText = await response.text();
-      console.error('Hugging Face API error:', response.status, errorText);
-      throw new Error(`Hugging Face API error: ${response.status} - ${errorText}`);
+      console.error('Custom endpoint error:', response.status, errorText);
+      throw new Error(`Custom endpoint error: ${response.status} - ${errorText}`);
     }
 
     const result = await response.json();
-    console.log('Hugging Face response:', result);
+    console.log('Custom endpoint response:', result);
 
-    // Handle the response format from Hugging Face
+    // Handle the response format from your custom endpoint
     let scores;
     if (Array.isArray(result) && result.length > 0) {
       scores = result[0];
     } else if (result.scores) {
       scores = result.scores;
+    } else if (Array.isArray(result)) {
+      scores = result;
     } else {
-      throw new Error('Unexpected response format from Hugging Face');
+      throw new Error('Unexpected response format from custom endpoint');
     }
 
-    // Find positive and negative scores
+    // Find positive and negative scores for MARBERT model
     const positiveScore = scores.find((s: any) => 
-      s.label.toLowerCase().includes('positive') || 
-      s.label.toLowerCase().includes('pos') ||
-      s.label === 'LABEL_1' ||
-      s.label === '1'
+      s.label && (
+        s.label.toLowerCase().includes('positive') || 
+        s.label.toLowerCase().includes('pos') ||
+        s.label === 'LABEL_1' ||
+        s.label === '1' ||
+        s.label === 'POSITIVE'
+      )
     );
     
     const negativeScore = scores.find((s: any) => 
-      s.label.toLowerCase().includes('negative') || 
-      s.label.toLowerCase().includes('neg') ||
-      s.label === 'LABEL_0' ||
-      s.label === '0'
+      s.label && (
+        s.label.toLowerCase().includes('negative') || 
+        s.label.toLowerCase().includes('neg') ||
+        s.label === 'LABEL_0' ||
+        s.label === '0' ||
+        s.label === 'NEGATIVE'
+      )
     );
 
     let positive_prob = 0.5;
@@ -120,7 +128,7 @@ async function analyzeWithHuggingFace(text: string): Promise<{
     const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
     const confidence = Math.max(positive_prob, negative_prob);
 
-    console.log('Hugging Face inference completed successfully with mofawzy/bert-ajgt');
+    console.log('Custom MARBERT endpoint analysis completed successfully');
 
     return {
       sentiment,
@@ -130,7 +138,7 @@ async function analyzeWithHuggingFace(text: string): Promise<{
     };
 
   } catch (error) {
-    console.error('Hugging Face inference error:', error);
+    console.error('Custom endpoint analysis error:', error);
     throw error;
   }
 }
@@ -162,7 +170,7 @@ async function validateWithTestData(): Promise<void> {
       if (!text || !expectedLabel) continue;
       
       try {
-        const result = await analyzeWithHuggingFace(text);
+        const result = await analyzeWithCustomEndpoint(text);
         const predicted = result.sentiment === 'positive' ? '1' : '0';
         
         if (predicted === expectedLabel) correct++;
@@ -214,9 +222,9 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed');
 
-    // Analyze with Hugging Face mofawzy/bert-ajgt model
-    const analysisResult = await analyzeWithHuggingFace(preprocessedText);
-    console.log('Hugging Face analysis completed');
+    // Analyze with custom MARBERT endpoint
+    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText);
+    console.log('Custom MARBERT analysis completed');
     
     // Detect dialect efficiently
     const dialect = detectJordanianDialect(preprocessedText);
@@ -227,7 +235,7 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'mofawzy/bert-ajgt_HuggingFace'
+      modelSource: 'MARBERT_Custom_Endpoint'
     };
     
     console.log('Analysis completed successfully');

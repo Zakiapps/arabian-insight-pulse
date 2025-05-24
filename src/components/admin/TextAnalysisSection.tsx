@@ -59,14 +59,14 @@ const TextAnalysisSection = () => {
           positive_prob: data.positive_prob,
           negative_prob: data.negative_prob,
           dialect: data.dialect,
-          model_source: data.modelSource || 'AraBERT_ONNX'
+          model_source: data.modelSource || 'MARBERT_Custom_Endpoint'
         });
 
       if (saveError) {
         console.error('Error saving prediction:', saveError);
         toast.error('تم التحليل بنجاح ولكن فشل في حفظ النتيجة');
       } else {
-        toast.success('تم التحليل والحفظ بنجاح باستخدام نموذج AraBERT');
+        toast.success('تم التحليل والحفظ بنجاح باستخدام نموذج MARBERT');
       }
 
     } catch (err: any) {
@@ -83,10 +83,10 @@ const TextAnalysisSection = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="h-5 w-5" />
-          تحليل النصوص العربية - نموذج AraBERT ONNX
+          تحليل النصوص العربية - نموذج MARBERT
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          لوحة إدارة تحليل المشاعر باستخدام نموذج AraBERT المدرب المتخصص
+          لوحة إدارة تحليل المشاعر باستخدام نموذج MARBERT المدرب على اللهجة الأردنية
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -112,12 +112,12 @@ const TextAnalysisSection = () => {
           {isAnalyzing ? (
             <>
               <Brain className="h-4 w-4 animate-pulse ml-2" />
-              جاري التحليل بنموذج AraBERT...
+              جاري التحليل بنموذج MARBERT...
             </>
           ) : (
             <>
               <Brain className="h-4 w-4 ml-2" />
-              تحليل بنموذج AraBERT ONNX
+              تحليل بنموذج MARBERT
             </>
           )}
         </Button>
@@ -134,10 +134,10 @@ const TextAnalysisSection = () => {
         {result && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg">نتائج تحليل AraBERT:</h3>
+              <h3 className="font-semibold text-lg">نتائج تحليل MARBERT:</h3>
               <div className="flex items-center gap-1 text-blue-600">
                 <Brain className="h-4 w-4" />
-                <span className="text-xs">نموذج ONNX متقدم</span>
+                <span className="text-xs">نموذج مخصص للأردنية</span>
               </div>
             </div>
             
@@ -191,7 +191,7 @@ const TextAnalysisSection = () => {
                 <span>النموذج:</span>
                 <span className="flex items-center gap-1">
                   <Brain className="h-3 w-3" />
-                  {result.modelSource || 'AraBERT_ONNX'} (نموذج متقدم)
+                  {result.modelSource || 'MARBERT_Custom_Endpoint'} (نموذج مخصص)
                 </span>
               </div>
             </div>

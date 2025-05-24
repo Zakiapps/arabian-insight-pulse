@@ -24,7 +24,7 @@ interface TextAnalyzerProps {
 }
 
 export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
-  title = "تحليل المشاعر بنموذج AraBERT",
+  title = "تحليل المشاعر بنموذج MARBERT",
   placeholder = "أدخل النص العربي المراد تحليله...",
   defaultText = ""
 }) => {
@@ -59,7 +59,7 @@ export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
       }
 
       setResult(data);
-      toast.success("تم تحليل النص بنجاح باستخدام نموذج AraBERT");
+      toast.success("تم تحليل النص بنجاح باستخدام نموذج MARBERT");
     } catch (error: any) {
       console.error('Error analyzing text:', error);
       setError(error.message || "حدث خطأ أثناء التحليل");
@@ -85,7 +85,7 @@ export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
           {title}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          مدعوم بنموذج AraBERT ONNX المتخصص في اللغة العربية
+          مدعوم بنموذج MARBERT المتخصص في اللهجة الأردنية والعربية
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -105,10 +105,10 @@ export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
           {isAnalyzing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin ml-2" />
-              جاري التحليل بنموذج AraBERT...
+              جاري التحليل بنموذج MARBERT...
             </>
           ) : (
-            'تحليل بنموذج AraBERT'
+            'تحليل بنموذج MARBERT'
           )}
         </Button>
 
