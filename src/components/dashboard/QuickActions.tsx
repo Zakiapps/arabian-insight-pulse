@@ -26,8 +26,37 @@ export const QuickActions = () => {
   const navigate = useNavigate();
   const taskHistory = useTaskHistory();
   const { createNotification } = useNotifications();
-  const { isAuthenticated, user, profile } = useAuth();
+  const { isAuthenticated, user, profile, loading } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
+
+  console.log('QuickActions auth state:', {
+    isAuthenticated,
+    hasUser: !!user,
+    hasProfile: !!profile,
+    loading,
+    userEmail: user?.email,
+    profileId: profile?.id
+  });
+
+  // Wait for auth to load before showing actions
+  if (loading) {
+    return (
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Sparkles className="h-5 w-5" />
+            إجراءات سريعة
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-3">
+          <div className="text-center py-4">
+            <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto"></div>
+            <p className="text-sm text-muted-foreground mt-2">جاري التحميل...</p>
+          </div>
+        </CardContent>
+      </Card>
+    );
+  }
 
   // Create action handlers with complete task history object
   const navigationActions = createNavigationAction(navigate, taskHistory);
@@ -37,9 +66,15 @@ export const QuickActions = () => {
 
   // Wrapper function to check auth before executing actions
   const executeWithAuth = (action: () => Promise<void>) => async () => {
-    console.log('Auth check - isAuthenticated:', isAuthenticated, 'user:', !!user, 'profile:', !!profile);
+    console.log('Executing action - Auth check:', {
+      isAuthenticated,
+      hasUser: !!user,
+      hasProfile: !!profile,
+      userEmail: user?.email
+    });
     
     if (!isAuthenticated || !user || !profile) {
+      console.log('Auth failed, redirecting to login');
       toast.error('يجب تسجيل الدخول أولاً');
       navigate('/login');
       return;

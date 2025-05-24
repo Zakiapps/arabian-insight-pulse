@@ -31,9 +31,11 @@ export const useAuthActions = ({ user, setUser, setProfile, setSession }: UseAut
     try {
       const data = await profileService.updateProfile(user.id, profileData);
       
-      // Update local state
+      // Update local state - fix the TypeScript error
       setProfile(data);
-      setUser(prev => prev ? { ...prev, profile: data } : null);
+      if (user) {
+        setUser({ ...user, profile: data });
+      }
 
       return { data, error: null };
     } catch (error) {

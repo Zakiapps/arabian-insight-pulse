@@ -17,7 +17,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   // Check if user is admin - prioritize email check for admin@arabinsights.com
   const isAdmin = user?.email === 'admin@arabinsights.com' || profile?.role === 'admin';
-  const isAuthenticated = !!user && !!session && !!profile;
+  
+  // More robust authentication check - ensure we have all required data
+  const isAuthenticated = !loading && !!user && !!session && !!profile;
+
+  console.log('Auth state check:', {
+    loading,
+    hasUser: !!user,
+    hasSession: !!session,
+    hasProfile: !!profile,
+    isAuthenticated,
+    userEmail: user?.email
+  });
 
   const value = {
     user,
