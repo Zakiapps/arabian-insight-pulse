@@ -1,6 +1,11 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
+import { preprocessArabicText, validateArabicText } from './utils/textProcessing.ts';
+import { detectJordanianDialect } from './utils/dialectDetection.ts';
+import { analyzeWithCustomEndpoint } from './utils/marbertAnalyzer.ts';
+import { validateWithTestData } from './utils/validation.ts';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -17,179 +22,6 @@ const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
 // Your custom Hugging Face endpoint
 const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
-
-// Arabic text preprocessing
-function preprocessArabicText(text: string): string {
-  return text
-    .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Remove diacritics
-    .replace(/[أإآ]/g, 'ا') // Normalize alif
-    .replace(/ة/g, 'ه') // Normalize taa marbouta
-    .replace(/\s+/g, ' ') // Normalize spaces
-    .trim();
-}
-
-// Enhanced Jordanian dialect detection
-function detectJordanianDialect(text: string): string {
-  const jordanianWords = ['زلمة', 'هسا', 'شو', 'بدك', 'يلا', 'تمام', 'خلاص', 'مش', 'هيك', 'بموت', 'فيك'];
-  let matchCount = 0;
-  
-  for (const word of jordanianWords) {
-    if (text.includes(word)) matchCount++;
-    if (matchCount >= 2) break; // Early exit
-  }
-  
-  return matchCount >= 2 ? 'Jordanian' : 'Non-Jordanian';
-}
-
-// Validate Arabic text
-function validateArabicText(text: string): boolean {
-  return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
-}
-
-// Custom Hugging Face endpoint for MARBERT sentiment analysis
-async function analyzeWithCustomEndpoint(text: string): Promise<{
-  sentiment: string;
-  confidence: number;
-  positive_prob: number;
-  negative_prob: number;
-}> {
-  try {
-    console.log('Starting sentiment analysis with custom MARBERT endpoint...');
-    
-    const response = await fetch(customEndpoint, {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${hfToken}`,
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify({
-        inputs: text,
-        parameters: {
-          return_all_scores: true
-        }
-      }),
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('Custom endpoint error:', response.status, errorText);
-      throw new Error(`Custom endpoint error: ${response.status} - ${errorText}`);
-    }
-
-    const result = await response.json();
-    console.log('Custom endpoint response:', result);
-
-    // Handle the response format from your custom endpoint
-    let scores;
-    if (Array.isArray(result) && result.length > 0) {
-      scores = result[0];
-    } else if (result.scores) {
-      scores = result.scores;
-    } else if (Array.isArray(result)) {
-      scores = result;
-    } else {
-      throw new Error('Unexpected response format from custom endpoint');
-    }
-
-    // Find positive and negative scores for MARBERT model
-    const positiveScore = scores.find((s: any) => 
-      s.label && (
-        s.label.toLowerCase().includes('positive') || 
-        s.label.toLowerCase().includes('pos') ||
-        s.label === 'LABEL_1' ||
-        s.label === '1' ||
-        s.label === 'POSITIVE'
-      )
-    );
-    
-    const negativeScore = scores.find((s: any) => 
-      s.label && (
-        s.label.toLowerCase().includes('negative') || 
-        s.label.toLowerCase().includes('neg') ||
-        s.label === 'LABEL_0' ||
-        s.label === '0' ||
-        s.label === 'NEGATIVE'
-      )
-    );
-
-    let positive_prob = 0.5;
-    let negative_prob = 0.5;
-
-    if (positiveScore && negativeScore) {
-      positive_prob = positiveScore.score;
-      negative_prob = negativeScore.score;
-    } else if (scores.length >= 2) {
-      // Fallback: assume first two scores are negative and positive
-      negative_prob = scores[0].score;
-      positive_prob = scores[1].score;
-    }
-
-    const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
-    const confidence = Math.max(positive_prob, negative_prob);
-
-    console.log('Custom MARBERT endpoint analysis completed successfully');
-
-    return {
-      sentiment,
-      confidence: Math.round(confidence * 10000) / 10000,
-      positive_prob: Math.round(positive_prob * 10000) / 10000,
-      negative_prob: Math.round(negative_prob * 10000) / 10000
-    };
-
-  } catch (error) {
-    console.error('Custom endpoint analysis error:', error);
-    throw error;
-  }
-}
-
-// Validate model with test data
-async function validateWithTestData(): Promise<void> {
-  try {
-    console.log('Loading test.csv for validation...');
-    
-    const { data: testData, error } = await supabase.storage
-      .from('private-model')
-      .download('test.csv');
-    
-    if (error || !testData) {
-      console.log('Test data not found, skipping validation');
-      return;
-    }
-    
-    const csvText = await testData.text();
-    const lines = csvText.split('\n').slice(1, 6); // Take first 5 test samples
-    
-    let correct = 0;
-    let total = 0;
-    
-    for (const line of lines) {
-      if (!line.trim()) continue;
-      
-      const [text, expectedLabel] = line.split(',').map(col => col.trim().replace(/"/g, ''));
-      if (!text || !expectedLabel) continue;
-      
-      try {
-        const result = await analyzeWithCustomEndpoint(text);
-        const predicted = result.sentiment === 'positive' ? '1' : '0';
-        
-        if (predicted === expectedLabel) correct++;
-        total++;
-        
-        console.log(`Test: "${text.substring(0, 30)}..." | Expected: ${expectedLabel} | Predicted: ${predicted} | Confidence: ${result.confidence}`);
-      } catch (err) {
-        console.error('Error validating sample:', err);
-      }
-    }
-    
-    if (total > 0) {
-      const accuracy = (correct / total * 100).toFixed(1);
-      console.log(`Validation accuracy: ${accuracy}% (${correct}/${total})`);
-    }
-    
-  } catch (error) {
-    console.error('Validation error:', error);
-  }
-}
 
 serve(async (req) => {
   // Handle CORS
@@ -222,14 +54,16 @@ serve(async (req) => {
     console.log('Text preprocessed');
 
     // Analyze with custom MARBERT endpoint
-    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText);
+    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, customEndpoint, hfToken);
     console.log('Custom MARBERT analysis completed');
     
     // Detect dialect efficiently
     const dialect = detectJordanianDialect(preprocessedText);
     
     // Run validation in background (don't wait for it)
-    validateWithTestData().catch(err => console.error('Background validation error:', err));
+    validateWithTestData(supabase, customEndpoint, hfToken).catch(err => 
+      console.error('Background validation error:', err)
+    );
     
     const finalResult = {
       ...analysisResult,
