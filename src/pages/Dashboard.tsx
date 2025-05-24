@@ -1,420 +1,289 @@
 
-import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { useQuery } from "@tanstack/react-query";
-import { supabase } from "@/integrations/supabase/client";
+import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonRTL } from "@/components/ui/button-rtl";
-import { Separator } from "@/components/ui/separator";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import {
-  BarChart3,
-  TrendingUp,
-  TrendingDown,
-  MessageSquare,
-  Users,
-  Globe,
-  Heart,
-  Plus,
-  Upload,
-  Sparkles,
-  Activity
-} from "lucide-react";
-import { useNavigate } from "react-router-dom";
-import { toast } from "sonner";
+import { BarChart3, TrendingUp, MessageSquare, Globe, Users, Calendar, Plus, FileText } from 'lucide-react';
+import { Link } from 'react-router-dom';
+import { useRealData } from '@/hooks/useRealData';
 
 const Dashboard = () => {
-  const { profile, isAdmin } = useAuth();
-  const { isRTL } = useLanguage();
-  const navigate = useNavigate();
+  const { stats, loading } = useRealData();
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
-
-  // Fetch real data from Supabase - user's own data only
-  const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useQuery({
-    queryKey: ['dashboard-posts', profile?.id],
-    queryFn: async () => {
-      if (!profile?.id) return [];
-      
-      const { data, error } = await supabase
-        .from('analyzed_posts')
-        .select('*')
-        .eq('user_id', profile.id)
-        .order('created_at', { ascending: false })
-        .limit(100);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!profile?.id
-  });
-
-  // Admin data - only for admins
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['dashboard-users'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: isAdmin
-  });
-
-  // Calculate real metrics from user's data
-  const totalPosts = postsData?.length || 0;
-  const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
-  const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
-  const jordanianPosts = postsData?.filter(post => post.is_jordanian_dialect === true).length || 0;
-  const totalUsers = usersData?.length || 0;
-
-  const sentimentPercentage = totalPosts > 0 ? {
-    positive: Math.round((positivePosts / totalPosts) * 100),
-    negative: Math.round((negativePosts / totalPosts) * 100),
-    neutral: Math.round(((totalPosts - positivePosts - negativePosts) / totalPosts) * 100)
-  } : { positive: 0, negative: 0, neutral: 0 };
-
-  // Recent posts for activity feed - only real data
-  const recentPosts = postsData?.slice(0, 5) || [];
-
-  // Handle new analysis button click
-  const handleNewAnalysis = () => {
-    try {
-      navigate('/dashboard/upload');
-      toast.success('تم الانتقال إلى صفحة رفع وتحليل البيانات');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      toast.error('حدث خطأ في الانتقال');
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive': return 'text-green-600 bg-green-50';
+      case 'negative': return 'text-red-600 bg-red-50';
+      case 'neutral': return 'text-gray-600 bg-gray-50';
+      default: return 'text-gray-600 bg-gray-50';
     }
   };
 
-  return (
-    <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
-      {/* Enhanced Header Section */}
-      <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-blue-500/10 border">
-            <Activity className="h-8 w-8 text-primary" />
-          </div>
-          <div>
-            <h1 className="text-3xl font-bold text-foreground flex items-center gap-2">
-              لوحة التحكم الرئيسية
-              <Sparkles className="h-6 w-6 text-yellow-500" />
-            </h1>
-            <p className="text-muted-foreground mt-1">مراقبة وتحليل المحتوى الاجتماعي بالذكاء الاصطناعي</p>
-          </div>
+  const getSentimentLabel = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive': return 'إيجابي';
+      case 'negative': return 'سلبي';
+      case 'neutral': return 'محايد';
+      default: return sentiment;
+    }
+  };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+          <p>جاري تحميل البيانات...</p>
         </div>
-        <div className="flex items-center gap-3">
-          <ButtonRTL 
-            size="sm" 
-            onClick={handleNewAnalysis} 
-            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-          >
-            <Plus className="h-4 w-4 mr-2" />
-            تحليل جديد
-          </ButtonRTL>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-6">
+      {/* Header */}
+      <div className="flex justify-between items-center">
+        <div>
+          <h1 className="text-3xl font-bold tracking-tight">لوحة التحكم</h1>
+          <p className="text-muted-foreground">
+            نظرة عامة على تحليلاتك وإحصائياتك
+          </p>
+        </div>
+        <div className="flex gap-2">
+          <Button asChild>
+            <Link to="/dashboard/upload" className="flex items-center gap-2">
+              <Plus className="h-4 w-4" />
+              تحليل نص جديد
+            </Link>
+          </Button>
         </div>
       </div>
 
-      {/* Enhanced Quick Stats Cards with real data */}
+      {/* Stats Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-r-4 border-r-blue-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/posts')}>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المنشورات</CardTitle>
-            <div className="p-2 rounded-full bg-blue-100">
-              <MessageSquare className="h-4 w-4 text-blue-600" />
-            </div>
+            <MessageSquare className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPosts.toLocaleString()}</div>
-            <p className="text-xs text-muted-foreground flex items-center mt-1">
-              <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              المنشورات المحللة
+            <div className="text-2xl font-bold">{stats.totalPosts.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              النصوص المحللة إجمالاً
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-r-4 border-r-green-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/sentiment')}>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">المشاعر الإيجابية</CardTitle>
-            <div className="p-2 rounded-full bg-green-100">
-              <Heart className="h-4 w-4 text-green-600" />
-            </div>
+            <TrendingUp className="h-4 w-4 text-green-600" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{sentimentPercentage.positive}%</div>
+            <div className="text-2xl font-bold text-green-600">{stats.positivePosts.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {positivePosts.toLocaleString()} منشور إيجابي
+              {stats.totalPosts > 0 ? `${((stats.positivePosts / stats.totalPosts) * 100).toFixed(1)}%` : '0%'} من المجموع
             </p>
           </CardContent>
         </Card>
 
-        <Card className="border-r-4 border-r-red-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/sentiment')}>
+        <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">المشاعر السلبية</CardTitle>
-            <div className="p-2 rounded-full bg-red-100">
-              <TrendingDown className="h-4 w-4 text-red-600" />
-            </div>
+            <TrendingUp className="h-4 w-4 text-red-600 rotate-180" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-red-600">{sentimentPercentage.negative}%</div>
+            <div className="text-2xl font-bold text-red-600">{stats.negativePosts.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground">
-              {negativePosts.toLocaleString()} منشور سلبي
+              {stats.totalPosts > 0 ? `${((stats.negativePosts / stats.totalPosts) * 100).toFixed(1)}%` : '0%'} من المجموع
             </p>
           </CardContent>
         </Card>
 
-        {isAdmin ? (
-          <Card className="border-r-4 border-r-purple-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/admin/users')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
-              <div className="p-2 rounded-full bg-purple-100">
-                <Users className="h-4 w-4 text-purple-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{totalUsers.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-                إجمالي المستخدمين
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-r-4 border-r-orange-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/dialects')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">اللهجة الأردنية</CardTitle>
-              <div className="p-2 rounded-full bg-orange-100">
-                <Globe className="h-4 w-4 text-orange-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {jordanianPosts}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                منشور بالأردنية
-              </p>
-            </CardContent>
-          </Card>
-        )}
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">اللهجة الأردنية</CardTitle>
+            <Globe className="h-4 w-4 text-purple-600" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-purple-600">{stats.jordanianPosts.toLocaleString()}</div>
+            <p className="text-xs text-muted-foreground">
+              {stats.totalPosts > 0 ? `${((stats.jordanianPosts / stats.totalPosts) * 100).toFixed(1)}%` : '0%'} من المجموع
+            </p>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Main Content Grid */}
-      <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Enhanced Activity Feed */}
-        <div className="lg:col-span-2 space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
-              <div className="flex items-center justify-between">
-                <div>
-                  <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    النشاط في الوقت الفعلي
-                  </CardTitle>
-                  <CardDescription>آخر المنشورات والتفاعلات المحللة</CardDescription>
-                </div>
-                <Badge variant="secondary" className="animate-pulse">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  مباشر
-                </Badge>
-              </div>
-            </CardHeader>
-            <CardContent className="p-6">
+      {/* Recent Posts */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              آخر التحليلات
+            </CardTitle>
+            <CardDescription>
+              النصوص المحللة مؤخراً
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.recentPosts.length > 0 ? (
               <div className="space-y-4">
-                {postsLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                    جاري تحميل البيانات...
-                  </div>
-                ) : recentPosts.length > 0 ? (
-                  recentPosts.map((post, index) => (
-                    <div key={post.id} className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all duration-300 cursor-pointer border border-muted/20 hover:border-primary/20" onClick={() => navigate('/dashboard/posts')}>
-                      <Avatar className="h-10 w-10 border-2 border-primary/20">
-                        <AvatarFallback className="text-xs bg-gradient-to-br from-primary/10 to-blue-500/10">
-                          {post.source?.charAt(0)?.toUpperCase() || 'P'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={
-                            post.sentiment === 'positive' ? 'default' : 
-                            post.sentiment === 'negative' ? 'destructive' : 'secondary'
-                          } className="text-xs">
-                            {post.sentiment === 'positive' ? 'إيجابي' : 
-                             post.sentiment === 'negative' ? 'سلبي' : 'محايد'}
+                {stats.recentPosts.slice(0, 5).map((post) => (
+                  <div key={post.id} className="flex items-start justify-between space-x-4">
+                    <div className="flex-1 min-w-0">
+                      <p className="text-sm font-medium truncate">
+                        {post.content.substring(0, 80)}...
+                      </p>
+                      <div className="flex items-center gap-2 mt-1">
+                        <Badge 
+                          variant="secondary" 
+                          className={getSentimentColor(post.sentiment)}
+                        >
+                          {getSentimentLabel(post.sentiment)}
+                        </Badge>
+                        {post.is_jordanian_dialect && (
+                          <Badge variant="outline" className="text-purple-600 border-purple-600">
+                            أردني
                           </Badge>
-                          {post.is_jordanian_dialect && (
-                            <Badge variant="outline" className="text-xs">
-                              أردني
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(post.created_at).toLocaleDateString('ar')}
-                          </span>
-                        </div>
-                        <p className="text-sm line-clamp-2 mb-2" dir="rtl">{post.content}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Globe className="h-3 w-3" />
-                            {post.source || 'غير محدد'}
-                          </span>
-                          {post.engagement_count && (
-                            <span className="flex items-center gap-1">
-                              <Heart className="h-3 w-3" />
-                              {post.engagement_count.toLocaleString()}
-                            </span>
-                          )}
-                          {post.sentiment_score && (
-                            <span className="flex items-center gap-1">
-                              <BarChart3 className="h-3 w-3" />
-                              {Math.round(post.sentiment_score * 100)}%
-                            </span>
-                          )}
-                        </div>
+                        )}
                       </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="p-4 rounded-full bg-muted/30 w-fit mx-auto mb-4">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
+                    <div className="text-xs text-muted-foreground">
+                      {new Date(post.created_at).toLocaleDateString('ar-EG')}
                     </div>
-                    <h3 className="text-lg font-medium mb-2">لا توجد منشورات حالياً</h3>
-                    <p className="text-sm mb-4">ابدأ بتحليل بعض البيانات لرؤية النتائج هنا</p>
-                    <Button onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600">
-                      <Upload className="h-4 w-4 mr-2" />
-                      رفع بيانات جديدة
-                    </Button>
                   </div>
-                )}
+                ))}
+                <div className="pt-2">
+                  <Button variant="outline" size="sm" asChild className="w-full">
+                    <Link to="/dashboard/posts">عرض جميع المنشورات</Link>
+                  </Button>
+                </div>
               </div>
-            </CardContent>
-          </Card>
+            ) : (
+              <div className="text-center py-8">
+                <MessageSquare className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">لا توجد نصوص محللة حتى الآن</p>
+                <Button asChild>
+                  <Link to="/dashboard/upload">ابدأ التحليل الآن</Link>
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
 
-          {/* Enhanced Quick Insights */}
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-green-500/5 to-blue-500/5">
-              <CardTitle className="flex items-center gap-2">
-                <TrendingUp className="h-5 w-5" />
-                رؤى سريعة ومقاييس الأداء
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/dashboard/sentiment')}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-900">اتجاه إيجابي</span>
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              توزيع المشاعر
+            </CardTitle>
+            <CardDescription>
+              نظرة عامة على نتائج التحليل
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            {stats.totalPosts > 0 ? (
+              <div className="space-y-4">
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">إيجابي</span>
+                    <span className="text-sm font-medium text-green-600">
+                      {((stats.positivePosts / stats.totalPosts) * 100).toFixed(1)}%
+                    </span>
                   </div>
-                  <div className="text-2xl font-bold text-green-700 mb-1">
-                    {sentimentPercentage.positive}%
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-green-600 h-2 rounded-full" 
+                      style={{ width: `${(stats.positivePosts / stats.totalPosts) * 100}%` }}
+                    ></div>
                   </div>
-                  <p className="text-sm text-green-600">
-                    من المشاعر إيجابية في التحليل الحالي
-                  </p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/dashboard/posts')}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">نشاط عالي</span>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-700 mb-1">
-                    {totalPosts.toLocaleString()}
-                  </div>
-                  <p className="text-sm text-blue-600">
-                    منشور تم تحليله بنجاح
-                  </p>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
 
-        {/* Right Column - Enhanced Summary */}
-        <div className="space-y-6">
-          {/* Enhanced Platform Summary */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                ملخص المنصات
-              </CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-3">
-                {['تويتر', 'فيسبوك', 'إنستغرام', 'لينكدإن'].map((platform, index) => {
-                  const platformPosts = postsData?.filter(post => 
-                    post.source?.toLowerCase().includes(platform.toLowerCase())
-                  ).length || 0;
-                  const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : 0;
-                  
-                  return (
-                    <div key={platform} className="flex items-center justify-between cursor-pointer hover:bg-muted/30 p-3 rounded-lg transition-colors" onClick={() => navigate('/dashboard/platforms')}>
-                      <span className="text-sm font-medium">{platform}</span>
-                      <div className="flex items-center gap-3">
-                        <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
-                        </div>
-                        <span className="text-xs text-muted-foreground w-10 text-right">{percentage}%</span>
-                      </div>
-                    </div>
-                  );
-                })}
-              </div>
-            </CardContent>
-          </Card>
-
-          {/* Enhanced User Profile Card */}
-          <Card>
-            <CardHeader>
-              <CardTitle>الملف الشخصي</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <div className="flex items-center gap-3 cursor-pointer p-2 rounded-lg hover:bg-muted/30 transition-colors" onClick={() => navigate('/dashboard/settings')}>
-                <Avatar className="h-12 w-12 border-2 border-primary/20">
-                  <AvatarImage src={profile?.avatar_url} />
-                  <AvatarFallback className="bg-gradient-to-br from-primary/10 to-blue-500/10">
-                    {profile?.full_name?.charAt(0) || 'U'}
-                  </AvatarFallback>
-                </Avatar>
-                <div className="flex-1">
-                  <p className="font-medium">{profile?.full_name || 'مستخدم'}</p>
-                  <div className="flex items-center gap-2">
-                    <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <p className="text-sm text-muted-foreground">المستخدم النشط</p>
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">سلبي</span>
+                    <span className="text-sm font-medium text-red-600">
+                      {((stats.negativePosts / stats.totalPosts) * 100).toFixed(1)}%
+                    </span>
                   </div>
-                  {isAdmin && (
-                    <Badge variant="destructive" className="text-xs mt-1">مشرف</Badge>
-                  )}
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-red-600 h-2 rounded-full" 
+                      style={{ width: `${(stats.negativePosts / stats.totalPosts) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="space-y-3">
+                  <div className="flex justify-between items-center">
+                    <span className="text-sm">محايد</span>
+                    <span className="text-sm font-medium text-gray-600">
+                      {((stats.neutralPosts / stats.totalPosts) * 100).toFixed(1)}%
+                    </span>
+                  </div>
+                  <div className="w-full bg-gray-200 rounded-full h-2">
+                    <div 
+                      className="bg-gray-600 h-2 rounded-full" 
+                      style={{ width: `${(stats.neutralPosts / stats.totalPosts) * 100}%` }}
+                    ></div>
+                  </div>
+                </div>
+
+                <div className="pt-2">
+                  <Button variant="outline" size="sm" asChild className="w-full">
+                    <Link to="/dashboard/sentiment">تقرير تفصيلي</Link>
+                  </Button>
                 </div>
               </div>
-              <Separator className="my-4" />
-              <div className="space-y-2 text-sm">
-                <div className="flex justify-between">
-                  <span>آخر دخول:</span>
-                  <span className="text-muted-foreground">اليوم</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>المنشورات المحللة:</span>
-                  <span className="text-muted-foreground font-medium">{totalPosts.toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>معدل النجاح:</span>
-                  <span className="text-green-600 font-medium">98.5%</span>
-                </div>
+            ) : (
+              <div className="text-center py-8">
+                <BarChart3 className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                <p className="text-muted-foreground mb-4">لا توجد بيانات لعرضها</p>
+                <Button variant="outline" asChild>
+                  <Link to="/dashboard/upload">ابدأ التحليل</Link>
+                </Button>
               </div>
-            </CardContent>
-          </Card>
-        </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
+
+      {/* Quick Actions */}
+      <Card>
+        <CardHeader>
+          <CardTitle>الإجراءات السريعة</CardTitle>
+          <CardDescription>الوصول السريع للوظائف الأساسية</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+            <Button variant="outline" asChild className="h-20 flex-col">
+              <Link to="/dashboard/upload">
+                <Plus className="h-6 w-6 mb-2" />
+                <span>تحليل نص</span>
+              </Link>
+            </Button>
+            <Button variant="outline" asChild className="h-20 flex-col">
+              <Link to="/dashboard/posts">
+                <MessageSquare className="h-6 w-6 mb-2" />
+                <span>عرض المنشورات</span>
+              </Link>
+            </Button>
+            <Button variant="outline" asChild className="h-20 flex-col">
+              <Link to="/dashboard/reports">
+                <FileText className="h-6 w-6 mb-2" />
+                <span>التقارير</span>
+              </Link>
+            </Button>
+            <Button variant="outline" asChild className="h-20 flex-col">
+              <Link to="/dashboard/settings">
+                <Users className="h-6 w-6 mb-2" />
+                <span>الإعدادات</span>
+              </Link>
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 };

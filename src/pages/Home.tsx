@@ -4,7 +4,6 @@ import { Link } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { 
   BarChart3, MessageSquare, TrendingUp, Globe, Languages, Bell, 
   Shield, Zap, Target, Eye, Heart, Share2, FileText, Upload,
@@ -12,9 +11,12 @@ import {
 } from 'lucide-react';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import { usePlans } from '@/hooks/usePlans';
+import PricingSection from '@/components/subscription/PricingSection';
 
 const Home = () => {
   const { isAuthenticated, isAdmin } = useAuth();
+  const { plans, loading: plansLoading } = usePlans();
   
   const fadeIn = {
     initial: { opacity: 0, y: 20 },
@@ -74,52 +76,6 @@ const Home = () => {
     { number: "98%", label: "دقة التحليل" },
     { number: "15+", label: "نوع تحليل" },
     { number: "24/7", label: "مراقبة مستمرة" }
-  ];
-
-  const pricingPlans = [
-    {
-      name: "المجاني",
-      price: "0",
-      period: "شهرياً",
-      features: [
-        "100 تحليل شهرياً",
-        "تحليل المشاعر الأساسي",
-        "كشف اللهجة الأردنية",
-        "تقارير أساسية"
-      ],
-      buttonText: "ابدأ مجاناً",
-      popular: false
-    },
-    {
-      name: "المحترف",
-      price: "99",
-      period: "شهرياً",
-      features: [
-        "10,000 تحليل شهرياً",
-        "تحليل متقدم للمشاعر",
-        "كشف جميع اللهجات العربية",
-        "تنبيهات ذكية",
-        "تقارير مفصلة",
-        "دعم فني متقدم"
-      ],
-      buttonText: "اشترك الآن",
-      popular: true
-    },
-    {
-      name: "المؤسسي",
-      price: "299",
-      period: "شهرياً",
-      features: [
-        "تحليل غير محدود",
-        "جميع الميزات المتقدمة",
-        "واجهة برمجة تطبيقات",
-        "تكامل مخصص",
-        "مدير حساب مخصص",
-        "دعم 24/7"
-      ],
-      buttonText: "تواصل معنا",
-      popular: false
-    }
   ];
 
   return (
@@ -308,71 +264,9 @@ const Home = () => {
       </section>
 
       {/* Pricing Section */}
-      <section className="py-16 md:py-24">
-        <div className="container px-4 md:px-6">
-          <motion.div 
-            initial={{ opacity: 0, y: 30 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            viewport={{ once: true }}
-            className="text-center mb-16"
-          >
-            <Badge className="mb-4">خطط الأسعار</Badge>
-            <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
-              اختر الخطة المناسبة لك
-            </h2>
-            <p className="mx-auto max-w-[700px] text-muted-foreground md:text-xl/relaxed">
-              خطط مرنة تناسب جميع الاحتياجات من الأفراد إلى المؤسسات الكبيرة
-            </p>
-          </motion.div>
-
-          <div className="grid gap-8 md:grid-cols-3">
-            {pricingPlans.map((plan, index) => (
-              <motion.div
-                key={index}
-                initial={{ opacity: 0, y: 20 }}
-                whileInView={{ opacity: 1, y: 0 }}
-                viewport={{ once: true }}
-                transition={{ delay: index * 0.1 }}
-                className="relative"
-              >
-                {plan.popular && (
-                  <Badge className="absolute -top-3 left-1/2 transform -translate-x-1/2 bg-primary">
-                    الأكثر شعبية
-                  </Badge>
-                )}
-                <Card className={`h-full ${plan.popular ? 'border-primary shadow-lg scale-105' : ''}`}>
-                  <CardHeader className="text-center">
-                    <CardTitle className="text-2xl">{plan.name}</CardTitle>
-                    <div className="text-4xl font-bold">
-                      ${plan.price}
-                      <span className="text-lg font-normal text-muted-foreground">/{plan.period}</span>
-                    </div>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <ul className="space-y-3">
-                      {plan.features.map((feature, featureIndex) => (
-                        <li key={featureIndex} className="flex items-center gap-2">
-                          <Check className="h-4 w-4 text-green-500" />
-                          <span className="text-sm">{feature}</span>
-                        </li>
-                      ))}
-                    </ul>
-                    <Button 
-                      className="w-full" 
-                      variant={plan.popular ? "default" : "outline"}
-                      asChild
-                    >
-                      <Link to={plan.name === "المجاني" ? "/signup" : "/pricing"}>
-                        {plan.buttonText}
-                      </Link>
-                    </Button>
-                  </CardContent>
-                </Card>
-              </motion.div>
-            ))}
-          </div>
-        </div>
-      </section>
+      {!plansLoading && plans.length > 0 && (
+        <PricingSection plans={plans} />
+      )}
 
       {/* CTA Section */}
       <motion.section 

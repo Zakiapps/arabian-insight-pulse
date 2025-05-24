@@ -16,7 +16,9 @@ export type Database = {
           created_at: string
           dialect_detection_enabled: boolean | null
           email_notifications: boolean | null
+          enable_advanced_analytics: boolean | null
           id: string
+          language_preference: string | null
           sentiment_threshold: number | null
           updated_at: string
           user_id: string
@@ -27,7 +29,9 @@ export type Database = {
           created_at?: string
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
+          enable_advanced_analytics?: boolean | null
           id?: string
+          language_preference?: string | null
           sentiment_threshold?: number | null
           updated_at?: string
           user_id: string
@@ -38,7 +42,9 @@ export type Database = {
           created_at?: string
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
+          enable_advanced_analytics?: boolean | null
           id?: string
+          language_preference?: string | null
           sentiment_threshold?: number | null
           updated_at?: string
           user_id?: string
@@ -372,6 +378,30 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      system_settings: {
+        Row: {
+          created_at: string | null
+          id: string
+          setting_key: string
+          setting_value: Json
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          setting_key: string
+          setting_value: Json
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          setting_key?: string
+          setting_value?: Json
+          updated_at?: string | null
+        }
+        Relationships: []
       }
       task_history: {
         Row: {

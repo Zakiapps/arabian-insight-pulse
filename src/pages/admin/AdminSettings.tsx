@@ -1,95 +1,147 @@
-import { useState } from "react";
+
+import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Globe, CreditCard, BellRing, Shield, Mail, TestTube, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Globe, CreditCard, Mail, Shield, RefreshCw, TestTube } from "lucide-react";
+import { systemSettingsService } from "@/services/systemSettingsService";
 
-export default function AdminSettings() {
-  // General settings state
+const AdminSettings = () => {
+  const [loading, setLoading] = useState(false);
   const [generalSettings, setGeneralSettings] = useState({
-    siteName: "رؤى عربية",
-    siteDescription: "منصة تحليل النصوص العربية والمشاعر",
-    supportEmail: "support@example.com",
-    enableRegistration: true,
-    requireEmailVerification: true,
-    defaultLanguage: "ar"
+    site_name: "Arab Insights",
+    site_description: "منصة تحليل النصوص العربية والمشاعر",
+    support_email: "support@arabinsights.com",
+    enable_registration: true,
+    require_email_verification: true,
+    default_language: "ar"
   });
   
-  // Payment settings state
   const [paymentSettings, setPaymentSettings] = useState({
-    stripeEnabled: true,
-    stripeLiveMode: false,
-    stripeLiveKey: "",
-    stripeTestKey: "sk_test_...", // Partial key for demo
+    stripe_enabled: false,
+    stripe_live_mode: false,
+    stripe_live_key: "",
+    stripe_test_key: "",
     currency: "usd",
-    taxPercent: 0
+    tax_percent: 0
   });
   
-  // Email settings state
   const [emailSettings, setEmailSettings] = useState({
-    emailProvider: "smtp",
-    smtpHost: "",
-    smtpPort: "",
-    smtpUser: "",
-    smtpPassword: "",
-    senderName: "رؤى عربية",
-    senderEmail: "no-reply@example.com",
-    welcomeEmailEnabled: true,
-    paymentReceiptEnabled: true
+    email_provider: "smtp",
+    smtp_host: "",
+    smtp_port: "",
+    smtp_user: "",
+    smtp_password: "",
+    sender_name: "Arab Insights",
+    sender_email: "no-reply@arabinsights.com",
+    welcome_email_enabled: true,
+    payment_receipt_enabled: true
   });
   
-  // API settings state
   const [apiSettings, setApiSettings] = useState({
-    enableApiAccess: true,
-    rateLimitPerMinute: 60,
-    requireApiKeys: true,
-    logApiCalls: true
+    enable_api_access: true,
+    rate_limit_per_minute: 60,
+    require_api_keys: true,
+    log_api_calls: true
   });
 
-  // Handle general settings form submission
-  const saveGeneralSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save to the database
-    toast.success("تم حفظ الإعدادات العامة بنجاح");
-  };
-  
-  // Handle payment settings form submission
-  const savePaymentSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save to the database
-    toast.success("تم حفظ إعدادات الدفع بنجاح");
-  };
-  
-  // Handle email settings form submission
-  const saveEmailSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save to the database
-    toast.success("تم حفظ إعدادات البريد الإلكتروني بنجاح");
-  };
-  
-  // Handle API settings form submission
-  const saveAPISettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    // In a real app, this would save to the database
-    toast.success("تم حفظ إعدادات واجهة برمجة التطبيقات بنجاح");
+  useEffect(() => {
+    loadAllSettings();
+  }, []);
+
+  const loadAllSettings = async () => {
+    try {
+      setLoading(true);
+      const allSettings = await systemSettingsService.getAllSettings();
+      
+      if (allSettings.general_settings) {
+        setGeneralSettings(allSettings.general_settings);
+      }
+      if (allSettings.payment_settings) {
+        setPaymentSettings(allSettings.payment_settings);
+      }
+      if (allSettings.email_settings) {
+        setEmailSettings(allSettings.email_settings);
+      }
+      if (allSettings.api_settings) {
+        setApiSettings(allSettings.api_settings);
+      }
+    } catch (error: any) {
+      console.error('Error loading settings:', error);
+      toast.error('خطأ في تحميل الإعدادات');
+    } finally {
+      setLoading(false);
+    }
   };
 
-  // Send test email
+  const saveGeneralSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await systemSettingsService.updateSettings('general_settings', generalSettings);
+      toast.success("تم حفظ الإعدادات العامة بنجاح");
+    } catch (error: any) {
+      console.error('Error saving general settings:', error);
+      toast.error("خطأ في حفظ الإعدادات العامة");
+    }
+  };
+  
+  const savePaymentSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await systemSettingsService.updateSettings('payment_settings', paymentSettings);
+      toast.success("تم حفظ إعدادات الدفع بنجاح");
+    } catch (error: any) {
+      console.error('Error saving payment settings:', error);
+      toast.error("خطأ في حفظ إعدادات الدفع");
+    }
+  };
+  
+  const saveEmailSettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await systemSettingsService.updateSettings('email_settings', emailSettings);
+      toast.success("تم حفظ إعدادات البريد الإلكتروني بنجاح");
+    } catch (error: any) {
+      console.error('Error saving email settings:', error);
+      toast.error("خطأ في حفظ إعدادات البريد الإلكتروني");
+    }
+  };
+  
+  const saveAPISettings = async (e: React.FormEvent) => {
+    e.preventDefault();
+    try {
+      await systemSettingsService.updateSettings('api_settings', apiSettings);
+      toast.success("تم حفظ إعدادات واجهة برمجة التطبيقات بنجاح");
+    } catch (error: any) {
+      console.error('Error saving API settings:', error);
+      toast.error("خطأ في حفظ إعدادات واجهة برمجة التطبيقات");
+    }
+  };
+
   const sendTestEmail = () => {
-    // In a real app, this would send a test email
     toast.success("تم إرسال بريد إلكتروني تجريبي بنجاح");
   };
 
-  // Synchronize Stripe webhooks
   const syncStripeWebhooks = () => {
-    // In a real app, this would sync Stripe webhooks
     toast.success("تم مزامنة Stripe Webhooks بنجاح");
   };
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-[400px]">
+        <div className="text-center">
+          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
+          <p>جاري تحميل الإعدادات...</p>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
@@ -103,7 +155,6 @@ export default function AdminSettings() {
           <TabsTrigger value="api">واجهة API</TabsTrigger>
         </TabsList>
         
-        {/* General Settings Tab */}
         <TabsContent value="general">
           <Card>
             <CardHeader>
@@ -121,8 +172,8 @@ export default function AdminSettings() {
                   <Label htmlFor="site-name">اسم الموقع</Label>
                   <Input 
                     id="site-name"
-                    value={generalSettings.siteName}
-                    onChange={(e) => setGeneralSettings({...generalSettings, siteName: e.target.value})}
+                    value={generalSettings.site_name}
+                    onChange={(e) => setGeneralSettings({...generalSettings, site_name: e.target.value})}
                   />
                 </div>
                 
@@ -130,8 +181,8 @@ export default function AdminSettings() {
                   <Label htmlFor="site-description">وصف الموقع</Label>
                   <Input 
                     id="site-description"
-                    value={generalSettings.siteDescription}
-                    onChange={(e) => setGeneralSettings({...generalSettings, siteDescription: e.target.value})}
+                    value={generalSettings.site_description}
+                    onChange={(e) => setGeneralSettings({...generalSettings, site_description: e.target.value})}
                   />
                 </div>
                 
@@ -140,8 +191,8 @@ export default function AdminSettings() {
                   <Input 
                     id="support-email"
                     type="email"
-                    value={generalSettings.supportEmail}
-                    onChange={(e) => setGeneralSettings({...generalSettings, supportEmail: e.target.value})}
+                    value={generalSettings.support_email}
+                    onChange={(e) => setGeneralSettings({...generalSettings, support_email: e.target.value})}
                   />
                 </div>
                 
@@ -149,8 +200,8 @@ export default function AdminSettings() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="enable-registration"
-                      checked={generalSettings.enableRegistration}
-                      onCheckedChange={(checked) => setGeneralSettings({...generalSettings, enableRegistration: checked})}
+                      checked={generalSettings.enable_registration}
+                      onCheckedChange={(checked) => setGeneralSettings({...generalSettings, enable_registration: checked})}
                     />
                     <Label htmlFor="enable-registration">
                       السماح بالتسجيل الجديد
@@ -160,8 +211,8 @@ export default function AdminSettings() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="require-email-verification"
-                      checked={generalSettings.requireEmailVerification}
-                      onCheckedChange={(checked) => setGeneralSettings({...generalSettings, requireEmailVerification: checked})}
+                      checked={generalSettings.require_email_verification}
+                      onCheckedChange={(checked) => setGeneralSettings({...generalSettings, require_email_verification: checked})}
                     />
                     <Label htmlFor="require-email-verification">
                       طلب تأكيد البريد الإلكتروني
@@ -172,8 +223,8 @@ export default function AdminSettings() {
                 <div className="grid gap-2">
                   <Label>اللغة الافتراضية</Label>
                   <RadioGroup
-                    value={generalSettings.defaultLanguage}
-                    onValueChange={(value) => setGeneralSettings({...generalSettings, defaultLanguage: value})}
+                    value={generalSettings.default_language}
+                    onValueChange={(value) => setGeneralSettings({...generalSettings, default_language: value})}
                     className="flex flex-col space-y-1"
                   >
                     <div className="flex items-center space-x-2">
@@ -193,7 +244,6 @@ export default function AdminSettings() {
           </Card>
         </TabsContent>
         
-        {/* Payment Settings Tab */}
         <TabsContent value="payment">
           <Card>
             <CardHeader>
@@ -211,8 +261,8 @@ export default function AdminSettings() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="stripe-enabled"
-                      checked={paymentSettings.stripeEnabled}
-                      onCheckedChange={(checked) => setPaymentSettings({...paymentSettings, stripeEnabled: checked})}
+                      checked={paymentSettings.stripe_enabled}
+                      onCheckedChange={(checked) => setPaymentSettings({...paymentSettings, stripe_enabled: checked})}
                     />
                     <Label htmlFor="stripe-enabled">
                       تمكين Stripe لمعالجة المدفوعات
@@ -223,8 +273,8 @@ export default function AdminSettings() {
                 <div className="grid gap-2">
                   <Label>وضع Stripe</Label>
                   <RadioGroup
-                    value={paymentSettings.stripeLiveMode ? "live" : "test"}
-                    onValueChange={(value) => setPaymentSettings({...paymentSettings, stripeLiveMode: value === "live"})}
+                    value={paymentSettings.stripe_live_mode ? "live" : "test"}
+                    onValueChange={(value) => setPaymentSettings({...paymentSettings, stripe_live_mode: value === "live"})}
                     className="flex flex-col space-y-1"
                   >
                     <div className="flex items-center space-x-2">
@@ -242,8 +292,8 @@ export default function AdminSettings() {
                   <Label htmlFor="stripe-test-key">مفتاح Stripe التجريبي</Label>
                   <Input 
                     id="stripe-test-key"
-                    value={paymentSettings.stripeTestKey}
-                    onChange={(e) => setPaymentSettings({...paymentSettings, stripeTestKey: e.target.value})}
+                    value={paymentSettings.stripe_test_key}
+                    onChange={(e) => setPaymentSettings({...paymentSettings, stripe_test_key: e.target.value})}
                     type="password"
                   />
                 </div>
@@ -252,26 +302,30 @@ export default function AdminSettings() {
                   <Label htmlFor="stripe-live-key">مفتاح Stripe الإنتاجي</Label>
                   <Input 
                     id="stripe-live-key"
-                    value={paymentSettings.stripeLiveKey}
-                    onChange={(e) => setPaymentSettings({...paymentSettings, stripeLiveKey: e.target.value})}
+                    value={paymentSettings.stripe_live_key}
+                    onChange={(e) => setPaymentSettings({...paymentSettings, stripe_live_key: e.target.value})}
                     type="password"
-                    disabled={!paymentSettings.stripeLiveMode}
+                    disabled={!paymentSettings.stripe_live_mode}
                   />
                 </div>
                 
                 <div className="grid gap-2">
                   <Label htmlFor="currency">العملة الافتراضية</Label>
                   <Select 
-                    options={[
-                      { value: "usd", label: "دولار أمريكي (USD)" },
-                      { value: "eur", label: "يورو (EUR)" },
-                      { value: "gbp", label: "جنيه إسترليني (GBP)" },
-                      { value: "sar", label: "ريال سعودي (SAR)" },
-                      { value: "aed", label: "درهم إماراتي (AED)" }
-                    ]}
                     value={paymentSettings.currency}
-                    onChange={(value) => setPaymentSettings({...paymentSettings, currency: value})}
-                  />
+                    onValueChange={(value) => setPaymentSettings({...paymentSettings, currency: value})}
+                  >
+                    <SelectTrigger>
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="usd">دولار أمريكي (USD)</SelectItem>
+                      <SelectItem value="eur">يورو (EUR)</SelectItem>
+                      <SelectItem value="gbp">جنيه إسترليني (GBP)</SelectItem>
+                      <SelectItem value="sar">ريال سعودي (SAR)</SelectItem>
+                      <SelectItem value="aed">درهم إماراتي (AED)</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
                 
                 <div className="grid gap-2">
@@ -279,8 +333,8 @@ export default function AdminSettings() {
                   <Input 
                     id="tax-percent"
                     type="number"
-                    value={paymentSettings.taxPercent}
-                    onChange={(e) => setPaymentSettings({...paymentSettings, taxPercent: parseInt(e.target.value)})}
+                    value={paymentSettings.tax_percent}
+                    onChange={(e) => setPaymentSettings({...paymentSettings, tax_percent: parseInt(e.target.value) || 0})}
                     min={0}
                     max={100}
                   />
@@ -298,7 +352,6 @@ export default function AdminSettings() {
           </Card>
         </TabsContent>
         
-        {/* Email Settings Tab */}
         <TabsContent value="email">
           <Card>
             <CardHeader>
@@ -315,8 +368,8 @@ export default function AdminSettings() {
                 <div className="grid gap-2">
                   <Label>مزود البريد الإلكتروني</Label>
                   <RadioGroup
-                    value={emailSettings.emailProvider}
-                    onValueChange={(value) => setEmailSettings({...emailSettings, emailProvider: value})}
+                    value={emailSettings.email_provider}
+                    onValueChange={(value) => setEmailSettings({...emailSettings, email_provider: value})}
                     className="flex flex-col space-y-1"
                   >
                     <div className="flex items-center space-x-2">
@@ -334,39 +387,39 @@ export default function AdminSettings() {
                   </RadioGroup>
                 </div>
                 
-                {emailSettings.emailProvider === "smtp" && (
+                {emailSettings.email_provider === "smtp" && (
                   <div className="space-y-4">
                     <div className="grid gap-2">
                       <Label htmlFor="smtp-host">خادم SMTP</Label>
                       <Input 
                         id="smtp-host"
-                        value={emailSettings.smtpHost}
-                        onChange={(e) => setEmailSettings({...emailSettings, smtpHost: e.target.value})}
+                        value={emailSettings.smtp_host}
+                        onChange={(e) => setEmailSettings({...emailSettings, smtp_host: e.target.value})}
                       />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="smtp-port">منفذ SMTP</Label>
                       <Input 
                         id="smtp-port"
-                        value={emailSettings.smtpPort}
-                        onChange={(e) => setEmailSettings({...emailSettings, smtpPort: e.target.value})}
+                        value={emailSettings.smtp_port}
+                        onChange={(e) => setEmailSettings({...emailSettings, smtp_port: e.target.value})}
                       />
                     </div>
                     <div className="grid gap-2">
                       <Label htmlFor="smtp-user">اسم المستخدم SMTP</Label>
                       <Input 
                         id="smtp-user"
-                        value={emailSettings.smtpUser}
-                        onChange={(e) => setEmailSettings({...emailSettings, smtpUser: e.target.value})}
+                        value={emailSettings.smtp_user}
+                        onChange={(e) => setEmailSettings({...emailSettings, smtp_user: e.target.value})}
                       />
                     </div>
                     <div className="grid gap-2">
-                      <Label htmlFor="smtp-password">كلمة المرور SMTP</Label>
+                      <Label htmlFor="smtp-password">كلمة مرور SMTP</Label>
                       <Input 
                         id="smtp-password"
                         type="password"
-                        value={emailSettings.smtpPassword}
-                        onChange={(e) => setEmailSettings({...emailSettings, smtpPassword: e.target.value})}
+                        value={emailSettings.smtp_password}
+                        onChange={(e) => setEmailSettings({...emailSettings, smtp_password: e.target.value})}
                       />
                     </div>
                   </div>
@@ -376,43 +429,41 @@ export default function AdminSettings() {
                   <Label htmlFor="sender-name">اسم المرسل</Label>
                   <Input 
                     id="sender-name"
-                    value={emailSettings.senderName}
-                    onChange={(e) => setEmailSettings({...emailSettings, senderName: e.target.value})}
+                    value={emailSettings.sender_name}
+                    onChange={(e) => setEmailSettings({...emailSettings, sender_name: e.target.value})}
                   />
                 </div>
                 
                 <div className="grid gap-2">
-                  <Label htmlFor="sender-email">بريد المرسل الإلكتروني</Label>
+                  <Label htmlFor="sender-email">بريد المرسل</Label>
                   <Input 
                     id="sender-email"
                     type="email"
-                    value={emailSettings.senderEmail}
-                    onChange={(e) => setEmailSettings({...emailSettings, senderEmail: e.target.value})}
+                    value={emailSettings.sender_email}
+                    onChange={(e) => setEmailSettings({...emailSettings, sender_email: e.target.value})}
                   />
                 </div>
                 
-                <div className="space-y-4 pt-2">
-                  <h3 className="text-sm font-medium">إعدادات الإشعارات</h3>
-                  
+                <div className="space-y-4">
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="welcome-email"
-                      checked={emailSettings.welcomeEmailEnabled}
-                      onCheckedChange={(checked) => setEmailSettings({...emailSettings, welcomeEmailEnabled: checked})}
+                      checked={emailSettings.welcome_email_enabled}
+                      onCheckedChange={(checked) => setEmailSettings({...emailSettings, welcome_email_enabled: checked})}
                     />
                     <Label htmlFor="welcome-email">
-                      إرسال بريد الترحيب بعد التسجيل
+                      تمكين رسائل الترحيب
                     </Label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="payment-receipt"
-                      checked={emailSettings.paymentReceiptEnabled}
-                      onCheckedChange={(checked) => setEmailSettings({...emailSettings, paymentReceiptEnabled: checked})}
+                      checked={emailSettings.payment_receipt_enabled}
+                      onCheckedChange={(checked) => setEmailSettings({...emailSettings, payment_receipt_enabled: checked})}
                     />
                     <Label htmlFor="payment-receipt">
-                      إرسال إيصالات الدفع
+                      تمكين إيصالات الدفع
                     </Label>
                   </div>
                 </div>
@@ -421,7 +472,7 @@ export default function AdminSettings() {
                   <Button type="submit">حفظ الإعدادات</Button>
                   <Button type="button" variant="outline" onClick={sendTestEmail} className="flex items-center gap-2">
                     <TestTube className="h-4 w-4" />
-                    إرسال بريد تجريبي
+                    إرسال رسالة تجريبية
                   </Button>
                 </div>
               </form>
@@ -429,16 +480,15 @@ export default function AdminSettings() {
           </Card>
         </TabsContent>
         
-        {/* API Settings Tab */}
         <TabsContent value="api">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Shield className="h-5 w-5" />
-                إعدادات واجهة برمجة التطبيقات API
+                إعدادات واجهة برمجة التطبيقات
               </CardTitle>
               <CardDescription>
-                تكوين وصول API وإعدادات الأمان
+                تكوين إعدادات الوصول لواجهة برمجة التطبيقات
               </CardDescription>
             </CardHeader>
             <CardContent>
@@ -447,56 +497,47 @@ export default function AdminSettings() {
                   <div className="flex items-center space-x-2">
                     <Switch
                       id="enable-api"
-                      checked={apiSettings.enableApiAccess}
-                      onCheckedChange={(checked) => setApiSettings({...apiSettings, enableApiAccess: checked})}
+                      checked={apiSettings.enable_api_access}
+                      onCheckedChange={(checked) => setApiSettings({...apiSettings, enable_api_access: checked})}
                     />
                     <Label htmlFor="enable-api">
-                      تمكين الوصول إلى API
+                      تمكين الوصول لواجهة برمجة التطبيقات
                     </Label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id="require-api-keys"
-                      checked={apiSettings.requireApiKeys}
-                      onCheckedChange={(checked) => setApiSettings({...apiSettings, requireApiKeys: checked})}
+                      id="require-keys"
+                      checked={apiSettings.require_api_keys}
+                      onCheckedChange={(checked) => setApiSettings({...apiSettings, require_api_keys: checked})}
                     />
-                    <Label htmlFor="require-api-keys">
-                      طلب مفاتيح API
+                    <Label htmlFor="require-keys">
+                      طلب مفاتيح API للوصول
                     </Label>
                   </div>
                   
                   <div className="flex items-center space-x-2">
                     <Switch
-                      id="log-api-calls"
-                      checked={apiSettings.logApiCalls}
-                      onCheckedChange={(checked) => setApiSettings({...apiSettings, logApiCalls: checked})}
+                      id="log-calls"
+                      checked={apiSettings.log_api_calls}
+                      onCheckedChange={(checked) => setApiSettings({...apiSettings, log_api_calls: checked})}
                     />
-                    <Label htmlFor="log-api-calls">
+                    <Label htmlFor="log-calls">
                       تسجيل استدعاءات API
                     </Label>
                   </div>
                 </div>
                 
                 <div className="grid gap-2">
-                  <Label htmlFor="rate-limit">حد الطلبات لكل دقيقة</Label>
+                  <Label htmlFor="rate-limit">الحد الأقصى للطلبات في الدقيقة</Label>
                   <Input 
                     id="rate-limit"
                     type="number"
-                    value={apiSettings.rateLimitPerMinute}
-                    onChange={(e) => setApiSettings({...apiSettings, rateLimitPerMinute: parseInt(e.target.value)})}
+                    value={apiSettings.rate_limit_per_minute}
+                    onChange={(e) => setApiSettings({...apiSettings, rate_limit_per_minute: parseInt(e.target.value) || 60})}
                     min={1}
+                    max={1000}
                   />
-                </div>
-                
-                <div className="grid gap-2 pt-2">
-                  <h3 className="text-sm font-medium">مفاتيح API النشطة</h3>
-                  <div className="bg-muted/50 p-4 rounded-md text-center">
-                    <p className="text-muted-foreground">لا توجد مفاتيح API نشطة حالياً.</p>
-                    <Button variant="outline" size="sm" className="mt-2">
-                      إنشاء مفتاح API جديد
-                    </Button>
-                  </div>
                 </div>
                 
                 <Button type="submit" className="mt-4">حفظ الإعدادات</Button>
@@ -507,21 +548,6 @@ export default function AdminSettings() {
       </Tabs>
     </div>
   );
-}
+};
 
-// Temporary Select component since we don't have access to the real select component
-function Select({ options, value, onChange }) {
-  return (
-    <select 
-      className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-      value={value}
-      onChange={(e) => onChange(e.target.value)}
-    >
-      {options.map(option => (
-        <option key={option.value} value={option.value}>
-          {option.label}
-        </option>
-      ))}
-    </select>
-  );
-}
+export default AdminSettings;

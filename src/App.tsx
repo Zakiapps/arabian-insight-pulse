@@ -10,10 +10,11 @@ import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Import pages
-import LandingPage from "@/pages/LandingPage";
+import Home from "@/pages/Home"; // تغيير من LandingPage إلى Home
 import TextAnalysis from "@/pages/TextAnalysis";
 import SignIn from "@/pages/SignIn";
 import SignUp from "@/pages/SignUp";
+import Pricing from "@/pages/Pricing";
 import DashboardLayout from "@/components/layouts/DashboardLayout";
 import AdminLayout from "@/components/layouts/AdminLayout";
 
@@ -29,6 +30,7 @@ import PlatformDistribution from "@/pages/PlatformDistribution";
 import TopTopics from "@/pages/TopTopics";
 import DialectDetection from "@/pages/DialectDetection";
 import Settings from "@/pages/Settings";
+import AnalysisSettings from "@/pages/AnalysisSettings";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -52,11 +54,12 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <Routes>
-                    {/* Public routes - Landing page as home */}
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/home" element={<LandingPage />} />
-                    <Route path="/landing" element={<LandingPage />} />
+                    {/* Public routes - Home page as default */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/landing" element={<Home />} />
                     <Route path="/text-analysis" element={<TextAnalysis />} />
+                    <Route path="/pricing" element={<Pricing />} />
                     <Route path="/signin" element={<SignIn />} />
                     <Route path="/signup" element={<SignUp />} />
                     <Route path="/login" element={<SignIn />} />
@@ -78,6 +81,7 @@ function App() {
                       <Route path="topics" element={<TopTopics />} />
                       <Route path="dialects" element={<DialectDetection />} />
                       <Route path="settings" element={<Settings />} />
+                      <Route path="analysis-settings" element={<AnalysisSettings />} />
                     </Route>
 
                     {/* Protected Admin routes */}
