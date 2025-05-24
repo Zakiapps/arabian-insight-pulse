@@ -48,8 +48,8 @@ const TextAnalysisSection = () => {
 
       setResult(data);
 
-      // Save to predictions table
-      const { error: saveError } = await supabase
+      // Save to predictions table using type assertion to bypass strict typing
+      const { error: saveError } = await (supabase as any)
         .from('predictions')
         .insert({
           text: text.trim(),

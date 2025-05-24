@@ -50,8 +50,8 @@ const PublicTextAnalyzer = () => {
 
       setResult(data);
 
-      // Save to predictions table with user ID if logged in
-      const { error: saveError } = await supabase
+      // Save to predictions table using type assertion to bypass strict typing
+      const { error: saveError } = await (supabase as any)
         .from('predictions')
         .insert({
           user_id: user?.id || null,
