@@ -44,7 +44,7 @@ function validateArabicText(text: string): boolean {
   return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
 }
 
-// Hugging Face Inference API for sentiment analysis
+// Hugging Face Inference API for sentiment analysis using mofawzy/bert-ajgt
 async function analyzeWithHuggingFace(text: string): Promise<{
   sentiment: string;
   confidence: number;
@@ -52,10 +52,10 @@ async function analyzeWithHuggingFace(text: string): Promise<{
   negative_prob: number;
 }> {
   try {
-    console.log('Starting Hugging Face inference...');
+    console.log('Starting Hugging Face inference with mofawzy/bert-ajgt model...');
     
     const response = await fetch(
-      'https://api-inference.huggingface.co/models/aubmindlab/bert-base-arabertv02-twitter',
+      'https://api-inference.huggingface.co/models/mofawzy/bert-ajgt',
       {
         method: 'POST',
         headers: {
@@ -64,8 +64,8 @@ async function analyzeWithHuggingFace(text: string): Promise<{
         },
         body: JSON.stringify({
           inputs: text,
-          parameters: {
-            return_all_scores: true
+          options: {
+            wait_for_model: true
           }
         }),
       }
@@ -94,13 +94,15 @@ async function analyzeWithHuggingFace(text: string): Promise<{
     const positiveScore = scores.find((s: any) => 
       s.label.toLowerCase().includes('positive') || 
       s.label.toLowerCase().includes('pos') ||
-      s.label === 'LABEL_1'
+      s.label === 'LABEL_1' ||
+      s.label === '1'
     );
     
     const negativeScore = scores.find((s: any) => 
       s.label.toLowerCase().includes('negative') || 
       s.label.toLowerCase().includes('neg') ||
-      s.label === 'LABEL_0'
+      s.label === 'LABEL_0' ||
+      s.label === '0'
     );
 
     let positive_prob = 0.5;
@@ -118,7 +120,7 @@ async function analyzeWithHuggingFace(text: string): Promise<{
     const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
     const confidence = Math.max(positive_prob, negative_prob);
 
-    console.log('Hugging Face inference completed successfully');
+    console.log('Hugging Face inference completed successfully with mofawzy/bert-ajgt');
 
     return {
       sentiment,
@@ -212,7 +214,7 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed');
 
-    // Analyze with Hugging Face AraBERTv0.2-Twitter model
+    // Analyze with Hugging Face mofawzy/bert-ajgt model
     const analysisResult = await analyzeWithHuggingFace(preprocessedText);
     console.log('Hugging Face analysis completed');
     
@@ -225,7 +227,7 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'AraBERTv0.2-Twitter_HuggingFace'
+      modelSource: 'mofawzy/bert-ajgt_HuggingFace'
     };
     
     console.log('Analysis completed successfully');
