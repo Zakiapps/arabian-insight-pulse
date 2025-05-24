@@ -13,10 +13,13 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Minimal vocabulary cache with size limit
-let vocabCache: Map<string, number> | null = null;
+// Progressive vocabulary loading with chunks
+let vocabChunks: Map<string, number>[] = [];
+let currentChunkIndex = 0;
 let specialTokens: any = null;
-const MAX_VOCAB_SIZE = 10000; // Limit vocab cache size
+const CHUNK_SIZE = 5000;
+let fullVocabLoaded = false;
+let totalVocabLines: string[] = [];
 
 // Memory-efficient Arabic text preprocessing
 function preprocessArabicText(text: string): string {
@@ -46,64 +49,111 @@ function validateArabicText(text: string): boolean {
   return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
 }
 
-// Load minimal vocabulary with size limits
-async function loadMinimalVocab() {
-  if (vocabCache) return true;
-
+// Load vocabulary progressively in chunks
+async function loadVocabChunk(chunkIndex: number): Promise<boolean> {
   try {
-    console.log('Loading minimal vocabulary...');
+    console.log(`Loading vocabulary chunk ${chunkIndex + 1}...`);
     
-    const { data: vocabData, error } = await supabase.storage
-      .from('private-model')
-      .download('vocab.txt');
-    
-    if (error || !vocabData) {
-      throw new Error(`Vocab load failed: ${error?.message}`);
+    // Load full vocab only once if not already loaded
+    if (totalVocabLines.length === 0) {
+      const { data: vocabData, error } = await supabase.storage
+        .from('private-model')
+        .download('vocab.txt');
+      
+      if (error || !vocabData) {
+        throw new Error(`Vocab load failed: ${error?.message}`);
+      }
+      
+      const vocabText = await vocabData.text();
+      totalVocabLines = vocabText.split('\n').filter(line => line.trim());
+      console.log(`Total vocabulary size: ${totalVocabLines.length} tokens`);
     }
     
-    const vocabText = await vocabData.text();
-    const lines = vocabText.split('\n').slice(0, MAX_VOCAB_SIZE); // Limit size
+    const startIndex = chunkIndex * CHUNK_SIZE;
+    const endIndex = Math.min(startIndex + CHUNK_SIZE, totalVocabLines.length);
     
-    vocabCache = new Map();
-    lines.forEach((token, index) => {
-      if (token.trim()) {
-        vocabCache!.set(token.trim(), index);
+    if (startIndex >= totalVocabLines.length) {
+      console.log('No more vocabulary chunks to load');
+      return false;
+    }
+    
+    // Create or extend the chunk
+    if (!vocabChunks[chunkIndex]) {
+      vocabChunks[chunkIndex] = new Map();
+    }
+    
+    const chunk = vocabChunks[chunkIndex];
+    for (let i = startIndex; i < endIndex; i++) {
+      const token = totalVocabLines[i].trim();
+      if (token) {
+        chunk.set(token, i);
       }
-    });
+    }
     
-    // Set special tokens
-    specialTokens = {
-      cls: vocabCache.get('[CLS]') || 101,
-      sep: vocabCache.get('[SEP]') || 102,
-      pad: vocabCache.get('[PAD]') || 0,
-      unk: vocabCache.get('[UNK]') || 100
-    };
+    // Set special tokens from first chunk
+    if (chunkIndex === 0 && !specialTokens) {
+      specialTokens = {
+        cls: chunk.get('[CLS]') || 101,
+        sep: chunk.get('[SEP]') || 102,
+        pad: chunk.get('[PAD]') || 0,
+        unk: chunk.get('[UNK]') || 100
+      };
+    }
     
-    console.log(`Loaded ${vocabCache.size} tokens`);
+    console.log(`Loaded chunk ${chunkIndex + 1}: ${chunk.size} tokens (${startIndex}-${endIndex-1})`);
     return true;
-    
   } catch (error) {
-    console.error('Vocab loading error:', error);
+    console.error(`Error loading vocab chunk ${chunkIndex}:`, error);
     throw error;
   }
 }
 
-// Memory-efficient tokenization
-function tokenizeTextEfficient(text: string, maxLength: number = 128): number[] {
-  if (!vocabCache || !specialTokens) {
-    throw new Error('Vocabulary not loaded');
+// Find token in loaded chunks, load more if needed
+async function findTokenInVocab(word: string): Promise<number | null> {
+  // Search in currently loaded chunks
+  for (let i = 0; i < vocabChunks.length; i++) {
+    const chunk = vocabChunks[i];
+    if (chunk && chunk.has(word)) {
+      return chunk.get(word) || null;
+    }
+  }
+  
+  // If not found and more chunks available, load next chunk
+  const nextChunkIndex = vocabChunks.length;
+  const hasMoreChunks = await loadVocabChunk(nextChunkIndex);
+  
+  if (hasMoreChunks) {
+    const newChunk = vocabChunks[nextChunkIndex];
+    if (newChunk && newChunk.has(word)) {
+      return newChunk.get(word) || null;
+    }
+  }
+  
+  return null;
+}
+
+// Memory-efficient tokenization with progressive vocabulary loading
+async function tokenizeTextProgressive(text: string, maxLength: number = 128): Promise<number[]> {
+  if (!specialTokens) {
+    // Load first chunk to get special tokens
+    await loadVocabChunk(0);
   }
   
   const tokens = [specialTokens.cls];
-  const words = text.split(/\s+/).slice(0, maxLength - 3); // Reserve space for special tokens
+  const words = text.split(/\s+/).slice(0, maxLength - 3);
   
   for (const word of words) {
     if (tokens.length >= maxLength - 1) break;
     
-    let tokenId = vocabCache.get(word) || 
-                  vocabCache.get(`##${word}`) || 
-                  vocabCache.get(word.toLowerCase()) || 
-                  specialTokens.unk;
+    // Try to find token in vocabulary
+    let tokenId = await findTokenInVocab(word);
+    
+    if (tokenId === null) {
+      // Try variations
+      tokenId = await findTokenInVocab(`##${word}`) || 
+                await findTokenInVocab(word.toLowerCase()) || 
+                specialTokens.unk;
+    }
     
     tokens.push(tokenId);
   }
@@ -153,7 +203,7 @@ async function runOptimizedONNXInference(inputIds: number[]): Promise<{
       graphOptimizationLevel: 'all',
       enableMemPattern: false,
       enableCpuMemArena: false,
-      logSeverityLevel: 3, // Minimal logging
+      logSeverityLevel: 3,
     };
     
     session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
@@ -253,13 +303,15 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed');
 
-    // Load minimal vocabulary
-    await loadMinimalVocab();
-    console.log('Vocabulary loaded');
+    // Load first vocabulary chunk if needed
+    if (vocabChunks.length === 0) {
+      await loadVocabChunk(0);
+    }
+    console.log('Initial vocabulary chunk loaded');
     
-    // Tokenize text efficiently
-    const tokenIds = tokenizeTextEfficient(preprocessedText, 128);
-    console.log('Text tokenized');
+    // Tokenize text with progressive loading
+    const tokenIds = await tokenizeTextProgressive(preprocessedText, 128);
+    console.log('Text tokenized with progressive vocabulary');
     
     // Run optimized ONNX inference
     const analysisResult = await runOptimizedONNXInference(tokenIds);
@@ -271,7 +323,7 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'AraBERT_ONNX_Optimized'
+      modelSource: 'AraBERT_ONNX_Progressive'
     };
     
     console.log('Analysis completed successfully');
@@ -285,8 +337,10 @@ serve(async (req) => {
     console.error('Function error:', error);
     
     // Clear caches on error to free memory
-    vocabCache = null;
+    vocabChunks = [];
     specialTokens = null;
+    totalVocabLines = [];
+    currentChunkIndex = 0;
     
     if (globalThis.gc) {
       globalThis.gc();
