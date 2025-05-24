@@ -1,4 +1,3 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -31,7 +30,8 @@ import {
   Settings,
   Upload,
   Sparkles,
-  Activity
+  Activity,
+  Trash2
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
@@ -43,21 +43,26 @@ const Dashboard = () => {
   const { startTask, completeTask } = useTaskHistory();
   const { createNotification } = useNotifications();
 
-  // Fetch real data from Supabase
-  const { data: postsData, isLoading: postsLoading } = useQuery({
-    queryKey: ['dashboard-posts'],
+  // Fetch real data from Supabase - user's own data only
+  const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useQuery({
+    queryKey: ['dashboard-posts', profile?.id],
     queryFn: async () => {
+      if (!profile?.id) return [];
+      
       const { data, error } = await supabase
         .from('analyzed_posts')
         .select('*')
+        .eq('user_id', profile.id)
         .order('created_at', { ascending: false })
         .limit(100);
       
       if (error) throw error;
       return data || [];
-    }
+    },
+    enabled: !!profile?.id
   });
 
+  // Admin data - only for admins
   const { data: usersData, isLoading: usersLoading } = useQuery({
     queryKey: ['dashboard-users'],
     queryFn: async () => {
@@ -71,11 +76,12 @@ const Dashboard = () => {
     enabled: isAdmin
   });
 
-  // Calculate real metrics
+  // Calculate real metrics from user's data
   const totalPosts = postsData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
   const neutralPosts = postsData?.filter(post => post.sentiment === 'neutral').length || 0;
+  const jordanianPosts = postsData?.filter(post => post.is_jordanian_dialect === true).length || 0;
   const totalUsers = usersData?.length || 0;
 
   const sentimentPercentage = totalPosts > 0 ? {
@@ -84,16 +90,13 @@ const Dashboard = () => {
     neutral: Math.round((neutralPosts / totalPosts) * 100)
   } : { positive: 0, negative: 0, neutral: 0 };
 
-  // Recent posts for activity feed - filter out dummy/test data
-  const recentPosts = postsData?.filter(post => 
-    post.content && 
-    post.content.length > 10 && 
-    !post.content.includes('test') &&
-    !post.content.includes('تجربة')
-  ).slice(0, 5) || [];
+  // Recent posts for activity feed - only real data
+  const recentPosts = postsData?.slice(0, 5) || [];
 
-  // Enhanced handler functions with task tracking
+  // Enhanced handler functions with task tracking and real functionality
   const handleNewAnalysis = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى صفحة التحليل');
     try {
       navigate('/dashboard/upload');
@@ -105,17 +108,67 @@ const Dashboard = () => {
   };
 
   const handleExportData = async () => {
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التقارير');
+    if (!profile?.id) return;
+    
+    const taskId = await startTask('export', 'تصدير البيانات إلى CSV');
     try {
-      navigate('/dashboard/reports');
-      await completeTask(taskId, { page: 'reports' });
-      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة التقارير', 'info');
+      if (postsData && postsData.length > 0) {
+        // Create CSV content
+        const csvContent = [
+          ['المحتوى', 'المشاعر', 'النتيجة', 'اللهجة الأردنية', 'المصدر', 'التاريخ'],
+          ...postsData.map(post => [
+            post.content,
+            post.sentiment === 'positive' ? 'إيجابي' : post.sentiment === 'negative' ? 'سلبي' : 'محايد',
+            post.sentiment_score || '',
+            post.is_jordanian_dialect ? 'نعم' : 'لا',
+            post.source || '',
+            new Date(post.created_at).toLocaleDateString('ar')
+          ])
+        ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
+
+        // Download file
+        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
+        const link = document.createElement('a');
+        const url = URL.createObjectURL(blob);
+        link.setAttribute('href', url);
+        link.setAttribute('download', `تحليل_البيانات_${new Date().toISOString().split('T')[0]}.csv`);
+        link.style.visibility = 'hidden';
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+
+        await completeTask(taskId, { recordsExported: postsData.length });
+        await createNotification('تم التصدير', `تم تصدير ${postsData.length} سجل بنجاح`, 'success');
+      } else {
+        await completeTask(taskId, null, 'لا توجد بيانات للتصدير');
+        await createNotification('لا توجد بيانات', 'لا توجد بيانات للتصدير', 'warning');
+      }
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
+      await completeTask(taskId, null, 'فشل في التصدير');
+      await createNotification('خطأ في التصدير', 'فشل في تصدير البيانات', 'error');
+    }
+  };
+
+  const handleClearData = async () => {
+    if (!profile?.id) return;
+    
+    const taskId = await startTask('clear_data', 'مسح جميع البيانات');
+    try {
+      const { error } = await supabase.rpc('clear_user_posts');
+      if (error) throw error;
+
+      await refetchPosts();
+      await completeTask(taskId, { clearedPosts: totalPosts });
+      await createNotification('تم المسح', 'تم مسح جميع البيانات بنجاح', 'success');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في مسح البيانات');
+      await createNotification('خطأ في المسح', 'فشل في مسح البيانات', 'error');
     }
   };
 
   const handleFilterData = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
     try {
       navigate('/dashboard/posts');
@@ -127,6 +180,8 @@ const Dashboard = () => {
   };
 
   const handleUploadData = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
     try {
       navigate('/dashboard/upload');
@@ -137,6 +192,8 @@ const Dashboard = () => {
   };
 
   const handleCreateReport = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى صفحة إنشاء التقارير');
     try {
       navigate('/dashboard/reports');
@@ -147,6 +204,8 @@ const Dashboard = () => {
   };
 
   const handleSetupAlert = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى صفحة التنبيهات');
     try {
       navigate('/dashboard/alerts');
@@ -157,6 +216,8 @@ const Dashboard = () => {
   };
 
   const handleAnalysisSettings = async () => {
+    if (!profile?.id) return;
+    
     const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
     try {
       navigate('/dashboard/analysis-settings');
@@ -191,7 +252,10 @@ const Dashboard = () => {
             <Filter className="h-4 w-4 mr-2" />
             تصفية
           </ButtonRTL>
-          <ClearPostsButton />
+          <ButtonRTL variant="outline" size="sm" onClick={handleClearData} className="text-red-600 border-red-200 hover:bg-red-50">
+            <Trash2 className="h-4 w-4 mr-2" />
+            مسح البيانات
+          </ButtonRTL>
           <ButtonRTL variant="outline" size="sm" onClick={handleExportData}>
             <Download className="h-4 w-4 mr-2" />
             تصدير
@@ -203,7 +267,7 @@ const Dashboard = () => {
         </div>
       </div>
 
-      {/* Enhanced Quick Stats Cards */}
+      {/* Enhanced Quick Stats Cards with real data */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Card className="border-r-4 border-r-blue-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/posts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -277,7 +341,7 @@ const Dashboard = () => {
             </CardHeader>
             <CardContent>
               <div className="text-2xl font-bold text-orange-600">
-                {postsData?.filter(post => post.is_jordanian_dialect).length || 0}
+                {jordanianPosts}
               </div>
               <p className="text-xs text-muted-foreground">
                 منشور بالأردنية
