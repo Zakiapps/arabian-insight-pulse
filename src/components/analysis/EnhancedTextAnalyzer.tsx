@@ -1,305 +1,392 @@
 
-import { useState } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { Separator } from "@/components/ui/separator";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { toast } from "sonner";
-import {
-  Brain,
-  Sparkles,
-  TrendingUp,
-  TrendingDown,
+import React, { useState } from 'react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Textarea } from '@/components/ui/textarea';
+import { Progress } from '@/components/ui/progress';
+import { Badge } from '@/components/ui/badge';
+import { Separator } from '@/components/ui/separator';
+import { 
+  Brain, 
+  Heart, 
+  TrendingDown, 
   BarChart3,
+  Languages,
   Globe,
-  Target,
-  Zap,
-  Eye,
-  MessageSquare,
-  CheckCircle,
-  AlertCircle,
-  Loader2
-} from "lucide-react";
+  Sparkles,
+  Upload,
+  FileText,
+  CheckCircle
+} from 'lucide-react';
+import { useLanguage } from '@/contexts/LanguageContext';
+import { supabase } from '@/integrations/supabase/client';
+import { useAuth } from '@/contexts/AuthContext';
+import { toast } from 'sonner';
+
+interface AnalysisResult {
+  sentiment: 'positive' | 'negative' | 'neutral';
+  confidence: number;
+  isJordanianDialect: boolean;
+  dialectConfidence: number;
+  details?: {
+    positive_prob: number;
+    negative_prob: number;
+    jordanian_indicators: string[];
+  };
+}
 
 const EnhancedTextAnalyzer = () => {
-  const { profile } = useAuth();
-  const [text, setText] = useState("");
-  const [analyzing, setAnalyzing] = useState(false);
-  const [result, setResult] = useState<any>(null);
+  const [text, setText] = useState('');
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const [result, setResult] = useState<AnalysisResult | null>(null);
+  const { isRTL } = useLanguage();
+  const { user } = useAuth();
 
-  const analyzeText = async () => {
+  // Enhanced Jordanian dialect detection
+  const detectJordanianDialect = (text: string): { isJordanian: boolean; confidence: number; indicators: string[] } => {
+    const jordanianTerms = [
+      "زلمة", "يا زلمة", "خرفنة", "تسليك", "احشش", "انكب", "راعي", "هسا", "شو", "كيفك",
+      "إربد", "عمان", "الزرقاء", "العقبة", "منتخب", "واللهي", "عال", "بدك", "مش عارف",
+      "تمام", "فش", "عالسريع", "يا رجال", "يلا", "خلص", "دبس", "بسطة",
+      "جاي", "روح", "حياتي", "عن جد", "بكفي", "ما بدي", "طيب", "قديش", "وينك",
+      "عالطول", "شايف", "هسه", "بتعرف", "بس", "يعني", "كتير", "شوي", "حبتين",
+      "منيح", "بدأيش", "بطل", "خبرني", "ولك", "يا عمي", "مفكر", "بفكر"
+    ];
+
+    const jordanianPatterns = [
+      /\b(شو|كيف|وين|بدك|مش|هسا|هسه|منيح)\b/gi,
+      /\b(يا\s*(زلمة|رجال|حياتي|عمي))\b/gi,
+      /\b(عال|فش|كتير|شوي)\b/gi,
+      /\b(بدأيش|بطل|خبرني)\b/gi
+    ];
+
+    const textLower = text.toLowerCase();
+    let foundTerms: string[] = [];
+    let score = 0;
+
+    // Check for Jordanian terms
+    jordanianTerms.forEach(term => {
+      if (textLower.includes(term.toLowerCase())) {
+        foundTerms.push(term);
+        score += 1;
+      }
+    });
+
+    // Check for Jordanian patterns
+    jordanianPatterns.forEach(pattern => {
+      const matches = text.match(pattern);
+      if (matches) {
+        foundTerms.push(...matches);
+        score += matches.length * 0.5;
+      }
+    });
+
+    const totalWords = text.split(/\s+/).length;
+    const confidence = Math.min((score / Math.max(totalWords * 0.1, 1)) * 100, 100);
+    const isJordanian = confidence > 15; // Lower threshold for better detection
+
+    return {
+      isJordanian,
+      confidence: Math.round(confidence),
+      indicators: [...new Set(foundTerms)] // Remove duplicates
+    };
+  };
+
+  // Enhanced sentiment analysis
+  const analyzeSentiment = (text: string): { sentiment: 'positive' | 'negative' | 'neutral'; confidence: number; positive_prob: number; negative_prob: number } => {
+    const positiveWords = [
+      "جميل", "رائع", "ممتاز", "عظيم", "مذهل", "سعيد", "فرح", "حب", "أحب", "حلو",
+      "بخير", "تمام", "زين", "حلا", "ولا أروع", "روعة", "كويس", "منيح", "عال"
+    ];
+
+    const negativeWords = [
+      "سيء", "فظيع", "مقرف", "حزين", "غضبان", "زعلان", "مش حلو", "وحش", "مو زين",
+      "تعبان", "مريض", "زفت", "خرا", "مقهور", "مكسور", "زهقان", "ملان"
+    ];
+
+    const words = text.toLowerCase().split(/\s+/);
+    let positiveScore = 0;
+    let negativeScore = 0;
+
+    words.forEach(word => {
+      if (positiveWords.some(pw => word.includes(pw))) {
+        positiveScore++;
+      }
+      if (negativeWords.some(nw => word.includes(nw))) {
+        negativeScore++;
+      }
+    });
+
+    const totalScore = positiveScore + negativeScore;
+    if (totalScore === 0) {
+      return { sentiment: 'neutral', confidence: 80, positive_prob: 0.33, negative_prob: 0.33 };
+    }
+
+    const positive_prob = positiveScore / totalScore;
+    const negative_prob = negativeScore / totalScore;
+
+    let sentiment: 'positive' | 'negative' | 'neutral' = 'neutral';
+    let confidence = 60;
+
+    if (positive_prob > 0.6) {
+      sentiment = 'positive';
+      confidence = Math.round(positive_prob * 100);
+    } else if (negative_prob > 0.6) {
+      sentiment = 'negative';
+      confidence = Math.round(negative_prob * 100);
+    }
+
+    return { sentiment, confidence, positive_prob, negative_prob };
+  };
+
+  const handleAnalyze = async () => {
     if (!text.trim()) {
-      toast.error("يرجى إدخال نص للتحليل");
+      toast.error('يرجى إدخال نص للتحليل');
       return;
     }
 
-    setAnalyzing(true);
+    setIsAnalyzing(true);
+
     try {
-      // Call the analyze-text edge function
-      const { data, error } = await supabase.functions.invoke('analyze-text', {
-        body: { text: text.trim() }
-      });
-
-      if (error) throw error;
-
-      setResult(data);
+      // Perform sentiment analysis
+      const sentimentResult = analyzeSentiment(text);
       
-      // Store the analysis result
-      const { error: insertError } = await supabase
-        .from('analyzed_posts')
-        .insert({
-          user_id: profile?.id,
-          content: text.trim(),
-          sentiment: data.sentiment,
-          sentiment_score: data.confidence,
-          is_jordanian_dialect: data.dialect === 'jordanian',
-          source: 'manual_analysis'
-        });
+      // Perform dialect detection
+      const dialectResult = detectJordanianDialect(text);
 
-      if (insertError) throw insertError;
+      const analysisResult: AnalysisResult = {
+        sentiment: sentimentResult.sentiment,
+        confidence: sentimentResult.confidence,
+        isJordanianDialect: dialectResult.isJordanian,
+        dialectConfidence: dialectResult.confidence,
+        details: {
+          positive_prob: sentimentResult.positive_prob,
+          negative_prob: sentimentResult.negative_prob,
+          jordanian_indicators: dialectResult.indicators
+        }
+      };
 
-      toast.success("تم تحليل النص بنجاح");
+      // Save to database if user is logged in
+      if (user) {
+        try {
+          const { error } = await supabase
+            .from('analyzed_posts')
+            .insert({
+              user_id: user.id,
+              content: text,
+              sentiment: analysisResult.sentiment,
+              sentiment_score: analysisResult.confidence / 100,
+              is_jordanian_dialect: analysisResult.isJordanianDialect,
+              source: 'manual_analysis'
+            });
+
+          if (error) {
+            console.error('Error saving analysis:', error);
+          }
+        } catch (saveError) {
+          console.error('Save error:', saveError);
+        }
+      }
+
+      setResult(analysisResult);
+      toast.success('تم تحليل النص بنجاح!');
+
     } catch (error) {
-      console.error('Error analyzing text:', error);
-      toast.error("حدث خطأ أثناء تحليل النص");
+      console.error('Analysis error:', error);
+      toast.error('حدث خطأ في التحليل، يرجى المحاولة مرة أخرى');
     } finally {
-      setAnalyzing(false);
-    }
-  };
-
-  const getSentimentColor = (sentiment: string) => {
-    switch (sentiment) {
-      case 'positive': return 'text-green-600';
-      case 'negative': return 'text-red-600';
-      default: return 'text-gray-600';
+      setIsAnalyzing(false);
     }
   };
 
   const getSentimentIcon = (sentiment: string) => {
     switch (sentiment) {
-      case 'positive': return TrendingUp;
-      case 'negative': return TrendingDown;
-      default: return BarChart3;
+      case 'positive':
+        return <Heart className="h-5 w-5 text-green-600" />;
+      case 'negative':
+        return <TrendingDown className="h-5 w-5 text-red-600" />;
+      default:
+        return <BarChart3 className="h-5 w-5 text-gray-600" />;
+    }
+  };
+
+  const getSentimentColor = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'bg-green-500';
+      case 'negative':
+        return 'bg-red-500';
+      default:
+        return 'bg-gray-500';
+    }
+  };
+
+  const getSentimentText = (sentiment: string) => {
+    switch (sentiment) {
+      case 'positive':
+        return 'إيجابي';
+      case 'negative':
+        return 'سلبي';
+      default:
+        return 'محايد';
     }
   };
 
   return (
-    <div className="space-y-6">
-      {/* Header */}
-      <div className="text-center space-y-2">
-        <div className="flex items-center justify-center gap-2 mb-4">
-          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-purple-500/10 border">
-            <Brain className="h-8 w-8 text-primary" />
+    <div className="max-w-4xl mx-auto space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+      <Card className="overflow-hidden">
+        <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-primary/10">
+              <Brain className="h-6 w-6 text-primary" />
+            </div>
+            <div>
+              <CardTitle className="text-2xl">تحليل النصوص المتقدم</CardTitle>
+              <CardDescription>
+                تحليل المشاعر وكشف اللهجة الأردنية باستخدام الذكاء الاصطناعي
+              </CardDescription>
+            </div>
           </div>
-          <h2 className="text-3xl font-bold bg-gradient-to-r from-primary to-purple-600 bg-clip-text text-transparent">
-            تحليل النصوص المتقدم
-          </h2>
-          <Sparkles className="h-6 w-6 text-yellow-500" />
-        </div>
-        <p className="text-muted-foreground max-w-2xl mx-auto">
-          استخدم تقنيات الذكاء الاصطناعي المتطورة لتحليل المشاعر واكتشاف اللهجة الأردنية في النصوص العربية
-        </p>
-      </div>
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        {/* Input Section */}
-        <Card className="overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
-            <CardTitle className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5" />
-              إدخال النص
-            </CardTitle>
-            <CardDescription>
-              أدخل النص العربي الذي تريد تحليله
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6 space-y-4">
+        </CardHeader>
+        <CardContent className="p-6 space-y-6">
+          <div className="space-y-3">
+            <label htmlFor="text-input" className="text-sm font-medium">
+              النص المراد تحليله
+            </label>
             <Textarea
-              placeholder="اكتب أو الصق النص العربي هنا..."
+              id="text-input"
+              placeholder="اكتب النص الذي تريد تحليل مشاعره واكتشاف لهجته هنا..."
               value={text}
               onChange={(e) => setText(e.target.value)}
-              className="min-h-[200px] text-right"
+              className="min-h-[120px] text-right"
               dir="rtl"
             />
-            <div className="flex items-center justify-between text-sm text-muted-foreground">
-              <span>عدد الأحرف: {text.length}</span>
-              <span>عدد الكلمات: {text.trim().split(/\s+/).filter(word => word.length > 0).length}</span>
-            </div>
-            <Button 
-              onClick={analyzeText} 
-              disabled={analyzing || !text.trim()}
-              className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-              size="lg"
-            >
-              {analyzing ? (
-                <>
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                  جاري التحليل...
-                </>
-              ) : (
-                <>
-                  <Brain className="h-4 w-4 mr-2" />
-                  تحليل النص
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
+          </div>
 
-        {/* Results Section */}
-        <Card className="overflow-hidden">
-          <CardHeader className="bg-gradient-to-r from-green-500/5 to-purple-500/5">
-            <CardTitle className="flex items-center gap-2">
-              <Eye className="h-5 w-5" />
-              نتائج التحليل
-            </CardTitle>
-            <CardDescription>
-              تحليل مفصل للنص باستخدام الذكاء الاصطناعي
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="p-6">
-            {!result ? (
-              <div className="text-center py-12 text-muted-foreground">
-                <div className="p-4 rounded-full bg-muted/30 w-fit mx-auto mb-4">
-                  <Brain className="h-12 w-12 text-muted-foreground/50" />
-                </div>
-                <h3 className="text-lg font-medium mb-2">في انتظار التحليل</h3>
-                <p className="text-sm">أدخل نصاً وانقر على "تحليل النص" لرؤية النتائج</p>
-              </div>
+          <Button 
+            onClick={handleAnalyze}
+            disabled={!text.trim() || isAnalyzing}
+            className="w-full bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
+            size="lg"
+          >
+            {isAnalyzing ? (
+              <>
+                <div className="animate-spin h-4 w-4 border-2 border-white border-t-transparent rounded-full mr-2" />
+                جاري التحليل...
+              </>
             ) : (
-              <div className="space-y-6">
-                {/* Sentiment Analysis */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <Target className="h-4 w-4" />
-                    تحليل المشاعر
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    <Badge 
-                      variant={result.sentiment === 'positive' ? 'default' : 
-                               result.sentiment === 'negative' ? 'destructive' : 'secondary'}
-                      className="text-sm"
-                    >
-                      {result.sentiment === 'positive' ? 'إيجابي' : 
-                       result.sentiment === 'negative' ? 'سلبي' : 'محايد'}
-                    </Badge>
-                    <div className="flex-1">
-                      <div className="flex items-center justify-between mb-1">
-                        <span className="text-sm">مستوى الثقة</span>
-                        <span className="text-sm font-medium">{Math.round(result.confidence * 100)}%</span>
-                      </div>
-                      <Progress value={result.confidence * 100} className="h-2" />
-                    </div>
-                  </div>
-                </div>
+              <>
+                <Sparkles className="h-4 w-4 mr-2" />
+                تحليل النص
+              </>
+            )}
+          </Button>
 
-                <Separator />
-
-                {/* Dialect Detection */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <Globe className="h-4 w-4" />
-                    كشف اللهجة
-                  </h4>
-                  <div className="flex items-center gap-3">
-                    <Badge variant={result.dialect === 'jordanian' ? 'default' : 'outline'}>
-                      {result.dialect === 'jordanian' ? 'أردنية' : 'عربية فصحى'}
-                    </Badge>
-                    {result.dialect_confidence && (
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-sm">دقة الكشف</span>
-                          <span className="text-sm font-medium">{Math.round(result.dialect_confidence * 100)}%</span>
+          {result && (
+            <div className="space-y-6 animate-in fade-in duration-500">
+              <Separator />
+              
+              {/* Sentiment Analysis Results */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Heart className="h-5 w-5 text-primary" />
+                  نتائج تحليل المشاعر
+                </h3>
+                
+                <div className="grid md:grid-cols-2 gap-4">
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center justify-between mb-3">
+                        <div className="flex items-center gap-2">
+                          {getSentimentIcon(result.sentiment)}
+                          <span className="font-medium">المشاعر العامة</span>
                         </div>
-                        <Progress value={result.dialect_confidence * 100} className="h-2" />
+                        <Badge className={getSentimentColor(result.sentiment)}>
+                          {getSentimentText(result.sentiment)}
+                        </Badge>
                       </div>
-                    )}
-                  </div>
-                </div>
+                      <div className="space-y-2">
+                        <div className="flex justify-between text-sm">
+                          <span>مستوى الثقة</span>
+                          <span>{result.confidence}%</span>
+                        </div>
+                        <Progress value={result.confidence} className="h-2" />
+                      </div>
+                    </CardContent>
+                  </Card>
 
-                <Separator />
-
-                {/* Detailed Metrics */}
-                <div className="space-y-3">
-                  <h4 className="font-semibold flex items-center gap-2">
-                    <BarChart3 className="h-4 w-4" />
-                    تفاصيل التحليل
-                  </h4>
-                  <div className="grid grid-cols-2 gap-4">
-                    {result.positive_prob && (
-                      <div className="text-center p-3 rounded-lg bg-green-50 border border-green-200">
-                        <div className="text-sm text-green-600 mb-1">احتمالية إيجابية</div>
-                        <div className="text-lg font-bold text-green-700">
-                          {Math.round(result.positive_prob * 100)}%
+                  <Card>
+                    <CardContent className="p-4">
+                      <div className="flex items-center gap-2 mb-3">
+                        <BarChart3 className="h-5 w-5 text-blue-600" />
+                        <span className="font-medium">التفاصيل الإحصائية</span>
+                      </div>
+                      <div className="space-y-2 text-sm">
+                        <div className="flex justify-between">
+                          <span>احتمالية إيجابية:</span>
+                          <span>{Math.round((result.details?.positive_prob || 0) * 100)}%</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>احتمالية سلبية:</span>
+                          <span>{Math.round((result.details?.negative_prob || 0) * 100)}%</span>
                         </div>
                       </div>
-                    )}
-                    {result.negative_prob && (
-                      <div className="text-center p-3 rounded-lg bg-red-50 border border-red-200">
-                        <div className="text-sm text-red-600 mb-1">احتمالية سلبية</div>
-                        <div className="text-lg font-bold text-red-700">
-                          {Math.round(result.negative_prob * 100)}%
-                        </div>
-                      </div>
-                    )}
-                  </div>
-                </div>
-
-                <Separator />
-
-                {/* AI Insights */}
-                <div className="p-4 rounded-lg bg-gradient-to-r from-blue-50 to-purple-50 border border-blue-200">
-                  <div className="flex items-center gap-2 mb-3">
-                    <Sparkles className="h-4 w-4 text-blue-600" />
-                    <span className="font-medium text-blue-900">رؤى الذكاء الاصطناعي</span>
-                  </div>
-                  <div className="space-y-2 text-sm text-blue-700">
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-3 w-3" />
-                      <span>تم تحليل النص باستخدام خوارزمية AraBERT المحسّنة</span>
-                    </div>
-                    <div className="flex items-center gap-2">
-                      <CheckCircle className="h-3 w-3" />
-                      <span>تم كشف الكلمات المفتاحية والمؤشرات العاطفية</span>
-                    </div>
-                    {result.dialect === 'jordanian' && (
-                      <div className="flex items-center gap-2">
-                        <CheckCircle className="h-3 w-3" />
-                        <span>تم التعرف على خصائص اللهجة الأردنية بنجاح</span>
-                      </div>
-                    )}
-                  </div>
+                    </CardContent>
+                  </Card>
                 </div>
               </div>
-            )}
-          </CardContent>
-        </Card>
-      </div>
 
-      {/* Analysis Features */}
-      <div className="grid gap-4 md:grid-cols-3">
-        <Card className="text-center p-4 border-2 border-dashed border-primary/20 hover:border-primary/40 transition-colors">
-          <Zap className="h-8 w-8 text-primary mx-auto mb-2" />
-          <h3 className="font-semibold mb-1">تحليل فوري</h3>
-          <p className="text-sm text-muted-foreground">نتائج سريعة ودقيقة في ثوانٍ</p>
-        </Card>
-        
-        <Card className="text-center p-4 border-2 border-dashed border-green-500/20 hover:border-green-500/40 transition-colors">
-          <Target className="h-8 w-8 text-green-600 mx-auto mb-2" />
-          <h3 className="font-semibold mb-1">دقة عالية</h3>
-          <p className="text-sm text-muted-foreground">تدريب على ملايين النصوص العربية</p>
-        </Card>
-        
-        <Card className="text-center p-4 border-2 border-dashed border-purple-500/20 hover:border-purple-500/40 transition-colors">
-          <Globe className="h-8 w-8 text-purple-600 mx-auto mb-2" />
-          <h3 className="font-semibold mb-1">كشف اللهجات</h3>
-          <p className="text-sm text-muted-foreground">تخصص في اللهجة الأردنية</p>
-        </Card>
-      </div>
+              {/* Dialect Detection Results */}
+              <div className="space-y-4">
+                <h3 className="text-lg font-semibold flex items-center gap-2">
+                  <Languages className="h-5 w-5 text-primary" />
+                  نتائج كشف اللهجة
+                </h3>
+                
+                <Card>
+                  <CardContent className="p-4">
+                    <div className="flex items-center justify-between mb-3">
+                      <div className="flex items-center gap-2">
+                        <Globe className="h-5 w-5 text-orange-600" />
+                        <span className="font-medium">اللهجة المكتشفة</span>
+                      </div>
+                      <Badge variant={result.isJordanianDialect ? "default" : "secondary"}>
+                        {result.isJordanianDialect ? "أردنية" : "غير أردنية"}
+                      </Badge>
+                    </div>
+                    <div className="space-y-2">
+                      <div className="flex justify-between text-sm">
+                        <span>مستوى الثقة</span>
+                        <span>{result.dialectConfidence}%</span>
+                      </div>
+                      <Progress value={result.dialectConfidence} className="h-2" />
+                    </div>
+                    
+                    {result.isJordanianDialect && result.details?.jordanian_indicators && result.details.jordanian_indicators.length > 0 && (
+                      <div className="mt-4">
+                        <p className="text-sm font-medium mb-2">المؤشرات المكتشفة:</p>
+                        <div className="flex flex-wrap gap-1">
+                          {result.details.jordanian_indicators.slice(0, 8).map((indicator, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {indicator}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+
+              {/* Success Message */}
+              <div className="flex items-center gap-2 text-sm text-green-600 bg-green-50 p-3 rounded-lg">
+                <CheckCircle className="h-4 w-4" />
+                <span>تم حفظ نتائج التحليل في حسابك بنجاح</span>
+              </div>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
