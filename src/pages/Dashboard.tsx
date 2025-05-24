@@ -1,3 +1,4 @@
+
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
@@ -8,9 +9,6 @@ import { Button } from "@/components/ui/button";
 import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import ClearPostsButton from "@/components/dashboard/ClearPostsButton";
-import { useTaskHistory } from "@/hooks/useTaskHistory";
-import { useNotifications } from "@/hooks/useNotifications";
 import {
   BarChart3,
   TrendingUp,
@@ -19,29 +17,20 @@ import {
   Users,
   Globe,
   Heart,
-  Share,
-  Eye,
-  Calendar,
-  Filter,
-  Download,
   Plus,
-  Search,
-  Bell,
-  Settings,
   Upload,
   Sparkles,
-  Activity,
-  Trash2
+  Activity
 } from "lucide-react";
-import { Input } from "@/components/ui/input";
 import { useNavigate } from "react-router-dom";
+import { toast } from "sonner";
 
 const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const { startTask, completeTask } = useTaskHistory();
-  const { createNotification } = useNotifications();
+
+  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
 
   // Fetch real data from Supabase - user's own data only
   const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useQuery({
@@ -80,150 +69,26 @@ const Dashboard = () => {
   const totalPosts = postsData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
-  const neutralPosts = postsData?.filter(post => post.sentiment === 'neutral').length || 0;
   const jordanianPosts = postsData?.filter(post => post.is_jordanian_dialect === true).length || 0;
   const totalUsers = usersData?.length || 0;
 
   const sentimentPercentage = totalPosts > 0 ? {
     positive: Math.round((positivePosts / totalPosts) * 100),
     negative: Math.round((negativePosts / totalPosts) * 100),
-    neutral: Math.round((neutralPosts / totalPosts) * 100)
+    neutral: Math.round(((totalPosts - positivePosts - negativePosts) / totalPosts) * 100)
   } : { positive: 0, negative: 0, neutral: 0 };
 
   // Recent posts for activity feed - only real data
   const recentPosts = postsData?.slice(0, 5) || [];
 
-  // Enhanced handler functions with task tracking and real functionality
-  const handleNewAnalysis = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التحليل');
+  // Handle new analysis button click
+  const handleNewAnalysis = () => {
     try {
       navigate('/dashboard/upload');
-      await completeTask(taskId, { page: 'upload' });
-      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة رفع وتحليل البيانات', 'info');
+      toast.success('تم الانتقال إلى صفحة رفع وتحليل البيانات');
     } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
-    }
-  };
-
-  const handleExportData = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('export', 'تصدير البيانات إلى CSV');
-    try {
-      if (postsData && postsData.length > 0) {
-        // Create CSV content
-        const csvContent = [
-          ['المحتوى', 'المشاعر', 'النتيجة', 'اللهجة الأردنية', 'المصدر', 'التاريخ'],
-          ...postsData.map(post => [
-            post.content,
-            post.sentiment === 'positive' ? 'إيجابي' : post.sentiment === 'negative' ? 'سلبي' : 'محايد',
-            post.sentiment_score || '',
-            post.is_jordanian_dialect ? 'نعم' : 'لا',
-            post.source || '',
-            new Date(post.created_at).toLocaleDateString('ar')
-          ])
-        ].map(row => row.map(cell => `"${cell}"`).join(',')).join('\n');
-
-        // Download file
-        const blob = new Blob(['\ufeff' + csvContent], { type: 'text/csv;charset=utf-8;' });
-        const link = document.createElement('a');
-        const url = URL.createObjectURL(blob);
-        link.setAttribute('href', url);
-        link.setAttribute('download', `تحليل_البيانات_${new Date().toISOString().split('T')[0]}.csv`);
-        link.style.visibility = 'hidden';
-        document.body.appendChild(link);
-        link.click();
-        document.body.removeChild(link);
-
-        await completeTask(taskId, { recordsExported: postsData.length });
-        await createNotification('تم التصدير', `تم تصدير ${postsData.length} سجل بنجاح`, 'success');
-      } else {
-        await completeTask(taskId, null, 'لا توجد بيانات للتصدير');
-        await createNotification('لا توجد بيانات', 'لا توجد بيانات للتصدير', 'warning');
-      }
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في التصدير');
-      await createNotification('خطأ في التصدير', 'فشل في تصدير البيانات', 'error');
-    }
-  };
-
-  const handleClearData = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('clear_data', 'مسح جميع البيانات');
-    try {
-      const { error } = await supabase.rpc('clear_user_posts');
-      if (error) throw error;
-
-      await refetchPosts();
-      await completeTask(taskId, { clearedPosts: totalPosts });
-      await createNotification('تم المسح', 'تم مسح جميع البيانات بنجاح', 'success');
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في مسح البيانات');
-      await createNotification('خطأ في المسح', 'فشل في مسح البيانات', 'error');
-    }
-  };
-
-  const handleFilterData = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
-    try {
-      navigate('/dashboard/posts');
-      await completeTask(taskId, { page: 'posts' });
-      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة المنشورات المحللة', 'info');
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
-    }
-  };
-
-  const handleUploadData = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
-    try {
-      navigate('/dashboard/upload');
-      await completeTask(taskId, { page: 'upload' });
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
-    }
-  };
-
-  const handleCreateReport = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة إنشاء التقارير');
-    try {
-      navigate('/dashboard/reports');
-      await completeTask(taskId, { page: 'reports' });
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
-    }
-  };
-
-  const handleSetupAlert = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التنبيهات');
-    try {
-      navigate('/dashboard/alerts');
-      await completeTask(taskId, { page: 'alerts' });
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
-    }
-  };
-
-  const handleAnalysisSettings = async () => {
-    if (!profile?.id) return;
-    
-    const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
-    try {
-      navigate('/dashboard/analysis-settings');
-      await completeTask(taskId, { page: 'analysis-settings' });
-    } catch (error) {
-      await completeTask(taskId, null, 'فشل في الانتقال');
+      console.error('Navigation error:', error);
+      toast.error('حدث خطأ في الانتقال');
     }
   };
 
@@ -243,24 +108,12 @@ const Dashboard = () => {
             <p className="text-muted-foreground mt-1">مراقبة وتحليل المحتوى الاجتماعي بالذكاء الاصطناعي</p>
           </div>
         </div>
-        <div className="flex items-center gap-3 flex-wrap">
-          <div className="relative">
-            <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="البحث في البيانات..." className="pl-10 w-64" />
-          </div>
-          <ButtonRTL variant="outline" size="sm" onClick={handleFilterData}>
-            <Filter className="h-4 w-4 mr-2" />
-            تصفية
-          </ButtonRTL>
-          <ButtonRTL variant="outline" size="sm" onClick={handleClearData} className="text-red-600 border-red-200 hover:bg-red-50">
-            <Trash2 className="h-4 w-4 mr-2" />
-            مسح البيانات
-          </ButtonRTL>
-          <ButtonRTL variant="outline" size="sm" onClick={handleExportData}>
-            <Download className="h-4 w-4 mr-2" />
-            تصدير
-          </ButtonRTL>
-          <ButtonRTL size="sm" onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
+        <div className="flex items-center gap-3">
+          <ButtonRTL 
+            size="sm" 
+            onClick={handleNewAnalysis} 
+            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
+          >
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
           </ButtonRTL>
@@ -433,7 +286,7 @@ const Dashboard = () => {
                     </div>
                     <h3 className="text-lg font-medium mb-2">لا توجد منشورات حالياً</h3>
                     <p className="text-sm mb-4">ابدأ بتحليل بعض البيانات لرؤية النتائج هنا</p>
-                    <Button onClick={handleUploadData} className="bg-gradient-to-r from-primary to-blue-600">
+                    <Button onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600">
                       <Upload className="h-4 w-4 mr-2" />
                       رفع بيانات جديدة
                     </Button>
@@ -482,36 +335,8 @@ const Dashboard = () => {
           </Card>
         </div>
 
-        {/* Right Column - Enhanced Quick Actions & Summary */}
+        {/* Right Column - Enhanced Summary */}
         <div className="space-y-6">
-          {/* Enhanced Quick Actions */}
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Sparkles className="h-5 w-5" />
-                إجراءات سريعة
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-primary/5" onClick={handleUploadData}>
-                <Upload className="h-4 w-4 mr-2" />
-                رفع بيانات جديدة
-              </ButtonRTL>
-              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-blue-500/5" onClick={handleCreateReport}>
-                <BarChart3 className="h-4 w-4 mr-2" />
-                إنشاء تقرير
-              </ButtonRTL>
-              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-yellow-500/5" onClick={handleSetupAlert}>
-                <Bell className="h-4 w-4 mr-2" />
-                إعداد تنبيه
-              </ButtonRTL>
-              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-purple-500/5" onClick={handleAnalysisSettings}>
-                <Settings className="h-4 w-4 mr-2" />
-                إعدادات التحليل المتقدمة
-              </ButtonRTL>
-            </CardContent>
-          </Card>
-
           {/* Enhanced Platform Summary */}
           <Card>
             <CardHeader>
@@ -525,8 +350,8 @@ const Dashboard = () => {
                 {['تويتر', 'فيسبوك', 'إنستغرام', 'لينكدإن'].map((platform, index) => {
                   const platformPosts = postsData?.filter(post => 
                     post.source?.toLowerCase().includes(platform.toLowerCase())
-                  ).length || Math.floor(Math.random() * 20) + 5;
-                  const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : Math.floor(Math.random() * 30) + 10;
+                  ).length || 0;
+                  const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : 0;
                   
                   return (
                     <div key={platform} className="flex items-center justify-between cursor-pointer hover:bg-muted/30 p-3 rounded-lg transition-colors" onClick={() => navigate('/dashboard/platforms')}>
