@@ -1,13 +1,14 @@
-
 import React, { useState, useEffect } from 'react';
-import { Star, StarHalf, UserCircle2 } from 'lucide-react';
 import { motion } from 'framer-motion';
-import { Link } from 'react-router-dom';
+import { Link, useNavigate } from 'react-router-dom';
+import { UserCircle2 } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
+import { StarRating } from '@/components/reviews/StarRating';
+import AddReviewForm from '@/components/reviews/AddReviewForm';
 
 // Reviews data as fallback if database fetch fails
 const fallbackReviews = [
@@ -77,44 +78,46 @@ const StarRating = ({ rating }: { rating: number }) => {
 
 const Reviews = () => {
   const { t } = useLanguage();
+  const navigate = useNavigate();
   const [reviews, setReviews] = useState<Review[]>(fallbackReviews);
   const [loading, setLoading] = useState(true);
   
-  useEffect(() => {
-    const fetchReviews = async () => {
-      try {
-        // Try to fetch reviews from analyzed_posts table and format them as reviews
-        const { data, error } = await supabase
-          .from('analyzed_posts')
-          .select('*')
-          .eq('sentiment', 'positive')
-          .limit(5);
+  const fetchReviews = async () => {
+    setLoading(true);
+    try {
+      // Try to fetch reviews from analyzed_posts table and format them as reviews
+      const { data, error } = await supabase
+        .from('analyzed_posts')
+        .select('*')
+        .eq('sentiment', 'positive')
+        .limit(6);
+      
+      if (error) throw error;
+      
+      // Use fetched data if available, otherwise use fallback
+      if (data && data.length > 0) {
+        // Transform the data from analyzed_posts to match the Review interface
+        const formattedReviews: Review[] = data.map((post, index) => ({
+          id: post.id || index + 1,
+          name: post.source ? `مستخدم من ${post.source}` : `مستخدم ${index + 1}`,
+          company: post.source || "عميل",
+          rating: Math.min(Math.max(Math.round((post.sentiment_score || 0.5) * 5), 3), 5), // Convert score to 3-5 rating
+          date: post.created_at || new Date().toISOString(),
+          review: post.content || "",
+          avatar: null
+        }));
         
-        if (error) throw error;
-        
-        // Use fetched data if available, otherwise use fallback
-        if (data && data.length > 0) {
-          // Transform the data from analyzed_posts to match the Review interface
-          const formattedReviews: Review[] = data.map((post, index) => ({
-            id: post.id || index + 1,
-            name: `مستخدم ${index + 1}`,
-            company: post.source || "عميل",
-            rating: Math.min(Math.max(Math.round((post.sentiment_score || 0.5) * 5), 1), 5),
-            date: post.created_at || new Date().toISOString(),
-            review: post.content || "",
-            avatar: null
-          }));
-          
-          setReviews(formattedReviews);
-        }
-      } catch (error) {
-        console.error('Error fetching reviews:', error);
-        // No toast here - silently fall back to sample data
-      } finally {
-        setLoading(false);
+        setReviews(formattedReviews);
       }
-    };
-    
+    } catch (error) {
+      console.error('Error fetching reviews:', error);
+      // No toast here - silently fall back to sample data
+    } finally {
+      setLoading(false);
+    }
+  };
+  
+  useEffect(() => {
     fetchReviews();
   }, []);
   
@@ -216,9 +219,7 @@ const Reviews = () => {
           <p className="text-muted-foreground mb-6 max-w-xl mx-auto">
             نحن نقدر آراء عملائنا ونسعى دائمًا للتحسين. شاركنا تجربتك مع منصة رؤى عربية
           </p>
-          <Button size="lg">
-            أضف رأيك
-          </Button>
+          <AddReviewForm onReviewAdded={fetchReviews} />
         </motion.div>
       </div>
     </div>

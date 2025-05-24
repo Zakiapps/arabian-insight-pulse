@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { categories } from "@/lib/utils";
 import { useLanguage } from "@/contexts/LanguageContext";
+import { useNavigate } from "react-router-dom";
 
 // Updated with categories
 const topicsData = [
@@ -28,6 +29,7 @@ const CATEGORY_COLORS = [
 
 export const TopTopics = () => {
   const { language } = useLanguage();
+  const navigate = useNavigate();
   const isArabic = language === 'ar';
 
   const t = {
@@ -35,6 +37,17 @@ export const TopTopics = () => {
     topicsDescription: isArabic ? "المواضيع الأكثر نقاشاً في المنشورات العربية" : "Most discussed topics in Arabic posts",
     viewAll: isArabic ? "عرض الكل" : "View All",
     posts: isArabic ? "منشور" : "posts",
+  };
+  
+  const handleBarClick = (data: any) => {
+    if (data && data.category) {
+      // Navigate to the posts page with the selected category filter
+      navigate(`/dashboard/posts?category=${data.category}`);
+    }
+  };
+  
+  const handleViewAllClick = () => {
+    navigate('/dashboard/posts');
   };
 
   return (
@@ -44,7 +57,7 @@ export const TopTopics = () => {
           <CardTitle>{t.topTopics}</CardTitle>
           <CardDescription>{t.topicsDescription}</CardDescription>
         </div>
-        <Button variant="ghost" size="icon">
+        <Button variant="ghost" size="icon" onClick={handleViewAllClick}>
           <ArrowRight className="h-4 w-4" />
           <span className="sr-only">{t.viewAll}</span>
         </Button>
@@ -59,7 +72,12 @@ export const TopTopics = () => {
               contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
               formatter={(value) => [`${value} ${t.posts}`, '']}
             />
-            <Bar dataKey="count" name={t.posts}>
+            <Bar 
+              dataKey="count" 
+              name={t.posts}
+              onClick={handleBarClick}
+              cursor="pointer"
+            >
               {topicsData.map((entry, index) => (
                 <Cell 
                   key={`cell-${index}`} 

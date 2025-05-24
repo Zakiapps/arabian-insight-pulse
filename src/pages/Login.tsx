@@ -34,7 +34,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
-  const { login } = useAuth();
+  const { login, isAuthenticated } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
@@ -52,9 +52,16 @@ const Login = () => {
   useEffect(() => {
     const searchParams = new URLSearchParams(location.search);
     if (searchParams.get('verified') === 'true') {
-      toast.success("Email verified successfully! You can now login.");
+      toast.success("تم التحقق من البريد الإلكتروني بنجاح! يمكنك الآن تسجيل الدخول.");
     }
   }, [location]);
+
+  // Redirect if already authenticated
+  useEffect(() => {
+    if (isAuthenticated) {
+      navigate('/dashboard');
+    }
+  }, [isAuthenticated, navigate]);
 
   const from = (location.state as any)?.from?.pathname || "/dashboard";
 
@@ -62,11 +69,8 @@ const Login = () => {
     setIsLoading(true);
     setLoginError(null);
 
-    // Add a slight delay to show loading state
-    const loginPromise = login(values.email, values.password);
-    
     try {
-      const { error, data } = await loginPromise;
+      const { error, data } = await login(values.email, values.password);
       
       if (error) {
         console.error("فشل تسجيل الدخول:", error);
@@ -75,13 +79,14 @@ const Login = () => {
         return;
       }
       
-      // If login is successful, navigate to dashboard
+      // If login is successful, show success message
       if (data) {
-        // Set a timeout to navigate to avoid UI flashing
+        toast.success("تم تسجيل الدخول بنجاح");
+        
+        // Force navigation with delay to ensure state is updated
         setTimeout(() => {
           navigate(from, { replace: true });
-        }, 100);
-        toast.success("تم تسجيل الدخول بنجاح");
+        }, 500);
       }
     } catch (error: any) {
       console.error("فشل تسجيل الدخول:", error);

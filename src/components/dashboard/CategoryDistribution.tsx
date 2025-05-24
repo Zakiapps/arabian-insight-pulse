@@ -4,26 +4,35 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, Legend } from 'recha
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Tabs, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { motion, AnimatePresence } from 'framer-motion';
+import { useNavigate } from 'react-router-dom';
 
-// Enhanced with better animations and visual effects
+// Enhanced with better animations and visual effects and navigation capabilities
 export function CategoryDistribution() {
+  const navigate = useNavigate();
   const [selectedTab, setSelectedTab] = useState('all');
   const [animationKey, setAnimationKey] = useState(0);
   const [hoveredIndex, setHoveredIndex] = useState<number | null>(null);
 
   // Sample data - this would come from your API
   const data = [
-    { name: 'سياسة', value: 35, color: '#3b82f6' },
-    { name: 'رياضة', value: 25, color: '#10b981' },
-    { name: 'اقتصاد', value: 15, color: '#f59e0b' },
-    { name: 'ترفيه', value: 10, color: '#ef4444' },
-    { name: 'تكنولوجيا', value: 15, color: '#8b5cf6' },
+    { name: 'سياسة', value: 35, color: '#3b82f6', categoryId: 'politics' },
+    { name: 'رياضة', value: 25, color: '#10b981', categoryId: 'sports' },
+    { name: 'اقتصاد', value: 15, color: '#f59e0b', categoryId: 'economy' },
+    { name: 'ترفيه', value: 10, color: '#ef4444', categoryId: 'entertainment' },
+    { name: 'تكنولوجيا', value: 15, color: '#8b5cf6', categoryId: 'technology' },
   ];
   
   // When tab changes, trigger animation
   const handleTabChange = (value: string) => {
     setSelectedTab(value);
     setAnimationKey(prev => prev + 1);
+  };
+
+  // Handle category click to navigate to posts
+  const handleCategoryClick = (entry: any) => {
+    if (entry && entry.categoryId) {
+      navigate(`/dashboard/posts?category=${entry.categoryId}`);
+    }
   };
 
   // Format the label for the tooltip
@@ -91,7 +100,7 @@ export function CategoryDistribution() {
               توزيع الفئات
             </motion.span>
             <motion.div 
-              className="bg-primary/10 ml-2 px-2 py-0.5 rounded-full text-xs text-primary"
+              className="bg-primary/10 mr-2 px-2 py-0.5 rounded-full text-xs text-primary"
               animate={{ 
                 backgroundColor: ['rgba(59, 130, 246, 0.1)', 'rgba(16, 185, 129, 0.1)', 'rgba(245, 158, 11, 0.1)', 'rgba(59, 130, 246, 0.1)'],
                 color: ['rgb(59, 130, 246)', 'rgb(16, 185, 129)', 'rgb(245, 158, 11)', 'rgb(59, 130, 246)']
@@ -161,8 +170,10 @@ export function CategoryDistribution() {
                   dataKey="value"
                   animationDuration={1500}
                   animationBegin={0}
+                  onClick={handleCategoryClick}
                   onMouseEnter={(_, index) => setHoveredIndex(index)}
                   onMouseLeave={() => setHoveredIndex(null)}
+                  cursor="pointer"
                 >
                   {data.map((entry, index) => (
                     <Cell 
@@ -183,11 +194,15 @@ export function CategoryDistribution() {
                   align="center"
                   formatter={(value, entry: any, index) => {
                     return (
-                      <span style={{ 
-                        color: 'var(--foreground)', 
-                        fontWeight: hoveredIndex === index ? 'bold' : 'normal',
-                        transition: 'all 0.3s ease'
-                      }}>
+                      <span 
+                        style={{ 
+                          color: 'var(--foreground)', 
+                          fontWeight: hoveredIndex === index ? 'bold' : 'normal',
+                          transition: 'all 0.3s ease',
+                          cursor: 'pointer'
+                        }}
+                        onClick={() => handleCategoryClick(data[index])}
+                      >
                         {value}
                       </span>
                     );

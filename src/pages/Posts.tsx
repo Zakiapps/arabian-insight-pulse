@@ -1,11 +1,12 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Filter, Search, ChevronDown, Download, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { getCategoryById } from "@/lib/utils";
+import { useLocation, useNavigate } from "react-router-dom";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -138,12 +139,33 @@ const CategoryBadge = ({ category, language }: { category: string, language: str
 
 const Posts = () => {
   const { language } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
   const [searchTerm, setSearchTerm] = useState("");
   const [sentimentFilter, setSentimentFilter] = useState("all");
   const [categoryFilter, setCategoryFilter] = useState("all");
   const [platformFilter, setPlatformFilter] = useState("all");
   const [currentPage, setCurrentPage] = useState(1);
   const itemsPerPage = 6;
+
+  // Check for category filter in URL when component mounts
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const categoryParam = searchParams.get('category');
+    
+    if (categoryParam) {
+      setCategoryFilter(categoryParam);
+    }
+  }, [location.search]);
+
+  // Update URL when filter changes
+  useEffect(() => {
+    if (categoryFilter !== 'all') {
+      navigate(`/dashboard/posts?category=${categoryFilter}`, { replace: true });
+    } else {
+      navigate('/dashboard/posts', { replace: true });
+    }
+  }, [categoryFilter, navigate]);
 
   const translations = {
     posts: language === 'ar' ? "المنشورات" : "Posts",
