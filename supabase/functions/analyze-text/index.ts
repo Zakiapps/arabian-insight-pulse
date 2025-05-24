@@ -13,7 +13,16 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Arabic text preprocessing function matching your Python script
+// Cache for model and tokenizer data
+let modelCache: {
+  model?: ArrayBuffer;
+  tokenizerConfig?: any;
+  specialTokens?: any;
+  vocab?: Map<string, number>;
+  tokenizer?: any;
+} = {};
+
+// Arabic text preprocessing function
 function preprocessArabicText(text: string): string {
   // Remove diacritics (Arabic diacritical marks)
   text = text.replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '');
@@ -70,130 +79,243 @@ function validateArabicText(text: string): boolean {
   return arabicPattern.test(text);
 }
 
-// Simple tokenization for ONNX model (based on your tokenizer files)
-async function tokenizeText(text: string): Promise<number[]> {
+// Load model and tokenizer files
+async function loadModelFiles() {
   try {
-    // Get tokenizer config from storage
-    const { data: tokenizerConfig } = await supabase.storage
-      .from('private-models')
-      .download('tokenizer_config.json');
+    console.log('Loading model files from private-model bucket...');
     
-    if (!tokenizerConfig) {
-      throw new Error('Tokenizer config not found');
+    // Load model file
+    if (!modelCache.model) {
+      const { data: modelData, error: modelError } = await supabase.storage
+        .from('private-model')
+        .download('model_quantized.onnx');
+      
+      if (modelError || !modelData) {
+        throw new Error(`Failed to load model: ${modelError?.message}`);
+      }
+      
+      modelCache.model = await modelData.arrayBuffer();
+      console.log('Model loaded successfully, size:', modelCache.model.byteLength);
     }
     
-    const config = JSON.parse(await tokenizerConfig.text());
-    
-    // Basic tokenization - split by whitespace and punctuation
-    // This is a simplified version - your actual tokenizer is more complex
-    const tokens = text.toLowerCase().split(/[\s\u060C\u061B\u061F\u0621-\u063A\u0641-\u064A]+/);
-    
-    // Convert to token IDs (simplified mapping)
-    // In a real implementation, you'd use the full vocab.txt mapping
-    const tokenIds = tokens.map(token => {
-      if (!token) return 0; // padding token
-      // Simple hash-based ID generation (replace with actual vocab lookup)
-      let hash = 0;
-      for (let i = 0; i < token.length; i++) {
-        const char = token.charCodeAt(i);
-        hash = ((hash << 5) - hash) + char;
-        hash = hash & hash; // Convert to 32-bit integer
+    // Load tokenizer config
+    if (!modelCache.tokenizerConfig) {
+      const { data: configData, error: configError } = await supabase.storage
+        .from('private-model')
+        .download('tokenizer_config.json');
+      
+      if (configError || !configData) {
+        throw new Error(`Failed to load tokenizer config: ${configError?.message}`);
       }
-      return Math.abs(hash) % 30000 + 1; // Ensure positive ID within vocab range
-    });
+      
+      modelCache.tokenizerConfig = JSON.parse(await configData.text());
+      console.log('Tokenizer config loaded');
+    }
     
-    // Add special tokens
-    return [config.cls_token_id || 101, ...tokenIds, config.sep_token_id || 102];
+    // Load special tokens
+    if (!modelCache.specialTokens) {
+      const { data: specialData, error: specialError } = await supabase.storage
+        .from('private-model')
+        .download('special_tokens_map.json');
+      
+      if (specialError || !specialData) {
+        throw new Error(`Failed to load special tokens: ${specialError?.message}`);
+      }
+      
+      modelCache.specialTokens = JSON.parse(await specialData.text());
+      console.log('Special tokens loaded');
+    }
+    
+    // Load vocab
+    if (!modelCache.vocab) {
+      const { data: vocabData, error: vocabError } = await supabase.storage
+        .from('private-model')
+        .download('vocab.txt');
+      
+      if (vocabError || !vocabData) {
+        throw new Error(`Failed to load vocab: ${vocabError?.message}`);
+      }
+      
+      const vocabText = await vocabData.text();
+      const vocabLines = vocabText.split('\n').filter(line => line.trim());
+      modelCache.vocab = new Map();
+      
+      vocabLines.forEach((token, index) => {
+        modelCache.vocab!.set(token.trim(), index);
+      });
+      
+      console.log('Vocab loaded, size:', modelCache.vocab.size);
+    }
+    
+    // Load tokenizer.json
+    if (!modelCache.tokenizer) {
+      const { data: tokenizerData, error: tokenizerError } = await supabase.storage
+        .from('private-model')
+        .download('tokenizer.json');
+      
+      if (tokenizerError || !tokenizerData) {
+        throw new Error(`Failed to load tokenizer: ${tokenizerError?.message}`);
+      }
+      
+      modelCache.tokenizer = JSON.parse(await tokenizerData.text());
+      console.log('Tokenizer loaded');
+    }
+    
+    return modelCache;
   } catch (error) {
-    console.error('Tokenization error:', error);
-    // Fallback to simple numeric encoding
-    return [101, ...text.split('').map(char => char.charCodeAt(0) % 1000), 102];
+    console.error('Error loading model files:', error);
+    throw error;
   }
 }
 
-// Load and run ONNX model
-async function runAraBERTModel(text: string): Promise<any> {
+// Enhanced tokenization using loaded tokenizer data
+function tokenizeText(text: string, maxLength: number = 128): number[] {
   try {
-    console.log('Loading AraBERT model from storage...');
+    const { vocab, tokenizerConfig, specialTokens } = modelCache;
     
-    // Download the quantized ONNX model
-    const { data: modelData, error } = await supabase.storage
-      .from('private-models')
-      .download('model_quantized.onnx');
-    
-    if (error || !modelData) {
-      throw new Error(`Failed to load model: ${error?.message}`);
+    if (!vocab || !tokenizerConfig) {
+      throw new Error('Tokenizer not loaded');
     }
     
-    console.log('Model downloaded successfully, size:', modelData.size);
+    // Get special token IDs
+    const clsTokenId = vocab.get('[CLS]') || vocab.get('<s>') || 101;
+    const sepTokenId = vocab.get('[SEP]') || vocab.get('</s>') || 102;
+    const padTokenId = vocab.get('[PAD]') || vocab.get('<pad>') || 0;
+    const unkTokenId = vocab.get('[UNK]') || vocab.get('<unk>') || 100;
     
-    // For now, we'll use a simplified approach since ONNX Runtime Web in Deno is complex
-    // This simulates the model output based on the text analysis
-    const preprocessedText = preprocessArabicText(text);
-    const tokens = await tokenizeText(preprocessedText);
+    console.log('Special tokens:', { clsTokenId, sepTokenId, padTokenId, unkTokenId });
     
-    console.log('Tokenized text length:', tokens.length);
+    // Basic Arabic tokenization
+    const preprocessed = preprocessArabicText(text);
+    const words = preprocessed.split(/\s+/);
     
-    // Simulate AraBERT output based on text characteristics
-    // This is a placeholder - actual ONNX inference would happen here
-    const positiveKeywords = [
-      'جيد', 'رائع', 'ممتاز', 'سعيد', 'أحب', 'جميل', 'مفيد', 'إيجابي', 'تمام', 'عال',
-      'حلو', 'زين', 'كويس', 'بحبك', 'فرحان', 'مبسوط', 'حبيبي', 'حياتي', 'شكراً',
-      'ولا أحلى', 'يسلمو', 'بتجنن', 'حبايبي', 'ما شاء الله', 'الله يعطيك العافية'
-    ];
+    // Convert words to subword tokens (simplified)
+    const tokens: number[] = [clsTokenId];
     
-    const negativeKeywords = [
-      'سيء', 'فظيع', 'أكره', 'حزين', 'غاضب', 'مؤلم', 'سلبي', 'مشكلة', 'زعلان',
-      'تعبان', 'مضايق', 'بطال', 'وسخ', 'خراب', 'مش كويس', 'بدي أموت', 'زهقان',
-      'ما بطيق', 'بكره', 'مش عاجبني', 'وجع راس', 'بزهق', 'مش طبيعي'
-    ];
-    
-    let positiveScore = 0;
-    let negativeScore = 0;
-    
-    const words = preprocessedText.split(/\s+/);
-    
-    words.forEach(word => {
-      if (positiveKeywords.some(keyword => word.includes(keyword))) {
-        positiveScore++;
+    for (const word of words) {
+      if (tokens.length >= maxLength - 1) break; // Reserve space for [SEP]
+      
+      // Try to find exact match first
+      if (vocab.has(word)) {
+        tokens.push(vocab.get(word)!);
+      } else {
+        // Split into characters for Arabic text (simplified subword tokenization)
+        const chars = word.split('');
+        for (const char of chars) {
+          if (tokens.length >= maxLength - 1) break;
+          
+          if (vocab.has(char)) {
+            tokens.push(vocab.get(char)!);
+          } else if (vocab.has(`##${char}`)) {
+            tokens.push(vocab.get(`##${char}`)!);
+          } else {
+            tokens.push(unkTokenId);
+          }
+        }
       }
-      if (negativeKeywords.some(keyword => word.includes(keyword))) {
-        negativeScore++;
-      }
+    }
+    
+    // Add [SEP] token
+    if (tokens.length < maxLength) {
+      tokens.push(sepTokenId);
+    }
+    
+    // Pad to maxLength
+    while (tokens.length < maxLength) {
+      tokens.push(padTokenId);
+    }
+    
+    // Truncate if too long
+    if (tokens.length > maxLength) {
+      tokens.splice(maxLength - 1, tokens.length - maxLength, sepTokenId);
+    }
+    
+    console.log('Tokenized sequence length:', tokens.length);
+    console.log('First 10 tokens:', tokens.slice(0, 10));
+    
+    return tokens;
+  } catch (error) {
+    console.error('Tokenization error:', error);
+    // Fallback tokenization
+    const clsId = 101;
+    const sepId = 102;
+    const padId = 0;
+    
+    const basicTokens = [clsId];
+    const chars = text.split('').slice(0, maxLength - 2);
+    
+    chars.forEach(char => {
+      basicTokens.push(char.charCodeAt(0) % 30000 + 1);
     });
     
-    // Calculate probabilities (simulating AraBERT output)
-    const totalScore = positiveScore + negativeScore;
-    let positiveProbability: number;
-    let negativeProbability: number;
+    basicTokens.push(sepId);
     
-    if (totalScore === 0) {
-      // Neutral case - slight positive bias
-      positiveProbability = 0.55;
-      negativeProbability = 0.45;
-    } else {
-      if (positiveScore > negativeScore) {
-        positiveProbability = Math.min(0.95, 0.65 + (positiveScore / totalScore) * 0.3);
-        negativeProbability = 1 - positiveProbability;
-      } else {
-        negativeProbability = Math.min(0.95, 0.65 + (negativeScore / totalScore) * 0.3);
-        positiveProbability = 1 - negativeProbability;
-      }
+    while (basicTokens.length < maxLength) {
+      basicTokens.push(padId);
     }
     
-    const sentiment = positiveProbability > negativeProbability ? 'positive' : 'negative';
-    const confidence = Math.max(positiveProbability, negativeProbability);
+    return basicTokens.slice(0, maxLength);
+  }
+}
+
+// ONNX Runtime Web inference (simplified implementation)
+async function runONNXInference(inputIds: number[]): Promise<{ sentiment: string; confidence: number; positive_prob: number; negative_prob: number }> {
+  try {
+    console.log('Starting ONNX inference...');
+    
+    // Load ONNX Runtime Web from CDN
+    const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.16.3/dist/ort.min.js');
+    
+    // Create session from model buffer
+    const session = await ort.InferenceSession.create(modelCache.model!);
+    console.log('ONNX session created successfully');
+    
+    // Prepare input tensor
+    const inputTensor = new ort.Tensor('int64', BigInt64Array.from(inputIds.map(x => BigInt(x))), [1, inputIds.length]);
+    const attentionMask = new ort.Tensor('int64', BigInt64Array.from(inputIds.map(x => x > 0 ? BigInt(1) : BigInt(0))), [1, inputIds.length]);
+    
+    console.log('Input tensor shape:', inputTensor.dims);
+    
+    // Run inference
+    const results = await session.run({
+      'input_ids': inputTensor,
+      'attention_mask': attentionMask
+    });
+    
+    console.log('Inference completed');
+    
+    // Extract logits from output
+    const logits = results['logits'] || results['output'] || Object.values(results)[0];
+    const logitsData = logits.data as Float32Array;
+    
+    console.log('Logits:', Array.from(logitsData));
+    
+    // Apply softmax to get probabilities
+    const negative_logit = logitsData[0];
+    const positive_logit = logitsData[1];
+    
+    const max_logit = Math.max(negative_logit, positive_logit);
+    const exp_neg = Math.exp(negative_logit - max_logit);
+    const exp_pos = Math.exp(positive_logit - max_logit);
+    const sum_exp = exp_neg + exp_pos;
+    
+    const negative_prob = exp_neg / sum_exp;
+    const positive_prob = exp_pos / sum_exp;
+    
+    const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
+    const confidence = Math.max(positive_prob, negative_prob);
+    
+    console.log('ONNX Results:', { sentiment, confidence, positive_prob, negative_prob });
     
     return {
       sentiment,
       confidence: Math.round(confidence * 10000) / 10000,
-      positive_prob: Math.round(positiveProbability * 10000) / 10000,
-      negative_prob: Math.round(negativeProbability * 10000) / 10000,
-      modelSource: 'AraBERT_ONNX_Quantized'
+      positive_prob: Math.round(positive_prob * 10000) / 10000,
+      negative_prob: Math.round(negative_prob * 10000) / 10000
     };
     
   } catch (error) {
-    console.error('AraBERT model error:', error);
+    console.error('ONNX inference error:', error);
     throw error;
   }
 }
@@ -226,7 +348,6 @@ function performKeywordAnalysis(text: string) {
     }
   });
   
-  // Calculate sentiment and probabilities
   const totalScore = positiveScore + negativeScore;
   let sentiment: string;
   let confidence: number;
@@ -234,7 +355,6 @@ function performKeywordAnalysis(text: string) {
   let negativeProb: number;
   
   if (totalScore === 0) {
-    // Neutral case - default to slight positive bias
     sentiment = 'positive';
     confidence = 0.55;
     positiveProb = 0.55;
@@ -291,12 +411,25 @@ serve(async (req) => {
     let analysisResult;
 
     try {
-      // Try to use the AraBERT model first
-      console.log('Attempting AraBERT model analysis...');
-      analysisResult = await runAraBERTModel(preprocessedText);
-      console.log('AraBERT analysis successful');
+      // Load model files
+      await loadModelFiles();
+      console.log('Model files loaded successfully');
+      
+      // Tokenize the text
+      const tokenIds = tokenizeText(preprocessedText, 128);
+      console.log('Tokenization completed');
+      
+      // Run ONNX inference
+      const onnxResult = await runONNXInference(tokenIds);
+      
+      analysisResult = {
+        ...onnxResult,
+        modelSource: 'AraBERT_ONNX'
+      };
+      
+      console.log('AraBERT ONNX analysis successful');
     } catch (modelError) {
-      console.error('AraBERT model failed, falling back to keyword analysis:', modelError);
+      console.error('AraBERT ONNX model failed, falling back to keyword analysis:', modelError);
       // Fallback to keyword analysis
       analysisResult = performKeywordAnalysis(preprocessedText);
     }
