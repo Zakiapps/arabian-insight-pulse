@@ -14,7 +14,7 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import {
-  ChevronRight,
+  ChevronLeft,
   LayoutDashboard,
   Users2,
   CreditCard,
@@ -74,44 +74,35 @@ const AdminSidebar = () => {
   ];
 
   return (
-    <Sidebar side="left" className="border-r bg-card">
+    <Sidebar side="right" className="border-l bg-card" collapsible="icon">
       <SidebarHeader className="border-b p-4">
         <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive text-destructive-foreground">
+          <div className="flex h-10 w-10 items-center justify-center rounded-lg bg-destructive text-destructive-foreground shrink-0">
             <Shield className="h-5 w-5" />
           </div>
-          <div className="flex-1">
-            <h2 className="font-bold text-lg">لوحة المشرف</h2>
-            <p className="text-xs text-muted-foreground">إدارة النظام والمستخدمين</p>
+          <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
+            <h2 className="font-bold text-lg text-right">لوحة المشرف</h2>
+            <p className="text-xs text-muted-foreground text-right">إدارة النظام والمستخدمين</p>
           </div>
         </div>
       </SidebarHeader>
 
       <SidebarContent className="px-2 py-4">
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2">
-            <Shield className="h-4 w-4" />
-            أدوات الإدارة
-            <Badge variant="destructive" className="text-xs">مشرف</Badge>
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2 justify-end">
+            <Badge variant="destructive" className="text-xs group-data-[collapsible=icon]:hidden">مشرف</Badge>
+            <span className="group-data-[collapsible=icon]:hidden">أدوات الإدارة</span>
+            <Shield className="h-4 w-4 shrink-0" />
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               {adminMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild>
-                    <Link to={item.url}>
-                      <Button 
-                        variant="ghost"
-                        className={`justify-start w-full h-10 ${
-                          isActive(item.url) 
-                            ? 'bg-destructive/10 text-destructive font-medium border-r-2 border-destructive' 
-                            : 'hover:bg-muted/50'
-                        }`}
-                      >
-                        <item.icon className="h-4 w-4 ml-3" />
-                        <span className="flex-1 text-right">{item.title}</span>
-                        {isActive(item.url) && <ChevronRight className="h-4 w-4 mr-2" />}
-                      </Button>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-right">
+                      <span className="group-data-[collapsible=icon]:hidden flex-1">{item.title}</span>
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      {isActive(item.url) && <ChevronLeft className="h-4 w-4 shrink-0" />}
                     </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
@@ -121,21 +112,16 @@ const AdminSidebar = () => {
         </SidebarGroup>
 
         <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2">
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 text-right group-data-[collapsible=icon]:hidden">
             العودة للوحة الرئيسية
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild>
-                  <Link to="/dashboard">
-                    <Button 
-                      variant="ghost"
-                      className="justify-start w-full h-10 hover:bg-primary/10 hover:text-primary"
-                    >
-                      <BarChart3 className="h-4 w-4 ml-3" />
-                      <span className="flex-1 text-right">لوحة التحكم الرئيسية</span>
-                    </Button>
+                <SidebarMenuButton asChild tooltip="لوحة التحكم الرئيسية">
+                  <Link to="/dashboard" className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors text-right hover:bg-primary/10 hover:text-primary">
+                    <span className="group-data-[collapsible=icon]:hidden flex-1">لوحة التحكم الرئيسية</span>
+                    <BarChart3 className="h-4 w-4 shrink-0" />
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -146,21 +132,21 @@ const AdminSidebar = () => {
 
       <SidebarFooter className="border-t p-4">
         <div className="flex items-center gap-3">
-          <Avatar className="h-8 w-8">
+          <div className="flex-1 min-w-0 text-right group-data-[collapsible=icon]:hidden">
+            <p className="text-sm font-medium truncate">
+              {profile?.full_name || 'مشرف'}
+            </p>
+            <div className="flex items-center gap-2 justify-end">
+              <p className="text-xs text-muted-foreground">{profile?.role || 'مشرف'}</p>
+              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
+            </div>
+          </div>
+          <Avatar className="h-8 w-8 shrink-0">
             <AvatarImage src={profile?.avatar_url} />
             <AvatarFallback>
               {profile?.full_name?.charAt(0) || 'M'}
             </AvatarFallback>
           </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">
-              {profile?.full_name || 'مشرف'}
-            </p>
-            <div className="flex items-center gap-2">
-              <div className="h-2 w-2 bg-emerald-500 rounded-full animate-pulse"></div>
-              <p className="text-xs text-muted-foreground">{profile?.role || 'مشرف'}</p>
-            </div>
-          </div>
         </div>
       </SidebarFooter>
     </Sidebar>

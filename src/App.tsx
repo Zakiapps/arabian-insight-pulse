@@ -1,102 +1,107 @@
 
-import {
-  BrowserRouter as Router,
-  Route,
-  Routes,
-} from "react-router-dom";
-import { AuthProvider } from "./contexts/AuthContext";
-import { LanguageProvider } from "./contexts/LanguageContext";
-import { SubscriptionProvider } from "./contexts/SubscriptionContext";
-import Dashboard from "./pages/Dashboard";
-import Home from "./pages/Home";
-import LandingPage from "./pages/LandingPage";
-import Pricing from "./pages/Pricing";
-import Reports from "./pages/Reports";
-import SignIn from "./pages/SignIn";
-import SignUp from "./pages/SignUp";
-import TextAnalysis from "./pages/TextAnalysis";
-import Services from "./pages/Services";
-import Reviews from "./pages/Reviews";
-import Login from "./pages/Login";
-import Register from "./pages/Register";
-import Settings from "./pages/Settings";
-import Posts from "./pages/Posts";
-import Upload from "./pages/Upload";
-import Alerts from "./pages/Alerts";
-import SentimentAnalysis from "./pages/SentimentAnalysis";
-import CategoryDistribution from "./pages/CategoryDistribution";
-import PlatformDistribution from "./pages/PlatformDistribution";
-import TopTopics from "./pages/TopTopics";
-import DialectDetection from "./pages/DialectDetection";
-import AnalysisSettings from "./pages/AnalysisSettings";
-import { Toaster } from "sonner";
+import { Toaster } from "@/components/ui/sonner";
+import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import AdminUsers from "./pages/admin/AdminUsers";
-import AdminDashboard from "./pages/admin/AdminDashboard";
-import AdminPlans from "./pages/admin/AdminPlans";
-import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
-import AdminTransactions from "./pages/admin/AdminTransactions";
-import AdminSettings from "./pages/admin/AdminSettings";
-import PaymentSettings from "./pages/admin/PaymentSettings";
-import DashboardLayout from "./components/layouts/DashboardLayout";
-import AdminLayout from "./components/layouts/AdminLayout";
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import { AuthProvider } from "@/contexts/AuthContext";
+import { LanguageProvider } from "@/contexts/LanguageContext";
+import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
+import { ThemeProvider } from "next-themes";
+import ProtectedRoute from "@/components/auth/ProtectedRoute";
+
+// Import pages
+import Home from "@/pages/Home";
+import LandingPage from "@/pages/LandingPage";
+import TextAnalysis from "@/pages/TextAnalysis";
+import SignIn from "@/pages/SignIn";
+import SignUp from "@/pages/SignUp";
+import DashboardLayout from "@/components/layouts/DashboardLayout";
+import AdminLayout from "@/components/layouts/AdminLayout";
+
+// Dashboard pages
+import Dashboard from "@/pages/Dashboard";
+import Posts from "@/pages/Posts";
+import Upload from "@/pages/Upload";
+import Alerts from "@/pages/Alerts";
+import Reports from "@/pages/Reports";
+import SentimentAnalysis from "@/pages/SentimentAnalysis";
+import CategoryDistribution from "@/pages/CategoryDistribution";
+import PlatformDistribution from "@/pages/PlatformDistribution";
+import TopTopics from "@/pages/TopTopics";
+import DialectDetection from "@/pages/DialectDetection";
+import Settings from "@/pages/Settings";
+
+// Admin pages
+import AdminDashboard from "@/pages/admin/AdminDashboard";
+import AdminUsers from "@/pages/admin/AdminUsers";
+import AdminPlans from "@/pages/admin/AdminPlans";
+import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
+import AdminTransactions from "@/pages/admin/AdminTransactions";
+import AdminSettings from "@/pages/admin/AdminSettings";
+import PaymentSettings from "@/pages/admin/PaymentSettings";
 
 const queryClient = new QueryClient();
 
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <LanguageProvider>
-        <div dir="rtl">
-          <Router>
+      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+        <LanguageProvider>
+          <BrowserRouter>
             <AuthProvider>
               <SubscriptionProvider>
-                <Routes>
-                  {/* Public routes */}
-                  <Route path="/" element={<LandingPage />} />
-                  <Route path="/home" element={<Home />} />
-                  <Route path="/services" element={<Services />} />
-                  <Route path="/pricing" element={<Pricing />} />
-                  <Route path="/reviews" element={<Reviews />} />
-                  <Route path="/signin" element={<SignIn />} />
-                  <Route path="/signup" element={<SignUp />} />
-                  <Route path="/login" element={<Login />} />
-                  <Route path="/register" element={<Register />} />
-                  <Route path="/text-analysis" element={<TextAnalysis />} />
-                  
-                  {/* Dashboard routes with layout */}
-                  <Route path="/dashboard" element={<DashboardLayout />}>
-                    <Route index element={<Dashboard />} />
-                    <Route path="posts" element={<Posts />} />
-                    <Route path="upload" element={<Upload />} />
-                    <Route path="alerts" element={<Alerts />} />
-                    <Route path="reports" element={<Reports />} />
-                    <Route path="sentiment" element={<SentimentAnalysis />} />
-                    <Route path="categories" element={<CategoryDistribution />} />
-                    <Route path="platforms" element={<PlatformDistribution />} />
-                    <Route path="topics" element={<TopTopics />} />
-                    <Route path="dialects" element={<DialectDetection />} />
-                    <Route path="settings" element={<Settings />} />
-                    <Route path="analysis-settings" element={<AnalysisSettings />} />
-                  </Route>
-                  
-                  {/* Admin routes with layout */}
-                  <Route path="/admin" element={<AdminLayout />}>
-                    <Route index element={<AdminDashboard />} />
-                    <Route path="users" element={<AdminUsers />} />
-                    <Route path="plans" element={<AdminPlans />} />
-                    <Route path="subscriptions" element={<AdminSubscriptions />} />
-                    <Route path="transactions" element={<AdminTransactions />} />
-                    <Route path="settings" element={<AdminSettings />} />
-                    <Route path="payment-settings" element={<PaymentSettings />} />
-                  </Route>
-                </Routes>
-                <Toaster />
+                <TooltipProvider>
+                  <Toaster />
+                  <Routes>
+                    {/* Public routes */}
+                    <Route path="/" element={<Home />} />
+                    <Route path="/home" element={<Home />} />
+                    <Route path="/landing" element={<LandingPage />} />
+                    <Route path="/text-analysis" element={<TextAnalysis />} />
+                    <Route path="/signin" element={<SignIn />} />
+                    <Route path="/signup" element={<SignUp />} />
+                    <Route path="/login" element={<SignIn />} />
+                    
+                    {/* Protected Dashboard routes */}
+                    <Route path="/dashboard" element={
+                      <ProtectedRoute>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route index element={<Dashboard />} />
+                      <Route path="posts" element={<Posts />} />
+                      <Route path="upload" element={<Upload />} />
+                      <Route path="alerts" element={<Alerts />} />
+                      <Route path="reports" element={<Reports />} />
+                      <Route path="sentiment" element={<SentimentAnalysis />} />
+                      <Route path="categories" element={<CategoryDistribution />} />
+                      <Route path="platforms" element={<PlatformDistribution />} />
+                      <Route path="topics" element={<TopTopics />} />
+                      <Route path="dialects" element={<DialectDetection />} />
+                      <Route path="settings" element={<Settings />} />
+                    </Route>
+
+                    {/* Protected Admin routes */}
+                    <Route path="/admin" element={
+                      <ProtectedRoute adminOnly>
+                        <AdminLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route index element={<AdminDashboard />} />
+                      <Route path="users" element={<AdminUsers />} />
+                      <Route path="plans" element={<AdminPlans />} />
+                      <Route path="subscriptions" element={<AdminSubscriptions />} />
+                      <Route path="transactions" element={<AdminTransactions />} />
+                      <Route path="settings" element={<AdminSettings />} />
+                      <Route path="payment-settings" element={<PaymentSettings />} />
+                    </Route>
+                  </Routes>
+                </TooltipProvider>
               </SubscriptionProvider>
             </AuthProvider>
-          </Router>
-        </div>
-      </LanguageProvider>
+          </BrowserRouter>
+        </LanguageProvider>
+      </ThemeProvider>
     </QueryClientProvider>
   );
 }

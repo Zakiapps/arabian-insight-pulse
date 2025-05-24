@@ -13,9 +13,7 @@ const AdminLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isAuthenticated, isAdmin, loading } = useAuth();
-  
-  // Use language context instead of forcing Arabic
-  const { language, setLanguage } = useLanguage();
+  const { isRTL } = useLanguage();
 
   // Track admin session for online status
   useUserSession();
@@ -44,13 +42,15 @@ const AdminLayout = () => {
   if (!mounted) return null;
 
   return (
-    <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-muted/10">
+    <SidebarProvider defaultOpen={isDesktop}>
+      <div className="min-h-screen flex w-full bg-background" dir={isRTL ? "rtl" : "ltr"}>
         <AppSidebar />
-        <div className="flex flex-col flex-1 overflow-hidden">
+        <div className="flex flex-col flex-1 min-w-0">
           <Navbar />
-          <main className="flex-1 p-6 overflow-auto">
-            <Outlet />
+          <main className="flex-1 p-4 md:p-6 overflow-auto bg-muted/20">
+            <div className="w-full max-w-none">
+              <Outlet />
+            </div>
           </main>
         </div>
       </div>

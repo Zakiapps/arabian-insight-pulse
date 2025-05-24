@@ -1,7 +1,7 @@
 
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
@@ -17,6 +17,8 @@ import { Slider } from "@/components/ui/slider";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
+import { useTaskHistory } from "@/hooks/useTaskHistory";
+import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "sonner";
 import {
   Settings,
@@ -35,6 +37,8 @@ import {
 const AnalysisSettings = () => {
   const { isRTL } = useLanguage();
   const { profile } = useAuth();
+  const { startTask, completeTask } = useTaskHistory();
+  const { createNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
     accuracy_level: "advanced",
@@ -75,12 +79,16 @@ const AnalysisSettings = () => {
   };
 
   const saveSettings = async () => {
+    if (!profile?.id) return;
+
     setLoading(true);
+    const taskId = await startTask('settings', 'حفظ إعدادات التحليل', settings);
+    
     try {
       const { error } = await supabase
         .from('analysis_settings')
         .upsert({
-          user_id: profile?.id,
+          user_id: profile.id,
           accuracy_level: settings.accuracy_level,
           dialect_detection_enabled: settings.dialect_detection,
           auto_categorization: settings.auto_categorization,
@@ -90,24 +98,39 @@ const AnalysisSettings = () => {
 
       if (error) throw error;
       
+      await completeTask(taskId, { settings_saved: true });
       toast.success("تم حفظ الإعدادات بنجاح");
     } catch (error) {
       console.error('Error saving settings:', error);
+      await completeTask(taskId, null, 'فشل في حفظ الإعدادات');
       toast.error("حدث خطأ أثناء حفظ الإعدادات");
     } finally {
       setLoading(false);
     }
   };
 
-  const resetToDefaults = () => {
-    setSettings({
-      accuracy_level: "advanced",
-      dialect_detection: true,
-      auto_categorization: true,
-      sentiment_threshold: 0.7,
-      email_notifications: false
-    });
-    toast.info("تم إعادة تعيين الإعدادات الافتراضية");
+  const resetToDefaults = async () => {
+    const taskId = await startTask('settings', 'إعادة تعيين الإعدادات الافتراضية');
+    
+    try {
+      setSettings({
+        accuracy_level: "advanced",
+        dialect_detection: true,
+        auto_categorization: true,
+        sentiment_threshold: 0.7,
+        email_notifications: false
+      });
+      
+      await completeTask(taskId, { settings_reset: true });
+      await createNotification(
+        'إعادة تعيين الإعدادات',
+        'تم إعادة تعيين إعدادات التحليل إلى القيم الافتراضية',
+        'info'
+      );
+      toast.info("تم إعادة تعيين الإعدادات الافتراضية");
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في إعادة تعيين الإعدادات');
+    }
   };
 
   return (
@@ -373,23 +396,23 @@ const AnalysisSettings = () => {
 
           {/* Action Buttons */}
           <div className="space-y-3">
-            <Button 
+            <ButtonRTL 
               onClick={saveSettings} 
               disabled={loading}
               className="w-full"
             >
               <Save className="h-4 w-4 mr-2" />
               {loading ? "جاري الحفظ..." : "حفظ الإعدادات"}
-            </Button>
+            </ButtonRTL>
             
-            <Button 
+            <ButtonRTL 
               variant="outline" 
               onClick={resetToDefaults}
               className="w-full"
             >
               <RotateCcw className="h-4 w-4 mr-2" />
               إعادة تعيين افتراضي
-            </Button>
+            </ButtonRTL>
           </div>
         </div>
       </div>

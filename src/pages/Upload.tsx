@@ -1,403 +1,327 @@
-
 import { useState } from "react";
-import { Upload as UploadIcon, FileText, X, Check, AlertCircle } from "lucide-react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
-import { Progress } from "@/components/ui/progress";
-import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { toast } from "sonner";
+import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import Papa from "papaparse";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import EnhancedTextAnalyzer from "@/components/analysis/EnhancedTextAnalyzer";
+import {
+  Upload as UploadIcon,
+  FileText,
+  Database,
+  Brain,
+  Sparkles,
+  CheckCircle,
+  AlertCircle,
+  Loader2,
+  Download
+} from "lucide-react";
+import Papa from 'papaparse';
+
+// Define types for CSV data
+interface CSVRow {
+  content: string;
+  source?: string;
+  engagement_count?: string;
+}
+
+interface AnalyzedData extends CSVRow {
+  sentiment: string;
+  confidence: number;
+  dialect: string;
+}
 
 const Upload = () => {
-  const { t } = useLanguage();
-  const { user } = useAuth();
-  
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadProgress, setUploadProgress] = useState(0);
-  const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
-  const [singleText, setSingleText] = useState("");
+  const { isRTL } = useLanguage();
+  const { profile } = useAuth();
+  const [uploading, setUploading] = useState(false);
+  const [uploadedData, setUploadedData] = useState<AnalyzedData[]>([]);
 
-  const processCSV = async (text: string): Promise<any[]> => {
-    return new Promise((resolve) => {
-      Papa.parse(text, {
-        header: true,
-        complete: (results) => {
-          resolve(results.data);
+  const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    if (!file.name.endsWith('.csv')) {
+      toast.error("يرجى رفع ملف CSV فقط");
+      return;
+    }
+
+    setUploading(true);
+    
+    Papa.parse(file, {
+      header: true,
+      encoding: 'UTF-8',
+      complete: async (results) => {
+        try {
+          const data = (results.data as CSVRow[]).filter((row: CSVRow) => 
+            row.content && row.content.trim().length > 0
+          );
+          
+          if (data.length === 0) {
+            toast.error("لم يتم العثور على بيانات صالحة في الملف");
+            setUploading(false);
+            return;
+          }
+
+          // Process data in batches
+          const batchSize = 10;
+          const analyzedData: AnalyzedData[] = [];
+          
+          for (let i = 0; i < data.length; i += batchSize) {
+            const batch = data.slice(i, i + batchSize);
+            
+            for (const item of batch) {
+              try {
+                // Analyze each text
+                const { data: analysisResult, error } = await supabase.functions.invoke('analyze-text', {
+                  body: { text: item.content }
+                });
+
+                if (error) throw error;
+
+                // Store in database
+                const { error: insertError } = await supabase
+                  .from('analyzed_posts')
+                  .insert({
+                    user_id: profile?.id,
+                    content: item.content,
+                    sentiment: analysisResult.sentiment,
+                    sentiment_score: analysisResult.confidence,
+                    is_jordanian_dialect: analysisResult.dialect === 'jordanian',
+                    source: item.source || 'csv_upload',
+                    engagement_count: item.engagement_count ? parseInt(item.engagement_count) : null
+                  });
+
+                if (insertError) throw insertError;
+
+                analyzedData.push({
+                  ...item,
+                  sentiment: analysisResult.sentiment,
+                  confidence: analysisResult.confidence,
+                  dialect: analysisResult.dialect
+                });
+              } catch (error) {
+                console.error('Error processing item:', error);
+              }
+            }
+            
+            // Show progress
+            toast.info(`تمت معالجة ${Math.min(i + batchSize, data.length)} من ${data.length} عنصر`);
+          }
+
+          setUploadedData(analyzedData);
+          toast.success(`تم تحليل ${analyzedData.length} منشور بنجاح`);
+        } catch (error) {
+          console.error('Error processing file:', error);
+          toast.error("حدث خطأ أثناء معالجة الملف");
+        } finally {
+          setUploading(false);
         }
-      });
+      },
+      error: (error) => {
+        console.error('CSV parsing error:', error);
+        toast.error("حدث خطأ أثناء قراءة الملف");
+        setUploading(false);
+      }
     });
   };
 
-  const analyzeSentiment = (text: string) => {
-    // Simplified sentiment analysis logic for demo
-    // In a real app, this would call an AI service
-    const length = text.length;
-    let score;
-    
-    if (length % 3 === 0) return { sentiment: 'positive', score: 0.7 + Math.random() * 0.3 };
-    if (length % 3 === 1) return { sentiment: 'neutral', score: 0.4 + Math.random() * 0.3 };
-    return { sentiment: 'negative', score: Math.random() * 0.4 };
-  };
-
-  const detectDialect = (text: string) => {
-    // Simplified dialect detection for demo
-    // In a real app, this would call an AI service
-    return text.length % 2 === 0;
-  };
-
-  const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0] || null;
-    setSelectedFile(file);
-    
-    if (file && !file.name.endsWith('.csv')) {
-      toast.error("يرجى اختيار ملف CSV");
-      setSelectedFile(null);
-      event.target.value = '';
-    }
-  };
-
-  const handleFileDrop = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-    
-    const file = event.dataTransfer.files?.[0] || null;
-    setSelectedFile(file);
-    
-    if (file && !file.name.endsWith('.csv')) {
-      toast.error("يرجى اختيار ملف CSV");
-      setSelectedFile(null);
-    }
-  };
-
-  const handleDragOver = (event: React.DragEvent<HTMLDivElement>) => {
-    event.preventDefault();
-  };
-
-  const handleFileUpload = async () => {
-    if (!selectedFile || !user) return;
-    
-    setIsUploading(true);
-    setUploadStatus('uploading');
-    setUploadProgress(0);
-    
-    try {
-      // Read the file
-      const text = await selectedFile.text();
-      const records = await processCSV(text);
-      
-      if (records.length === 0 || !records[0].content) {
-        toast.error("تنسيق CSV غير صالح. يرجى التأكد من وجود عمود 'content'");
-        setUploadStatus('error');
-        setIsUploading(false);
-        return;
+  const downloadSampleFile = () => {
+    const sampleData = [
+      {
+        content: "هذا منشور تجريبي إيجابي جداً ومفرح",
+        source: "twitter",
+        engagement_count: "150"
+      },
+      {
+        content: "أشعر بالحزن والإحباط من هذا الوضع",
+        source: "facebook", 
+        engagement_count: "75"
+      },
+      {
+        content: "هذا نص محايد لا يحتوي على مشاعر واضحة",
+        source: "instagram",
+        engagement_count: "200"
       }
-      
-      // Simulate progress
-      const progressInterval = setInterval(() => {
-        setUploadProgress(prev => {
-          const newProgress = prev + 5;
-          if (newProgress >= 90) {
-            clearInterval(progressInterval);
-            return 90;
-          }
-          return newProgress;
-        });
-      }, 200);
-      
-      // Process and upload each record
-      const batchSize = 10;
-      let processed = 0;
-      let postsProcessed = 0;
-      
-      for (let i = 0; i < records.length; i += batchSize) {
-        const batch = records.slice(i, i + batchSize);
-        const postsToInsert = batch.map(record => {
-          const sentimentResult = analyzeSentiment(record.content);
-          return {
-            user_id: user.id,
-            content: record.content,
-            source: record.platform || 'unknown',
-            sentiment: sentimentResult.sentiment,
-            sentiment_score: sentimentResult.score,
-            is_jordanian_dialect: detectDialect(record.content),
-            engagement_count: record.engagement ? parseInt(record.engagement) : 0,
-          };
-        });
-        
-        const { error } = await supabase
-          .from('analyzed_posts')
-          .insert(postsToInsert);
-          
-        if (error) {
-          console.error("Error inserting records:", error);
-          toast.error("حدث خطأ أثناء معالجة السجلات");
-          setUploadStatus('error');
-          setIsUploading(false);
-          clearInterval(progressInterval);
-          return;
-        }
-        
-        processed++;
-        postsProcessed += batch.length;
-        
-        // Update progress
-        setUploadProgress(Math.min(90 + (processed / (Math.ceil(records.length / batchSize)) * 10), 100));
-      }
-      
-      clearInterval(progressInterval);
-      setUploadProgress(100);
-      setUploadStatus('success');
-      setIsUploading(false);
-      toast.success(`تم تحميل وتحليل ${postsProcessed} منشور بنجاح!`);
-      
-    } catch (error) {
-      console.error("Upload error:", error);
-      toast.error("حدث خطأ أثناء تحميل الملف");
-      setUploadStatus('error');
-      setIsUploading(false);
-    }
-  };
+    ];
 
-  const handleCancel = () => {
-    setSelectedFile(null);
-    setUploadProgress(0);
-    setUploadStatus('idle');
-  };
-
-  const handleTextAnalysis = async () => {
-    if (!singleText.trim() || !user) {
-      toast.error("يرجى إدخال نص عربي للتحليل");
-      return;
-    }
-    
-    toast.info("جاري تحليل النص...");
-    
-    // Process the single text entry
-    try {
-      const sentimentResult = analyzeSentiment(singleText);
-      const isJordanian = detectDialect(singleText);
-      
-      const { error } = await supabase
-        .from('analyzed_posts')
-        .insert({
-          user_id: user.id,
-          content: singleText,
-          source: 'manual-entry',
-          sentiment: sentimentResult.sentiment,
-          sentiment_score: sentimentResult.score,
-          is_jordanian_dialect: isJordanian,
-          engagement_count: 0
-        });
-      
-      if (error) {
-        console.error("Error inserting record:", error);
-        toast.error("حدث خطأ أثناء حفظ التحليل");
-        return;
-      }
-      
-      toast.success("تم تحليل النص بنجاح!");
-      
-      // Show simple results
-      const sentimentMap = {
-        'positive': 'إيجابي',
-        'neutral': 'محايد',
-        'negative': 'سلبي'
-      };
-      
-      toast.success(`نتائج التحليل: المشاعر: ${sentimentMap[sentimentResult.sentiment as keyof typeof sentimentMap]}, اللهجة: ${isJordanian ? 'أردنية' : 'غير أردنية'}`);
-      
-      // Clear the input
-      setSingleText("");
-      
-    } catch (error) {
-      console.error("Analysis error:", error);
-      toast.error("حدث خطأ أثناء تحليل النص");
-    }
+    const csv = Papa.unparse(sampleData);
+    const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' });
+    const link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'sample_data.csv';
+    link.click();
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-2xl font-bold tracking-tight">{t('Data Upload')}</h1>
-        <p className="text-muted-foreground">
-          {t('Upload social media posts for AI sentiment and dialect analysis')}
+    <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+      {/* Header */}
+      <div className="text-center space-y-2">
+        <div className="flex items-center justify-center gap-2 mb-4">
+          <div className="p-3 rounded-xl bg-gradient-to-br from-primary/10 to-blue-500/10 border">
+            <UploadIcon className="h-8 w-8 text-primary" />
+          </div>
+          <h1 className="text-3xl font-bold bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
+            رفع وتحليل البيانات
+          </h1>
+          <Sparkles className="h-6 w-6 text-yellow-500" />
+        </div>
+        <p className="text-muted-foreground max-w-2xl mx-auto">
+          قم برفع ملفات البيانات أو تحليل النصوص مباشرة باستخدام أحدث تقنيات الذكاء الاصطناعي
         </p>
       </div>
 
-      <Tabs defaultValue="batch" className="w-full">
-        <TabsList>
-          <TabsTrigger value="batch">{t('Batch Upload')}</TabsTrigger>
-          <TabsTrigger value="single">{t('Single Post Analysis')}</TabsTrigger>
+      <Tabs defaultValue="text" className="w-full">
+        <TabsList className="grid w-full grid-cols-2 mb-6">
+          <TabsTrigger value="text" className="flex items-center gap-2">
+            <Brain className="h-4 w-4" />
+            تحليل نص مفرد
+          </TabsTrigger>
+          <TabsTrigger value="bulk" className="flex items-center gap-2">
+            <Database className="h-4 w-4" />
+            رفع مجموعي
+          </TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="batch">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('Upload CSV File')}</CardTitle>
-              <CardDescription>
-                {t('Upload a CSV file containing Arabic social media posts for batch analysis.')}
-                <br />
-                {t('The CSV should have a "content" column with the Arabic text.')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {uploadStatus === 'success' ? (
-                <Alert className="bg-green-500/10 border-green-500/30 text-green-500">
-                  <Check className="h-4 w-4" />
-                  <AlertTitle>{t('Upload Successful')}</AlertTitle>
-                  <AlertDescription>
-                    {t('Your file has been uploaded and is being processed. You will be notified when the analysis is complete.')}
-                  </AlertDescription>
-                </Alert>
-              ) : uploadStatus === 'error' ? (
-                <Alert variant="destructive">
-                  <AlertCircle className="h-4 w-4" />
-                  <AlertTitle>{t('Upload Failed')}</AlertTitle>
-                  <AlertDescription>
-                    {t('There was an error uploading your file. Please try again.')}
-                  </AlertDescription>
-                </Alert>
-              ) : (
-                <div 
-                  className="border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors"
-                  onDrop={handleFileDrop}
-                  onDragOver={handleDragOver}
-                  onClick={() => document.getElementById('csv-upload')?.click()}
-                >
-                  <Input 
-                    id="csv-upload"
-                    type="file" 
-                    accept=".csv"
-                    className="hidden"
-                    onChange={handleFileSelect}
-                  />
-                  <div className="mx-auto flex h-14 w-14 items-center justify-center rounded-full bg-muted">
-                    <UploadIcon className="h-6 w-6 text-muted-foreground" />
-                  </div>
-                  <h3 className="mt-4 text-lg font-semibold">{t('Click or drag file to upload')}</h3>
-                  <p className="text-sm text-muted-foreground mt-2">
-                    {t('Upload a CSV file with your social media posts')}<br />
-                    {t('File should be under 10MB')}
-                  </p>
-                </div>
-              )}
 
-              {selectedFile && uploadStatus !== 'success' && (
-                <div className="mt-6 space-y-4">
-                  <div className="flex items-center justify-between p-3 border rounded-lg bg-muted/20">
-                    <div className="flex items-center">
-                      <FileText className="h-5 w-5 mr-2 text-muted-foreground" />
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-medium truncate">{selectedFile.name}</p>
-                        <p className="text-xs text-muted-foreground">
-                          {(selectedFile.size / 1024 / 1024).toFixed(2)} MB
-                        </p>
-                      </div>
-                    </div>
-                    <Button variant="ghost" size="sm" onClick={handleCancel}>
-                      <X className="h-4 w-4" />
-                    </Button>
+        <TabsContent value="text" className="mt-6">
+          <EnhancedTextAnalyzer />
+        </TabsContent>
+
+        <TabsContent value="bulk" className="mt-6">
+          <div className="space-y-6">
+            {/* File Upload Section */}
+            <Card className="overflow-hidden">
+              <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+                <CardTitle className="flex items-center gap-2">
+                  <FileText className="h-5 w-5" />
+                  رفع ملف CSV
+                </CardTitle>
+                <CardDescription>
+                  قم برفع ملف CSV يحتوي على النصوص المراد تحليلها
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="p-6 space-y-6">
+                <div className="space-y-4">
+                  <div className="border-2 border-dashed border-primary/20 rounded-lg p-8 text-center">
+                    <UploadIcon className="h-12 w-12 text-primary mx-auto mb-4" />
+                    <Label htmlFor="file-upload" className="cursor-pointer">
+                      <span className="text-lg font-medium">انقر لرفع ملف CSV</span>
+                      <p className="text-sm text-muted-foreground mt-2">
+                        أو اسحب وأفلت الملف هنا
+                      </p>
+                    </Label>
+                    <Input
+                      id="file-upload"
+                      type="file"
+                      accept=".csv"
+                      onChange={handleFileUpload}
+                      className="hidden"
+                      disabled={uploading}
+                    />
                   </div>
 
-                  {isUploading && (
-                    <div className="space-y-2">
-                      <div className="flex justify-between">
-                        <span className="text-sm">{uploadProgress}% مكتمل</span>
-                      </div>
-                      <Progress value={uploadProgress} />
+                  {uploading && (
+                    <div className="flex items-center justify-center gap-2 p-4 bg-blue-50 rounded-lg">
+                      <Loader2 className="h-5 w-5 animate-spin text-blue-600" />
+                      <span className="text-blue-700">جاري تحليل البيانات...</span>
                     </div>
                   )}
                 </div>
-              )}
-            </CardContent>
-            {selectedFile && uploadStatus !== 'success' && (
-              <CardFooter className="flex justify-between">
-                <Button variant="outline" onClick={handleCancel} disabled={isUploading}>
-                  {t('Cancel')}
-                </Button>
-                <Button onClick={handleFileUpload} disabled={isUploading}>
-                  {isUploading ? "جاري التحميل..." : t('Upload & Analyze')}
-                </Button>
-              </CardFooter>
-            )}
-          </Card>
-        </TabsContent>
-        
-        <TabsContent value="single">
-          <Card>
-            <CardHeader>
-              <CardTitle>{t('Analyze Single Post')}</CardTitle>
-              <CardDescription>
-                {t('Enter Arabic text to analyze sentiment and dialect')}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="grid gap-2">
-                  <label htmlFor="post-content" className="text-sm font-medium">
-                    {t('Post Content')}
-                  </label>
-                  <textarea
-                    id="post-content"
-                    rows={5}
-                    placeholder={t('Enter Arabic text...')}
-                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
-                    value={singleText}
-                    onChange={(e) => setSingleText(e.target.value)}
-                    dir="rtl"
-                  ></textarea>
+
+                <div className="space-y-4">
+                  <h4 className="font-semibold">متطلبات الملف:</h4>
+                  <div className="grid gap-3 text-sm">
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>يجب أن يكون الملف بصيغة CSV</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <CheckCircle className="h-4 w-4 text-green-500" />
+                      <span>يجب أن يحتوي على عمود "content" للنصوص</span>
+                    </div>
+                    <div className="flex items-center gap-2">
+                      <AlertCircle className="h-4 w-4 text-yellow-500" />
+                      <span>يمكن إضافة أعمدة اختيارية: "source", "engagement_count"</span>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </CardContent>
-            <CardFooter>
-              <Button onClick={handleTextAnalysis}>
-                {t('Analyze Text')}
-              </Button>
-            </CardFooter>
-          </Card>
+
+                <Button onClick={downloadSampleFile} variant="outline" className="w-full">
+                  <Download className="h-4 w-4 mr-2" />
+                  تحميل ملف نموذجي
+                </Button>
+              </CardContent>
+            </Card>
+
+            {/* Results Display */}
+            {uploadedData.length > 0 && (
+              <Card>
+                <CardHeader>
+                  <CardTitle className="flex items-center gap-2">
+                    <CheckCircle className="h-5 w-5 text-green-500" />
+                    نتائج التحليل
+                  </CardTitle>
+                  <CardDescription>
+                    تم تحليل {uploadedData.length} منشور بنجاح
+                  </CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <div className="space-y-4">
+                    {/* Summary Stats */}
+                    <div className="grid gap-4 md:grid-cols-3">
+                      <div className="text-center p-4 rounded-lg bg-green-50 border border-green-200">
+                        <div className="text-2xl font-bold text-green-600">
+                          {uploadedData.filter(item => item.sentiment === 'positive').length}
+                        </div>
+                        <div className="text-sm text-green-700">منشور إيجابي</div>
+                      </div>
+                      <div className="text-center p-4 rounded-lg bg-red-50 border border-red-200">
+                        <div className="text-2xl font-bold text-red-600">
+                          {uploadedData.filter(item => item.sentiment === 'negative').length}
+                        </div>
+                        <div className="text-sm text-red-700">منشور سلبي</div>
+                      </div>
+                      <div className="text-center p-4 rounded-lg bg-gray-50 border border-gray-200">
+                        <div className="text-2xl font-bold text-gray-600">
+                          {uploadedData.filter(item => item.sentiment === 'neutral').length}
+                        </div>
+                        <div className="text-sm text-gray-700">منشور محايد</div>
+                      </div>
+                    </div>
+
+                    {/* Sample Results */}
+                    <div className="space-y-3">
+                      <h4 className="font-semibold">عينة من النتائج:</h4>
+                      {uploadedData.slice(0, 5).map((item, index) => (
+                        <div key={index} className="p-3 rounded-lg border bg-muted/30">
+                          <div className="flex items-center gap-2 mb-2">
+                            <Badge variant={
+                              item.sentiment === 'positive' ? 'default' : 
+                              item.sentiment === 'negative' ? 'destructive' : 'secondary'
+                            }>
+                              {item.sentiment === 'positive' ? 'إيجابي' : 
+                               item.sentiment === 'negative' ? 'سلبي' : 'محايد'}
+                            </Badge>
+                            <span className="text-xs text-muted-foreground">
+                              ثقة: {Math.round(item.confidence * 100)}%
+                            </span>
+                          </div>
+                          <p className="text-sm" dir="rtl">{item.content}</p>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+          </div>
         </TabsContent>
       </Tabs>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>{t('Upload Guidelines')}</CardTitle>
-          <CardDescription>
-            {t('Tips for preparing your data for analysis')}
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="space-y-4">
-            <div className="grid gap-2">
-              <h3 className="text-base font-semibold">{t('CSV File Format')}</h3>
-              <p className="text-sm text-muted-foreground">
-                {t('Your CSV file should have the following columns:')}
-              </p>
-              <ul className="list-disc pr-5 text-sm text-muted-foreground">
-                <li>{t('content: The Arabic text content (required)')}</li>
-                <li>{t('date: Post date in YYYY-MM-DD format (optional)')}</li>
-                <li>{t('platform: Social media platform source (optional)')}</li>
-                <li>{t('engagement: Number representing engagement count (optional)')}</li>
-              </ul>
-            </div>
-            
-            <div className="grid gap-2">
-              <h3 className="text-base font-semibold">{t('Example Format')}</h3>
-              <div className="bg-muted/50 p-3 rounded-md overflow-x-auto" dir="ltr">
-                <code className="text-xs">
-                  content,date,platform,engagement<br />
-                  "الحكومة تعلن عن تخفيض أسعار المحروقات",2023-06-01,Twitter,145<br />
-                  "زيادة الإقبال على المراكز التجارية خلال العطلة",2023-06-02,Facebook,278
-                </code>
-              </div>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
     </div>
   );
 };
