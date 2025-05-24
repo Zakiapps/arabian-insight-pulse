@@ -25,6 +25,7 @@ import {
   Search,
   Bell,
   Settings,
+  Upload,
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 
@@ -32,12 +33,12 @@ const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
 
-  // Fetch real data from Supabase
+  // Fetch real data from Supabase - using correct table name
   const { data: postsData, isLoading: postsLoading } = useQuery({
     queryKey: ['dashboard-posts'],
     queryFn: async () => {
       const { data, error } = await supabase
-        .from('posts')
+        .from('analyzed_posts')
         .select('*')
         .order('created_at', { ascending: false })
         .limit(100);
@@ -60,7 +61,7 @@ const Dashboard = () => {
     enabled: isAdmin
   });
 
-  // Calculate real metrics
+  // Calculate real metrics using correct property names
   const totalPosts = postsData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
@@ -195,7 +196,7 @@ const Dashboard = () => {
                     <div key={post.id} className="flex items-start gap-3 p-3 rounded-lg bg-muted/30 hover:bg-muted/50 transition-colors">
                       <Avatar className="h-8 w-8">
                         <AvatarFallback className="text-xs">
-                          {post.platform?.charAt(0)?.toUpperCase() || 'P'}
+                          {post.source?.charAt(0)?.toUpperCase() || 'P'}
                         </AvatarFallback>
                       </Avatar>
                       <div className="flex-1 min-w-0">
@@ -215,12 +216,12 @@ const Dashboard = () => {
                         <div className="flex items-center gap-4 mt-2 text-xs text-muted-foreground">
                           <span className="flex items-center gap-1">
                             <Globe className="h-3 w-3" />
-                            {post.platform || 'غير محدد'}
+                            {post.source || 'غير محدد'}
                           </span>
-                          {post.engagement && (
+                          {post.engagement_count && (
                             <span className="flex items-center gap-1">
                               <Heart className="h-3 w-3" />
-                              {post.engagement.toLocaleString()}
+                              {post.engagement_count.toLocaleString()}
                             </span>
                           )}
                         </div>
@@ -305,7 +306,7 @@ const Dashboard = () => {
               <div className="space-y-3">
                 {['تويتر', 'فيسبوك', 'إنستغرام', 'لينكدإن'].map((platform, index) => {
                   const platformPosts = postsData?.filter(post => 
-                    post.platform?.toLowerCase().includes(platform.toLowerCase())
+                    post.source?.toLowerCase().includes(platform.toLowerCase())
                   ).length || 0;
                   const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : 0;
                   
@@ -343,7 +344,7 @@ const Dashboard = () => {
                 </Avatar>
                 <div>
                   <p className="font-medium">{profile?.full_name || 'مستخدم'}</p>
-                  <p className="text-sm text-muted-foreground">{profile?.email}</p>
+                  <p className="text-sm text-muted-foreground">المستخدم النشط</p>
                   {isAdmin && (
                     <Badge variant="destructive" className="text-xs mt-1">مشرف</Badge>
                   )}
