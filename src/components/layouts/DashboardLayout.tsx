@@ -6,32 +6,16 @@ import { SidebarProvider } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import AppSidebar from "./AppSidebar";
 import Navbar from "./Navbar";
-import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 
 const DashboardLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isRTL } = useLanguage();
-  const { isAuthenticated, loading } = useAuth();
 
   // Fix hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center">
-        <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
 
   if (!mounted) return null;
 
