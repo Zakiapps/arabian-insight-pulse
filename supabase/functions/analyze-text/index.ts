@@ -1,20 +1,11 @@
 
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.39.3';
-import { pipeline } from 'https://cdn.jsdelivr.net/npm/@huggingface/transformers@2.17.2/dist/transformers.min.js';
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
-
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-
-// Cache for model files
-let modelPipeline: any = null;
-let modelLoadError: string | null = null;
 
 // Arabic text preprocessing function
 function preprocessArabicText(text: string): string {
@@ -73,82 +64,18 @@ function validateArabicText(text: string): boolean {
   return arabicPattern.test(text);
 }
 
-// Load AraBERT model from Supabase Storage
-async function loadAraBERTModel(): Promise<any> {
-  if (modelPipeline) return modelPipeline;
-  if (modelLoadError) throw new Error(modelLoadError);
-
-  try {
-    console.log('Loading AraBERT model from Supabase Storage...');
-    
-    const supabase = createClient(supabaseUrl, supabaseServiceKey);
-    
-    // Check if model files exist in cache
-    const modelPath = '/tmp/model';
-    try {
-      await Deno.stat(`${modelPath}/model.onnx`);
-      console.log('Model files found in cache, loading...');
-    } catch {
-      console.log('Downloading model files from Supabase Storage...');
-      await Deno.mkdir(modelPath, { recursive: true });
-      
-      // Download model files from private bucket
-      const files = ['model.onnx', 'tokenizer.json', 'config.json', 'vocab.txt'];
-      
-      for (const fileName of files) {
-        console.log(`Downloading ${fileName}...`);
-        const { data, error } = await supabase.storage
-          .from('model')
-          .download(fileName);
-        
-        if (error) {
-          throw new Error(`Failed to download ${fileName}: ${error.message}`);
-        }
-        
-        if (!data) {
-          throw new Error(`No data received for ${fileName}`);
-        }
-        
-        // Write file to tmp directory
-        const arrayBuffer = await data.arrayBuffer();
-        await Deno.writeFile(`${modelPath}/${fileName}`, new Uint8Array(arrayBuffer));
-        console.log(`Downloaded ${fileName} (${arrayBuffer.byteLength} bytes)`);
-      }
-    }
-    
-    // Initialize the text classification pipeline with the downloaded model
-    console.log('Initializing AraBERT pipeline...');
-    modelPipeline = await pipeline(
-      'text-classification',
-      modelPath,
-      {
-        device: 'cpu',
-        model_file_name: 'model.onnx',
-        config_file_name: 'config.json',
-        tokenizer_file_name: 'tokenizer.json'
-      }
-    );
-    
-    console.log('AraBERT model loaded successfully');
-    return modelPipeline;
-    
-  } catch (error) {
-    console.error('Failed to load AraBERT model:', error);
-    modelLoadError = error.message;
-    throw error;
-  }
-}
-
-// Enhanced keyword-based analysis fallback
+// Enhanced keyword-based analysis
 function performKeywordAnalysis(text: string) {
   const positiveKeywords = [
     'جيد', 'رائع', 'ممتاز', 'سعيد', 'أحب', 'جميل', 'مفيد', 'إيجابي', 'تمام', 'عال',
-    'حلو', 'زين', 'كويس', 'بحبك', 'فرحان', 'مبسوط', 'حبيبي', 'حياتي', 'شكراً'
+    'حلو', 'زين', 'كويس', 'بحبك', 'فرحان', 'مبسوط', 'حبيبي', 'حياتي', 'شكراً',
+    'ولا أحلى', 'يسلمو', 'بتجنن', 'حبايبي', 'ما شاء الله', 'الله يعطيك العافية'
   ];
   
   const negativeKeywords = [
     'سيء', 'فظيع', 'أكره', 'حزين', 'غاضب', 'مؤلم', 'سلبي', 'مشكلة', 'زعلان',
-    'تعبان', 'مضايق', 'بطال', 'وسخ', 'خراب', 'مش كويس', 'بدي أموت', 'زهقان'
+    'تعبان', 'مضايق', 'بطال', 'وسخ', 'خراب', 'مش كويس', 'بدي أموت', 'زهقان',
+    'ما بطيق', 'بكره', 'مش عاجبني', 'وجع راس', 'بزهق', 'مش طبيعي'
   ];
   
   let positiveScore = 0;
@@ -227,54 +154,8 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Preprocessed text:', preprocessedText);
 
-    let analysisResult;
-
-    try {
-      // Attempt to load and use AraBERT model
-      console.log('Attempting to load AraBERT model...');
-      const classifier = await loadAraBERTModel();
-      
-      // Perform sentiment analysis with AraBERT
-      console.log('Running AraBERT inference...');
-      const results = await classifier(preprocessedText, {
-        max_length: 128,
-        truncation: true
-      });
-      
-      console.log('AraBERT results:', results);
-      
-      // Process results (assuming LABEL_0 = negative, LABEL_1 = positive)
-      const result = Array.isArray(results) ? results[0] : results;
-      
-      const sentiment = result.label === 'LABEL_1' ? 'positive' : 'negative';
-      const confidence = result.score;
-      
-      // Calculate probabilities for both classes
-      let positiveProb, negativeProb;
-      if (sentiment === 'positive') {
-        positiveProb = confidence;
-        negativeProb = 1 - confidence;
-      } else {
-        negativeProb = confidence;
-        positiveProb = 1 - confidence;
-      }
-      
-      analysisResult = {
-        sentiment,
-        confidence: Math.round(confidence * 10000) / 10000,
-        positive_prob: Math.round(positiveProb * 10000) / 10000,
-        negative_prob: Math.round(negativeProb * 10000) / 10000,
-        modelSource: 'AraBERT_ONNX'
-      };
-      
-      console.log('AraBERT analysis completed:', analysisResult);
-      
-    } catch (modelError) {
-      console.error('AraBERT model error, falling back to keyword analysis:', modelError);
-      
-      // Fallback to enhanced keyword analysis
-      analysisResult = performKeywordAnalysis(preprocessedText);
-    }
+    // Perform enhanced keyword analysis
+    const analysisResult = performKeywordAnalysis(preprocessedText);
     
     // Detect Jordanian dialect
     const dialect = detectJordanianDialect(preprocessedText);
