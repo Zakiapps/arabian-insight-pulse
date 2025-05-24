@@ -71,13 +71,17 @@ export const TopTopics = () => {
       .filter(([keyword, count]) => count >= 2)
       .sort(([,a], [,b]) => b - a)
       .slice(0, 8)
-      .map(([keyword, mentions], index) => ({
-        topic: keyword,
-        mentions,
-        trend: '+' + (15 + Math.floor(Math.random() * 30)) + '%',
-        sentiment: getSentimentForTopic(keyword, postsData),
-        rank: index + 1
-      }));
+      .map(([keyword, mentions], index) => {
+        // Generate a simple positive trend percentage
+        const trendValue = 15 + Math.floor(Math.random() * 30);
+        return {
+          topic: keyword,
+          mentions,
+          trend: `+${trendValue}%`,
+          sentiment: getSentimentForTopic(keyword, postsData),
+          rank: index + 1
+        };
+      });
   };
 
   const getSentimentForTopic = (topic: string, posts: any[]) => {
