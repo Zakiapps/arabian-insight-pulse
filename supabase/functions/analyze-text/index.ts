@@ -9,7 +9,7 @@ const corsHeaders = {
 };
 
 const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_ANON_KEY')!;
+const supabaseServiceKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 
 serve(async (req) => {
   // Handle CORS preflight requests
@@ -32,24 +32,31 @@ serve(async (req) => {
 
     console.log('Analyzing text:', text);
 
-    // Create Supabase client
-    const supabase = createClient(supabaseUrl, supabaseKey);
+    // Create Supabase client with service role key for admin access to private bucket
+    const supabase = createClient(supabaseUrl, supabaseServiceKey, {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    });
 
-    // Load the model files from Supabase Storage
+    // Load the model files from private Supabase Storage bucket
     const { data: modelData, error: modelError } = await supabase.storage
       .from('model')
       .download('model.onnx');
 
     if (modelError) {
-      console.error('Error loading model:', modelError);
+      console.error('Error loading model from private bucket:', modelError);
       return new Response(
-        JSON.stringify({ error: 'Failed to load model from storage' }),
+        JSON.stringify({ error: 'Failed to load model from private storage bucket' }),
         { 
           status: 500, 
           headers: { ...corsHeaders, 'Content-Type': 'application/json' } 
         }
       );
     }
+
+    console.log('Model loaded successfully from private bucket');
 
     // For now, we'll implement a simple sentiment analysis
     // Since @xenova/transformers has specific requirements for ONNX models
@@ -91,7 +98,8 @@ serve(async (req) => {
         details: {
           positiveScore,
           negativeScore,
-          wordsAnalyzed: words.length
+          wordsAnalyzed: words.length,
+          modelSource: 'private_bucket'
         }
       }),
       { 
