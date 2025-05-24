@@ -1,14 +1,15 @@
-
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useQuery } from "@tanstack/react-query";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
+import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Separator } from "@/components/ui/separator";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import ClearPostsButton from "@/components/dashboard/ClearPostsButton";
+import { useTaskHistory } from "@/hooks/useTaskHistory";
+import { useNotifications } from "@/hooks/useNotifications";
 import {
   BarChart3,
   TrendingUp,
@@ -37,6 +38,8 @@ const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
+  const { startTask, completeTask } = useTaskHistory();
+  const { createNotification } = useNotifications();
 
   // Fetch real data from Supabase
   const { data: postsData, isLoading: postsLoading } = useQuery({
@@ -87,14 +90,79 @@ const Dashboard = () => {
     !post.content.includes('تجربة')
   ).slice(0, 5) || [];
 
-  // Handler functions
-  const handleNewAnalysis = () => navigate('/dashboard/upload');
-  const handleExportData = () => navigate('/dashboard/reports');
-  const handleFilterData = () => navigate('/dashboard/posts');
-  const handleUploadData = () => navigate('/dashboard/upload');
-  const handleCreateReport = () => navigate('/dashboard/reports');
-  const handleSetupAlert = () => navigate('/dashboard/alerts');
-  const handleAnalysisSettings = () => navigate('/dashboard/analysis-settings');
+  // Enhanced handler functions with task tracking
+  const handleNewAnalysis = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التحليل');
+    try {
+      navigate('/dashboard/upload');
+      await completeTask(taskId, { page: 'upload' });
+      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة رفع وتحليل البيانات', 'info');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleExportData = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التقارير');
+    try {
+      navigate('/dashboard/reports');
+      await completeTask(taskId, { page: 'reports' });
+      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة التقارير', 'info');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleFilterData = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة المنشورات');
+    try {
+      navigate('/dashboard/posts');
+      await completeTask(taskId, { page: 'posts' });
+      await createNotification('تم الانتقال', 'تم الانتقال إلى صفحة المنشورات المحللة', 'info');
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleUploadData = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة رفع البيانات');
+    try {
+      navigate('/dashboard/upload');
+      await completeTask(taskId, { page: 'upload' });
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleCreateReport = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة إنشاء التقارير');
+    try {
+      navigate('/dashboard/reports');
+      await completeTask(taskId, { page: 'reports' });
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleSetupAlert = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى صفحة التنبيهات');
+    try {
+      navigate('/dashboard/alerts');
+      await completeTask(taskId, { page: 'alerts' });
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
+
+  const handleAnalysisSettings = async () => {
+    const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
+    try {
+      navigate('/dashboard/analysis-settings');
+      await completeTask(taskId, { page: 'analysis-settings' });
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في الانتقال');
+    }
+  };
 
   return (
     <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
@@ -117,19 +185,19 @@ const Dashboard = () => {
             <Search className="absolute right-3 top-3 h-4 w-4 text-muted-foreground" />
             <Input placeholder="البحث في البيانات..." className="pl-10 w-64" />
           </div>
-          <Button variant="outline" size="sm" onClick={handleFilterData}>
+          <ButtonRTL variant="outline" size="sm" onClick={handleFilterData}>
             <Filter className="h-4 w-4 mr-2" />
             تصفية
-          </Button>
+          </ButtonRTL>
           <ClearPostsButton />
-          <Button variant="outline" size="sm" onClick={handleExportData}>
+          <ButtonRTL variant="outline" size="sm" onClick={handleExportData}>
             <Download className="h-4 w-4 mr-2" />
             تصدير
-          </Button>
-          <Button size="sm" onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
+          </ButtonRTL>
+          <ButtonRTL size="sm" onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90">
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
-          </Button>
+          </ButtonRTL>
         </div>
       </div>
 
@@ -359,22 +427,22 @@ const Dashboard = () => {
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-3">
-              <Button variant="outline" className="w-full justify-start hover:bg-primary/5" onClick={handleUploadData}>
+              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-primary/5" onClick={handleUploadData}>
                 <Upload className="h-4 w-4 mr-2" />
                 رفع بيانات جديدة
-              </Button>
-              <Button variant="outline" className="w-full justify-start hover:bg-blue-500/5" onClick={handleCreateReport}>
+              </ButtonRTL>
+              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-blue-500/5" onClick={handleCreateReport}>
                 <BarChart3 className="h-4 w-4 mr-2" />
                 إنشاء تقرير
-              </Button>
-              <Button variant="outline" className="w-full justify-start hover:bg-yellow-500/5" onClick={handleSetupAlert}>
+              </ButtonRTL>
+              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-yellow-500/5" onClick={handleSetupAlert}>
                 <Bell className="h-4 w-4 mr-2" />
                 إعداد تنبيه
-              </Button>
-              <Button variant="outline" className="w-full justify-start hover:bg-purple-500/5" onClick={handleAnalysisSettings}>
+              </ButtonRTL>
+              <ButtonRTL variant="outline" className="w-full justify-start hover:bg-purple-500/5" onClick={handleAnalysisSettings}>
                 <Settings className="h-4 w-4 mr-2" />
                 إعدادات التحليل المتقدمة
-              </Button>
+              </ButtonRTL>
             </CardContent>
           </Card>
 
