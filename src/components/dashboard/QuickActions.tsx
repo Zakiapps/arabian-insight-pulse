@@ -14,30 +14,43 @@ import {
 import { useNavigate } from 'react-router-dom';
 import { useTaskHistory } from '@/hooks/useTaskHistory';
 import { useNotifications } from '@/hooks/useNotifications';
-import { useAuthCheck } from '@/hooks/useAuthCheck';
+import { useAuth } from '@/contexts/AuthContext';
 import { createNavigationAction } from '@/utils/quickActions/navigationActions';
 import { createDataActions } from '@/utils/quickActions/dataActions';
 import { createReportActions } from '@/utils/quickActions/reportActions';
 import { createAlertActions } from '@/utils/quickActions/alertActions';
 import { QuickActionButton } from './QuickActionButton';
+import { toast } from 'sonner';
 
 export const QuickActions = () => {
   const navigate = useNavigate();
   const taskHistory = useTaskHistory();
   const { createNotification } = useNotifications();
-  const { checkAuth, user } = useAuthCheck();
+  const { isAuthenticated, user, profile } = useAuth();
   const [isExporting, setIsExporting] = useState(false);
 
   // Create action handlers with complete task history object
   const navigationActions = createNavigationAction(navigate, taskHistory);
-  const dataActions = user ? createDataActions(user, taskHistory) : null;
-  const reportActions = user ? createReportActions(user, navigate, taskHistory) : null;
-  const alertActions = user ? createAlertActions(user, navigate, taskHistory) : null;
+  const dataActions = (user && profile) ? createDataActions(user, taskHistory) : null;
+  const reportActions = (user && profile) ? createReportActions(user, navigate, taskHistory) : null;
+  const alertActions = (user && profile) ? createAlertActions(user, navigate, taskHistory) : null;
 
   // Wrapper function to check auth before executing actions
   const executeWithAuth = (action: () => Promise<void>) => async () => {
-    if (!checkAuth()) return;
-    await action();
+    console.log('Auth check - isAuthenticated:', isAuthenticated, 'user:', !!user, 'profile:', !!profile);
+    
+    if (!isAuthenticated || !user || !profile) {
+      toast.error('يجب تسجيل الدخول أولاً');
+      navigate('/login');
+      return;
+    }
+    
+    try {
+      await action();
+    } catch (error) {
+      console.error('Error executing action:', error);
+      toast.error('حدث خطأ أثناء تنفيذ العملية');
+    }
   };
 
   return (

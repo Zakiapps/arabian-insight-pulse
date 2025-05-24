@@ -17,7 +17,7 @@ interface TaskHistoryItem {
 }
 
 export const useTaskHistory = () => {
-  const { profile } = useAuth();
+  const { profile, user, isAuthenticated } = useAuth();
   const { createNotification } = useNotifications();
   const [tasks, setTasks] = useState<TaskHistoryItem[]>([]);
 
@@ -26,7 +26,11 @@ export const useTaskHistory = () => {
     taskName: string,
     parameters?: any
   ): Promise<string> => {
-    if (!profile?.id) throw new Error('User not authenticated');
+    console.log('Starting task - isAuthenticated:', isAuthenticated, 'user:', !!user, 'profile:', !!profile);
+    
+    if (!isAuthenticated || !user || !profile?.id) {
+      throw new Error('User not authenticated');
+    }
 
     const { data, error } = await supabase
       .from('task_history')
@@ -93,7 +97,7 @@ export const useTaskHistory = () => {
   };
 
   const fetchTasks = async () => {
-    if (!profile?.id) return;
+    if (!isAuthenticated || !profile?.id) return;
 
     const { data, error } = await supabase
       .from('task_history')
@@ -117,8 +121,11 @@ export const useTaskHistory = () => {
   };
 
   useEffect(() => {
-    fetchTasks();
-  }, [profile?.id]);
+    // Only fetch tasks if we have proper authentication
+    if (isAuthenticated && profile?.id) {
+      fetchTasks();
+    }
+  }, [isAuthenticated, profile?.id]);
 
   return {
     tasks,
