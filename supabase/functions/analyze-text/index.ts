@@ -13,14 +13,15 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Cache for model and tokenizer data
+// Lightweight cache for essential model data only
 let modelCache: {
-  model?: ArrayBuffer;
-  config?: any;
-  tokenizerConfig?: any;
-  specialTokens?: any;
   vocab?: Map<string, number>;
-  tokenizer?: any;
+  specialTokens?: any;
+  clsTokenId?: number;
+  sepTokenId?: number;
+  padTokenId?: number;
+  unkTokenId?: number;
+  modelLoaded?: boolean;
 } = {};
 
 // Arabic text preprocessing function
@@ -80,68 +81,17 @@ function validateArabicText(text: string): boolean {
   return arabicPattern.test(text);
 }
 
-// Load all model files from private-model bucket
-async function loadModelFiles() {
+// Load essential tokenizer components only (not the full model)
+async function loadTokenizerComponents() {
   try {
-    console.log('Loading model files from private-model bucket...');
-    
-    // Load model.onnx file
-    if (!modelCache.model) {
-      const { data: modelData, error: modelError } = await supabase.storage
-        .from('private-model')
-        .download('model.onnx');
-      
-      if (modelError || !modelData) {
-        throw new Error(`Failed to load model: ${modelError?.message}`);
-      }
-      
-      modelCache.model = await modelData.arrayBuffer();
-      console.log('ONNX model loaded successfully, size:', modelCache.model.byteLength);
+    if (modelCache.vocab && modelCache.specialTokens) {
+      console.log('Tokenizer components already loaded');
+      return true;
     }
+
+    console.log('Loading essential tokenizer components from private-model bucket...');
     
-    // Load config.json
-    if (!modelCache.config) {
-      const { data: configData, error: configError } = await supabase.storage
-        .from('private-model')
-        .download('config.json');
-      
-      if (configError || !configData) {
-        throw new Error(`Failed to load config: ${configError?.message}`);
-      }
-      
-      modelCache.config = JSON.parse(await configData.text());
-      console.log('Model config loaded');
-    }
-    
-    // Load tokenizer_config.json
-    if (!modelCache.tokenizerConfig) {
-      const { data: tokConfigData, error: tokConfigError } = await supabase.storage
-        .from('private-model')
-        .download('tokenizer_config.json');
-      
-      if (tokConfigError || !tokConfigData) {
-        throw new Error(`Failed to load tokenizer config: ${tokConfigError?.message}`);
-      }
-      
-      modelCache.tokenizerConfig = JSON.parse(await tokConfigData.text());
-      console.log('Tokenizer config loaded');
-    }
-    
-    // Load special_tokens_map.json
-    if (!modelCache.specialTokens) {
-      const { data: specialData, error: specialError } = await supabase.storage
-        .from('private-model')
-        .download('special_tokens_map.json');
-      
-      if (specialError || !specialData) {
-        throw new Error(`Failed to load special tokens: ${specialError?.message}`);
-      }
-      
-      modelCache.specialTokens = JSON.parse(await specialData.text());
-      console.log('Special tokens loaded');
-    }
-    
-    // Load vocab.txt
+    // Load vocab.txt first (essential for tokenization)
     if (!modelCache.vocab) {
       const { data: vocabData, error: vocabError } = await supabase.storage
         .from('private-model')
@@ -162,58 +112,57 @@ async function loadModelFiles() {
       console.log('Vocab loaded, size:', modelCache.vocab.size);
     }
     
-    // Load tokenizer.json
-    if (!modelCache.tokenizer) {
-      const { data: tokenizerData, error: tokenizerError } = await supabase.storage
+    // Load special_tokens_map.json
+    if (!modelCache.specialTokens) {
+      const { data: specialData, error: specialError } = await supabase.storage
         .from('private-model')
-        .download('tokenizer.json');
+        .download('special_tokens_map.json');
       
-      if (tokenizerError || !tokenizerData) {
-        throw new Error(`Failed to load tokenizer: ${tokenizerError?.message}`);
+      if (specialError || !specialData) {
+        throw new Error(`Failed to load special tokens: ${specialError?.message}`);
       }
       
-      modelCache.tokenizer = JSON.parse(await tokenizerData.text());
-      console.log('Tokenizer JSON loaded');
+      modelCache.specialTokens = JSON.parse(await specialData.text());
+      
+      // Pre-calculate token IDs
+      const clsToken = modelCache.specialTokens?.cls_token || '[CLS]';
+      const sepToken = modelCache.specialTokens?.sep_token || '[SEP]';
+      const padToken = modelCache.specialTokens?.pad_token || '[PAD]';
+      const unkToken = modelCache.specialTokens?.unk_token || '[UNK]';
+      
+      modelCache.clsTokenId = modelCache.vocab!.get(clsToken) || modelCache.vocab!.get('[CLS]') || 101;
+      modelCache.sepTokenId = modelCache.vocab!.get(sepToken) || modelCache.vocab!.get('[SEP]') || 102;
+      modelCache.padTokenId = modelCache.vocab!.get(padToken) || modelCache.vocab!.get('[PAD]') || 0;
+      modelCache.unkTokenId = modelCache.vocab!.get(unkToken) || modelCache.vocab!.get('[UNK]') || 100;
+      
+      console.log('Special tokens loaded and token IDs calculated');
     }
     
-    return modelCache;
+    return true;
   } catch (error) {
-    console.error('Error loading model files:', error);
-    throw error;
+    console.error('Error loading tokenizer components:', error);
+    return false;
   }
 }
 
-// Enhanced tokenization using loaded tokenizer data
+// Optimized tokenization using loaded tokenizer data
 function tokenizeText(text: string, maxLength: number = 128): number[] {
   try {
-    const { vocab, tokenizerConfig, specialTokens, tokenizer } = modelCache;
+    const { vocab, clsTokenId, sepTokenId, padTokenId, unkTokenId } = modelCache;
     
-    if (!vocab || !tokenizerConfig || !tokenizer) {
+    if (!vocab || !clsTokenId || !sepTokenId || !padTokenId || !unkTokenId) {
       throw new Error('Tokenizer components not loaded');
     }
     
     console.log('Starting tokenization for text:', text.substring(0, 50) + '...');
     
-    // Get special token IDs from vocab
-    const clsToken = specialTokens?.cls_token || '[CLS]';
-    const sepToken = specialTokens?.sep_token || '[SEP]';
-    const padToken = specialTokens?.pad_token || '[PAD]';
-    const unkToken = specialTokens?.unk_token || '[UNK]';
-    
-    const clsTokenId = vocab.get(clsToken) || vocab.get('[CLS]') || 101;
-    const sepTokenId = vocab.get(sepToken) || vocab.get('[SEP]') || 102;
-    const padTokenId = vocab.get(padToken) || vocab.get('[PAD]') || 0;
-    const unkTokenId = vocab.get(unkToken) || vocab.get('[UNK]') || 100;
-    
-    console.log('Special tokens:', { clsTokenId, sepTokenId, padTokenId, unkTokenId });
-    
     // Preprocess the text
     const preprocessed = preprocessArabicText(text);
     
-    // Use the tokenizer's vocab for proper tokenization
+    // Start with [CLS] token
     const tokens: number[] = [clsTokenId];
     
-    // Tokenize using the loaded tokenizer configuration
+    // Simple word-level tokenization
     const words = preprocessed.split(/\s+/);
     
     for (const word of words) {
@@ -263,7 +212,7 @@ function tokenizeText(text: string, maxLength: number = 128): number[] {
     }
     
     console.log('Tokenized sequence length:', tokens.length);
-    console.log('First 20 tokens:', tokens.slice(0, 20));
+    console.log('First 10 tokens:', tokens.slice(0, 10));
     
     return tokens;
   } catch (error) {
@@ -295,16 +244,28 @@ function createFallbackTokenization(text: string, maxLength: number): number[] {
   return tokens.slice(0, maxLength);
 }
 
-// Real ONNX Runtime inference
+// Real ONNX Runtime inference with memory optimization
 async function runONNXInference(inputIds: number[]): Promise<{ sentiment: string; confidence: number; positive_prob: number; negative_prob: number }> {
   try {
-    console.log('Starting ONNX inference with real model...');
+    console.log('Starting ONNX inference...');
+    
+    // Load model on-demand to save memory
+    const { data: modelData, error: modelError } = await supabase.storage
+      .from('private-model')
+      .download('model.onnx');
+    
+    if (modelError || !modelData) {
+      throw new Error(`Failed to load model: ${modelError?.message}`);
+    }
+    
+    const modelBuffer = await modelData.arrayBuffer();
+    console.log('Model loaded, size:', modelBuffer.byteLength);
     
     // Import ONNX Runtime Web
     const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js');
     
     // Create session from the loaded model buffer
-    const session = await ort.InferenceSession.create(modelCache.model!);
+    const session = await ort.InferenceSession.create(modelBuffer);
     console.log('ONNX session created successfully');
     console.log('Model input names:', session.inputNames);
     console.log('Model output names:', session.outputNames);
@@ -365,6 +326,9 @@ async function runONNXInference(inputIds: number[]): Promise<{ sentiment: string
     const confidence = Math.max(positive_prob, negative_prob);
     
     console.log('ONNX Results:', { sentiment, confidence, positive_prob, negative_prob });
+    
+    // Clear model from memory immediately
+    session.release();
     
     return {
       sentiment,
@@ -470,9 +434,14 @@ serve(async (req) => {
     let analysisResult;
 
     try {
-      // Load all model files
-      await loadModelFiles();
-      console.log('All model files loaded successfully');
+      // Load essential tokenizer components only
+      const tokenizerLoaded = await loadTokenizerComponents();
+      
+      if (!tokenizerLoaded) {
+        throw new Error('Failed to load tokenizer components');
+      }
+      
+      console.log('Tokenizer components loaded successfully');
       
       // Tokenize the text
       const tokenIds = tokenizeText(preprocessedText, 128);
