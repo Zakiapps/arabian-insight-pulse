@@ -1,48 +1,45 @@
 
-import React from "react";
-import { useNavigate } from "react-router-dom";
-import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import DashboardHeader from "@/components/dashboard/DashboardHeader";
 import StatsCards from "@/components/dashboard/StatsCards";
 import SentimentAnalysis from "@/components/dashboard/SentimentAnalysis";
-import { TopTopics } from "@/components/dashboard/TopTopics";
 import CategoryDistribution from "@/components/dashboard/CategoryDistribution";
-import { PlatformDistribution } from "@/components/dashboard/PlatformDistribution";
-import { DialectDetection } from "@/components/dashboard/DialectDetection";
+import PlatformDistribution from "@/components/dashboard/PlatformDistribution";
+import TopTopics from "@/components/dashboard/TopTopics";
+import DialectDetection from "@/components/dashboard/DialectDetection";
+import ThreeDInsightCard from "@/components/dashboard/ThreeDInsightCard";
+import AdminUsersManagement from "@/pages/admin/AdminUsersManagement";
 
 const Dashboard = () => {
-  const navigate = useNavigate();
+  const { isRTL } = useLanguage();
+  const { isAdmin } = useAuth();
 
-  // Navigation handlers for different sections
-  const handleAnalyzedPostsClick = () => {
-    navigate('/dashboard/posts');
-  };
-
-  const handleSentimentClick = (sentiment: string) => {
-    navigate(`/dashboard/posts?sentiment=${sentiment}`);
-  };
-
-  return (
-    <div className="space-y-6">
-      <DashboardHeader />
-      <div 
-        onClick={handleAnalyzedPostsClick}
-        className="cursor-pointer"
-      >
-        <StatsCards />
+  // If user is admin, show the admin users management interface
+  if (isAdmin) {
+    return (
+      <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+        <AdminUsersManagement />
       </div>
-      <div className="grid gap-6 md:grid-cols-2">
-        <div 
-          onClick={() => handleSentimentClick('all')}
-          className="cursor-pointer"
-        >
-          <SentimentAnalysis onSentimentClick={handleSentimentClick} />
-        </div>
+    );
+  }
+
+  // Regular user dashboard
+  return (
+    <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+      <DashboardHeader />
+      <StatsCards />
+      <div className="grid gap-6 lg:grid-cols-2">
+        <SentimentAnalysis />
+        <CategoryDistribution />
+      </div>
+      <div className="grid gap-6 lg:grid-cols-2">
+        <PlatformDistribution />
         <TopTopics />
       </div>
-      <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <CategoryDistribution />
-        <PlatformDistribution />
+      <div className="grid gap-6 lg:grid-cols-2">
         <DialectDetection />
+        <ThreeDInsightCard />
       </div>
     </div>
   );
