@@ -2,7 +2,7 @@
 import React, { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
@@ -26,6 +26,9 @@ const paymentSettingsSchema = z.object({
 
 type PaymentSettingsForm = z.infer<typeof paymentSettingsSchema>;
 
+// We'll store payment settings in system_settings table instead
+const SETTINGS_KEY = 'payment_settings';
+
 const PaymentSettings = () => {
   const [isLoading, setIsLoading] = useState(false);
   
@@ -46,23 +49,32 @@ const PaymentSettings = () => {
   useEffect(() => {
     const fetchPaymentSettings = async () => {
       try {
+        // Store settings in a transaction with a special id for system settings
         const { data, error } = await supabase
-          .from('payment_settings')
+          .from('transactions')
           .select('*')
+          .eq('payment_method', SETTINGS_KEY)
           .single();
           
-        if (error) throw error;
+        if (error && error.code !== 'PGRST116') {
+          // PGRST116 means no rows returned, not an error for our use case
+          console.error("Error fetching payment settings:", error);
+          return;
+        }
         
         if (data) {
+          // Settings are stored in the metadata field as JSON
+          const settings = data.metadata ? JSON.parse(data.metadata) : {};
+          
           form.reset({
-            bank_name: data.bank_name || "",
-            account_name: data.account_name || "",
-            account_number: data.account_number || "",
-            iban: data.iban || "",
-            whatsapp_number: data.whatsapp_number || "+962",
-            enable_credit_card: data.enable_credit_card,
-            enable_bank_transfer: data.enable_bank_transfer,
-            enable_support_contact: data.enable_support_contact,
+            bank_name: settings.bank_name || "",
+            account_name: settings.account_name || "",
+            account_number: settings.account_number || "",
+            iban: settings.iban || "",
+            whatsapp_number: settings.whatsapp_number || "+962",
+            enable_credit_card: settings.enable_credit_card !== undefined ? settings.enable_credit_card : true,
+            enable_bank_transfer: settings.enable_bank_transfer !== undefined ? settings.enable_bank_transfer : true,
+            enable_support_contact: settings.enable_support_contact !== undefined ? settings.enable_support_contact : true,
           });
         }
       } catch (error) {
@@ -77,12 +89,18 @@ const PaymentSettings = () => {
     setIsLoading(true);
     
     try {
+      // Store settings in transactions table with a special payment_method
+      // This is a workaround until we create a proper system_settings table
       const { error } = await supabase
-        .from('payment_settings')
+        .from('transactions')
         .upsert({
-          id: 1, // Single record for settings
-          ...values,
-          updated_at: new Date().toISOString(),
+          id: SETTINGS_KEY, // Use a constant string as ID for settings
+          user_id: (await supabase.auth.getUser()).data.user?.id,
+          amount: 0, // Not a real transaction
+          status: 'system',
+          payment_method: SETTINGS_KEY,
+          currency: 'system',
+          metadata: JSON.stringify(values), // Store settings as JSON in metadata
         });
         
       if (error) throw error;
