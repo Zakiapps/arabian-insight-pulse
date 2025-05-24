@@ -1,99 +1,94 @@
 
-import { useState } from "react";
-import { Area, AreaChart, CartesianGrid, Legend, ResponsiveContainer, Tooltip, XAxis, YAxis } from "recharts";
+import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Bar, BarChart, ResponsiveContainer, XAxis, YAxis, Tooltip } from "recharts";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useLanguage } from "@/contexts/LanguageContext";
 
-// Dummy data
-const timeframeSentimentData = [
-  { date: "06/01", positive: 48, neutral: 32, negative: 20 },
-  { date: "06/02", positive: 42, neutral: 36, negative: 22 },
-  { date: "06/03", positive: 45, neutral: 35, negative: 20 },
-  { date: "06/04", positive: 39, neutral: 37, negative: 24 },
-  { date: "06/05", positive: 38, neutral: 32, negative: 30 },
-  { date: "06/06", positive: 35, neutral: 33, negative: 32 },
-  { date: "06/07", positive: 30, neutral: 37, negative: 33 },
+const data = [
+  { sentiment: "إيجابي", count: 450, color: "#22c55e" },
+  { sentiment: "محايد", count: 320, color: "#6b7280" },
+  { sentiment: "سلبي", count: 180, color: "#ef4444" },
 ];
 
-const SENTIMENT_COLORS = {
-  positive: "hsl(var(--sentiment-positive))",
-  neutral: "hsl(var(--sentiment-neutral))",
-  negative: "hsl(var(--sentiment-negative))",
-};
+interface SentimentAnalysisProps {
+  onSentimentClick?: (sentiment: string) => void;
+}
 
-export const SentimentAnalysis = () => {
-  const [timeframe, setTimeframe] = useState("7d");
+export default function SentimentAnalysis({ onSentimentClick }: SentimentAnalysisProps) {
   const { language } = useLanguage();
   const isArabic = language === 'ar';
 
   const t = {
     sentimentAnalysis: isArabic ? "تحليل المشاعر" : "Sentiment Analysis",
-    sentimentOverTime: isArabic ? "توزيع المشاعر على مدار الوقت" : "Sentiment distribution over time",
-    week: isArabic ? "أسبوع" : "Week",
-    month: isArabic ? "شهر" : "Month",
-    quarter: isArabic ? "ربع سنة" : "Quarter",
+    sentimentDescription: isArabic ? "توزيع المشاعر في المنشورات المحللة" : "Distribution of sentiments in analyzed posts",
     positive: isArabic ? "إيجابي" : "Positive",
-    neutral: isArabic ? "محايد" : "Neutral",
     negative: isArabic ? "سلبي" : "Negative",
+    neutral: isArabic ? "محايد" : "Neutral",
+    posts: isArabic ? "منشور" : "posts",
+  };
+
+  const handleBarClick = (sentiment: string) => {
+    const sentimentMap: { [key: string]: string } = {
+      "إيجابي": "positive",
+      "محايد": "neutral", 
+      "سلبي": "negative"
+    };
+    
+    const englishSentiment = sentimentMap[sentiment] || sentiment;
+    onSentimentClick?.(englishSentiment);
   };
 
   return (
-    <Card className="col-span-full lg:col-span-4">
-      <CardHeader>
-        <CardTitle>{t.sentimentAnalysis}</CardTitle>
-        <CardDescription>
-          {t.sentimentOverTime}
-        </CardDescription>
-        <Tabs defaultValue="7d" className="w-full" onValueChange={setTimeframe}>
-          <TabsList className="grid w-full max-w-xs grid-cols-3">
-            <TabsTrigger value="7d">{t.week}</TabsTrigger>
-            <TabsTrigger value="30d">{t.month}</TabsTrigger>
-            <TabsTrigger value="90d">{t.quarter}</TabsTrigger>
-          </TabsList>
-        </Tabs>
+    <Card className="hover:shadow-lg transition-shadow cursor-pointer">
+      <CardHeader className="pb-2">
+        <CardTitle className="flex items-center gap-2">
+          <div className="p-2 bg-blue-500/10 rounded-lg">
+            <TrendingUp className="h-5 w-5 text-blue-500" />
+          </div>
+          {t.sentimentAnalysis}
+        </CardTitle>
+        <CardDescription>{t.sentimentDescription}</CardDescription>
       </CardHeader>
       <CardContent>
-        <ResponsiveContainer width="100%" height={300}>
-          <AreaChart data={timeframeSentimentData} margin={{ top: 5, right: 20, left: 0, bottom: 5 }}>
-            <CartesianGrid strokeDasharray="3 3" vertical={false} />
-            <XAxis dataKey="date" />
-            <YAxis />
-            <Tooltip 
-              contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
-              formatter={(value) => [`${value}%`, '']}
-            />
-            <Legend />
-            <Area 
-              type="monotone" 
-              dataKey="positive" 
-              name={t.positive} 
-              stackId="1" 
-              stroke={SENTIMENT_COLORS.positive} 
-              fill={SENTIMENT_COLORS.positive}
-              fillOpacity={0.6} 
-            />
-            <Area 
-              type="monotone" 
-              dataKey="neutral" 
-              name={t.neutral} 
-              stackId="1" 
-              stroke={SENTIMENT_COLORS.neutral} 
-              fill={SENTIMENT_COLORS.neutral}
-              fillOpacity={0.6} 
-            />
-            <Area 
-              type="monotone" 
-              dataKey="negative" 
-              name={t.negative} 
-              stackId="1" 
-              stroke={SENTIMENT_COLORS.negative} 
-              fill={SENTIMENT_COLORS.negative}
-              fillOpacity={0.6} 
-            />
-          </AreaChart>
-        </ResponsiveContainer>
+        <div className="space-y-4">
+          <div className="grid grid-cols-3 gap-4 text-center">
+            {data.map((item) => (
+              <div 
+                key={item.sentiment} 
+                className="space-y-1 cursor-pointer hover:bg-muted/50 p-2 rounded-lg transition-colors"
+                onClick={() => handleBarClick(item.sentiment)}
+              >
+                <div className="flex items-center justify-center">
+                  {item.sentiment === "إيجابي" && <TrendingUp className="h-4 w-4 text-green-500" />}
+                  {item.sentiment === "محايد" && <Minus className="h-4 w-4 text-gray-500" />}
+                  {item.sentiment === "سلبي" && <TrendingDown className="h-4 w-4 text-red-500" />}
+                </div>
+                <div className="text-2xl font-bold" style={{ color: item.color }}>
+                  {item.count}
+                </div>
+                <div className="text-xs text-muted-foreground">{item.sentiment}</div>
+              </div>
+            ))}
+          </div>
+          
+          <ResponsiveContainer width="100%" height={200}>
+            <BarChart data={data}>
+              <XAxis dataKey="sentiment" />
+              <YAxis />
+              <Tooltip 
+                formatter={(value) => [`${value} ${t.posts}`, '']}
+                contentStyle={{ backgroundColor: 'hsl(var(--background))', borderColor: 'hsl(var(--border))' }}
+              />
+              <Bar 
+                dataKey="count" 
+                fill="#8884d8"
+                onClick={(data) => handleBarClick(data.sentiment)}
+                cursor="pointer"
+              />
+            </BarChart>
+          </ResponsiveContainer>
+        </div>
       </CardContent>
     </Card>
   );
-};
+}

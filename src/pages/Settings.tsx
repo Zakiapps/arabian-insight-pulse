@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from "react";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { useForm } from "react-hook-form";
@@ -15,12 +14,10 @@ import { useAuth } from "@/contexts/AuthContext";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
+// Fixed profile form schema - removed email requirement
 const profileFormSchema = z.object({
   name: z.string().min(2, {
     message: "Name must be at least 2 characters.",
-  }),
-  email: z.string().email({
-    message: "Please enter a valid email.",
   }),
   company: z.string().optional(),
 });
@@ -60,12 +57,11 @@ export default function Settings() {
   const { user, profile, updateUserProfile } = useAuth();
   const [apiKey, setApiKey] = useState<string | null>(null);
   
-  // Profile form
+  // Profile form - removed email field
   const profileForm = useForm({
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: "",
-      email: "",
       company: "",
     },
   });
@@ -84,7 +80,7 @@ export default function Settings() {
   const apiForm = useForm({
     resolver: zodResolver(apiFormSchema),
     defaultValues: {
-      accessLevel: "read" as const, // Fix the type issue by explicitly typing as const
+      accessLevel: "read" as const,
       webhookUrl: "",
     },
   });
@@ -103,14 +99,13 @@ export default function Settings() {
 
   useEffect(() => {
     // Set form values once profile is loaded
-    if (profile && user) {
+    if (profile) {
       profileForm.reset({
         name: profile.full_name || "",
-        email: user.email || "",
         company: "",
       });
     }
-  }, [profile, user]);
+  }, [profile]);
 
   const onProfileSubmit = async (data: z.infer<typeof profileFormSchema>) => {
     try {
@@ -180,12 +175,12 @@ export default function Settings() {
         </TabsList>
 
         <TabsContent value="account" className="space-y-4">
-          {/* Profile Form */}
+          {/* Profile Form - Fixed to not require email */}
           <Card>
             <CardHeader>
               <CardTitle>{t('Profile')}</CardTitle>
               <CardDescription>
-                {t('Update your personal information and password')}
+                {t('Update your personal information')}
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-2">
@@ -205,22 +200,18 @@ export default function Settings() {
                     )}
                   />
                   
-                  <FormField
-                    control={profileForm.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{t('Email')}</FormLabel>
-                        <FormControl>
-                          <Input placeholder={t('Your email')} {...field} disabled />
-                        </FormControl>
-                        <FormDescription>
-                          {t('Email cannot be changed')}
-                        </FormDescription>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  {/* Display email as read-only info */}
+                  <div className="space-y-2">
+                    <FormLabel>{t('Email')}</FormLabel>
+                    <Input 
+                      value={user?.email || ''} 
+                      disabled 
+                      className="bg-muted text-muted-foreground"
+                    />
+                    <FormDescription>
+                      {t('Email cannot be changed')}
+                    </FormDescription>
+                  </div>
                   
                   <FormField
                     control={profileForm.control}
