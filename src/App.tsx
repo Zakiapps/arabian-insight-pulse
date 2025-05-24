@@ -47,11 +47,11 @@ function App() {
     <QueryClientProvider client={queryClient}>
       <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
         <LanguageProvider>
-          <AuthProvider>
-            <SubscriptionProvider>
-              <TooltipProvider>
-                <Toaster />
-                <BrowserRouter>
+          <BrowserRouter>
+            <AuthProvider>
+              <SubscriptionProvider>
+                <TooltipProvider>
+                  <Toaster />
                   <Routes>
                     {/* Public routes */}
                     <Route path="/" element={<Home />} />
@@ -96,10 +96,10 @@ function App() {
                       <Route path="payment-settings" element={<PaymentSettings />} />
                     </Route>
                   </Routes>
-                </BrowserRouter>
-              </TooltipProvider>
-            </SubscriptionProvider>
-          </AuthProvider>
+                </TooltipProvider>
+              </SubscriptionProvider>
+            </AuthProvider>
+          </BrowserRouter>
         </LanguageProvider>
       </ThemeProvider>
     </QueryClientProvider>
