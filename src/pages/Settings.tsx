@@ -1,222 +1,119 @@
 
 import { useState } from "react";
-import { useForm } from "react-hook-form";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { z } from "zod";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Switch } from "@/components/ui/switch";
+import { useForm } from "react-hook-form";
+import { zodResolver } from "@hookform/resolvers/zod";
+import * as z from "zod";
+import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { toast } from "sonner";
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from "@/components/ui/select";
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardFooter,
-  CardHeader,
-  CardTitle,
-} from "@/components/ui/card";
-import {
-  Tabs,
-  TabsContent,
-  TabsList,
-  TabsTrigger,
-} from "@/components/ui/tabs";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
-const accountFormSchema = z.object({
-  name: z.string().min(2, "الاسم يجب أن يكون على الأقل حرفين"),
-  email: z.string().email("عنوان البريد الإلكتروني غير صالح"),
+// Define form validation schemas
+const profileSchema = z.object({
+  full_name: z.string().min(2, { message: "الاسم يجب أن يكون على الأقل حرفين" }),
   company: z.string().optional(),
-  currentPassword: z.string().optional(),
-  newPassword: z.string().min(8, "كلمة المرور يجب أن تكون على الأقل 8 أحرف").optional(),
-  confirmPassword: z.string().optional(),
-}).refine((data) => {
-  if (data.newPassword && !data.currentPassword) {
-    return false;
-  }
-  return true;
-}, {
-  message: "كلمة المرور الحالية مطلوبة لتعيين كلمة مرور جديدة",
-  path: ["currentPassword"],
-}).refine((data) => {
-  if (data.newPassword && data.newPassword !== data.confirmPassword) {
-    return false;
-  }
-  return true;
-}, {
-  message: "كلمات المرور غير متطابقة",
-  path: ["confirmPassword"],
 });
 
-const apiFormSchema = z.object({
-  apiKey: z.string().optional(),
-  webhookUrl: z.string().url().optional().or(z.literal("")),
-  accessLevel: z.enum(["read_only", "read_write"]),
+const apiSchema = z.object({
+  access_level: z.enum(["read", "write"]),
+  webhook_url: z.string().url({ message: "يجب إدخال رابط صحيح" }).optional().or(z.literal("")),
 });
 
-const notificationFormSchema = z.object({
-  emailNotifications: z.boolean(),
-  appNotifications: z.boolean(),
-  sentimentAlerts: z.boolean(),
-  dialectAlerts: z.boolean(),
-  reportGeneration: z.boolean(),
+const notificationSchema = z.object({
+  email_notifications: z.boolean(),
+  app_notifications: z.boolean(),
+  sentiment_alerts: z.boolean(),
+  dialect_alerts: z.boolean(),
+  report_notifications: z.boolean(),
 });
 
 const Settings = () => {
   const { user, updateUserProfile } = useAuth();
   const { t } = useLanguage();
-  const [activeTab, setActiveTab] = useState("account");
-  
-  // Account form
-  const accountForm = useForm<z.infer<typeof accountFormSchema>>({
-    resolver: zodResolver(accountFormSchema),
+  const [isUpdating, setIsUpdating] = useState(false);
+  const [apiKey, setApiKey] = useState("");
+
+  // Profile form
+  const profileForm = useForm({
+    resolver: zodResolver(profileSchema),
     defaultValues: {
-      name: user?.profile?.full_name || "",
-      email: user?.email || "",
+      full_name: user?.profile?.full_name || "",
       company: "",
-      currentPassword: "",
-      newPassword: "",
-      confirmPassword: "",
     },
   });
 
   // API form
-  const apiForm = useForm<z.infer<typeof apiFormSchema>>({
-    resolver: zodResolver(apiFormSchema),
+  const apiForm = useForm({
+    resolver: zodResolver(apiSchema),
     defaultValues: {
-      apiKey: "",
-      webhookUrl: "",
-      accessLevel: "read_only",
+      access_level: "read" as const,
+      webhook_url: "",
     },
   });
 
-  // Notifications form
-  const notificationForm = useForm<z.infer<typeof notificationFormSchema>>({
-    resolver: zodResolver(notificationFormSchema),
+  // Notification form
+  const notificationForm = useForm({
+    resolver: zodResolver(notificationSchema),
     defaultValues: {
-      emailNotifications: true,
-      appNotifications: true,
-      sentimentAlerts: true,
-      dialectAlerts: true,
-      reportGeneration: true,
+      email_notifications: true,
+      app_notifications: true,
+      sentiment_alerts: true,
+      dialect_alerts: false,
+      report_notifications: true,
     },
   });
 
-  async function onAccountSubmit(values: z.infer<typeof accountFormSchema>) {
+  const onProfileSubmit = async (data: z.infer<typeof profileSchema>) => {
+    setIsUpdating(true);
     try {
-      // Update user profile in Supabase
-      if (user) {
-        // Update profile name
-        const { error: profileError } = await supabase
-          .from('profiles')
-          .update({ full_name: values.name })
-          .eq('id', user.id);
-          
-        if (profileError) {
-          console.error("Error updating profile:", profileError);
-          toast.error("حدث خطأ أثناء تحديث الملف الشخصي");
-          return;
-        }
-        
-        // Update email if changed
-        if (values.email !== user.email) {
-          const { error: emailError } = await supabase.auth.updateUser({
-            email: values.email,
-          });
-          
-          if (emailError) {
-            console.error("Error updating email:", emailError);
-            toast.error("حدث خطأ أثناء تحديث البريد الإلكتروني");
-            return;
-          }
-          
-          toast.info("تم إرسال رابط تأكيد البريد الإلكتروني الجديد");
-        }
-        
-        // Update password if provided
-        if (values.currentPassword && values.newPassword) {
-          const { error: passwordError } = await supabase.auth.updateUser({
-            password: values.newPassword,
-          });
-          
-          if (passwordError) {
-            console.error("Error updating password:", passwordError);
-            toast.error("حدث خطأ أثناء تحديث كلمة المرور");
-            return;
-          }
-          
-          toast.success("تم تحديث كلمة المرور بنجاح");
-          accountForm.setValue("currentPassword", "");
-          accountForm.setValue("newPassword", "");
-          accountForm.setValue("confirmPassword", "");
-        }
-        
-        // Update local user state
-        if (updateUserProfile) {
-          updateUserProfile({
-            ...user,
-            profile: {
-              ...user.profile,
-              full_name: values.name
-            },
-            email: values.email
-          });
-        }
-        
-        toast.success("تم تحديث إعدادات الحساب!");
-      }
+      const { error } = await updateUserProfile({
+        full_name: data.full_name,
+      });
+      
+      if (error) throw error;
+      toast.success("تم تحديث الملف الشخصي بنجاح");
     } catch (error) {
-      console.error("Account update error:", error);
-      toast.error("فشل في تحديث إعدادات الحساب");
+      console.error("Error updating profile:", error);
+      toast.error("حدث خطأ أثناء تحديث الملف الشخصي");
+    } finally {
+      setIsUpdating(false);
     }
-  }
+  };
 
-  function onApiSubmit(values: z.infer<typeof apiFormSchema>) {
-    toast.success("تم تحديث إعدادات API!");
-    console.log(values);
-  }
+  const onApiSubmit = (data: z.infer<typeof apiSchema>) => {
+    toast.success("تم حفظ إعدادات API بنجاح");
+    console.log(data);
+  };
 
-  function onNotificationSubmit(values: z.infer<typeof notificationFormSchema>) {
-    toast.success("تم تحديث تفضيلات الإشعارات!");
-    console.log(values);
-  }
+  const onNotificationSubmit = (data: z.infer<typeof notificationSchema>) => {
+    toast.success("تم حفظ تفضيلات الإشعارات بنجاح");
+    console.log(data);
+  };
 
-  function generateApiKey() {
-    // Simulate generating an API key
-    const newApiKey = "ak_" + Math.random().toString(36).substring(2, 15);
-    apiForm.setValue("apiKey", newApiKey);
-    toast.success("تم إنشاء مفتاح API جديد!");
-  }
+  const generateApiKey = () => {
+    // Simple API key generation for demo purposes
+    const key = "api_" + Math.random().toString(36).substring(2, 15) + Math.random().toString(36).substring(2, 15);
+    setApiKey(key);
+    toast.success("تم إنشاء مفتاح API جديد");
+  };
 
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-bold tracking-tight">{t('Settings')}</h1>
         <p className="text-muted-foreground">
-          {t('Manage your account settings and preferences')}
+          {t('Update your personal information and preferences')}
         </p>
       </div>
 
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full max-w-md grid-cols-3">
+      <Tabs defaultValue="account" className="w-full">
+        <TabsList className="grid w-full grid-cols-3 mb-8">
           <TabsTrigger value="account">{t('Account')}</TabsTrigger>
           <TabsTrigger value="api">{t('API')}</TabsTrigger>
           <TabsTrigger value="notifications">{t('Notifications')}</TabsTrigger>
@@ -225,125 +122,84 @@ const Settings = () => {
         <TabsContent value="account">
           <Card>
             <CardHeader>
-              <CardTitle>{t('Account')}</CardTitle>
+              <CardTitle>{t('Account Settings')}</CardTitle>
               <CardDescription>
                 {t('Update your personal information and password')}
               </CardDescription>
             </CardHeader>
-            <Form {...accountForm}>
-              <form onSubmit={accountForm.handleSubmit(onAccountSubmit)}>
-                <CardContent className="space-y-6">
-                  <div className="space-y-4">
-                    <FormField
-                      control={accountForm.control}
-                      name="name"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Name')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="اسمك" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={accountForm.control}
-                      name="email"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Email')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="بريدك الإلكتروني" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    
-                    <FormField
-                      control={accountForm.control}
-                      name="company"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('Company (Optional)')}</FormLabel>
-                          <FormControl>
-                            <Input placeholder="شركتك" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
+            <CardContent>
+              <Form {...profileForm}>
+                <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
+                  <FormField
+                    control={profileForm.control}
+                    name="full_name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Name')}</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   
-                  <div>
-                    <h3 className="text-lg font-medium">{t('Change Password')}</h3>
-                    <div className="space-y-4 mt-4">
-                      <FormField
-                        control={accountForm.control}
-                        name="currentPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('Current password')}</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="••••••••" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={profileForm.control}
+                    name="company"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{t('Company (Optional)')}</FormLabel>
+                        <FormControl>
+                          <Input {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  
+                  <div className="pt-4 border-t">
+                    <CardTitle className="mb-4 text-lg">{t('Change Password')}</CardTitle>
+                    <div className="space-y-4">
+                      <FormItem>
+                        <FormLabel>{t('Current password')}</FormLabel>
+                        <FormControl>
+                          <Input type="password" />
+                        </FormControl>
+                      </FormItem>
                       
-                      <FormField
-                        control={accountForm.control}
-                        name="newPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('New password')}</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="••••••••" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                            <FormDescription>
-                              {t('Must be at least 8 characters')}
-                            </FormDescription>
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormLabel>{t('New password')}</FormLabel>
+                        <FormControl>
+                          <Input type="password" />
+                        </FormControl>
+                        <FormDescription>
+                          {t('Must be at least 8 characters')}
+                        </FormDescription>
+                      </FormItem>
                       
-                      <FormField
-                        control={accountForm.control}
-                        name="confirmPassword"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>{t('Confirm new password')}</FormLabel>
-                            <FormControl>
-                              <Input 
-                                type="password" 
-                                placeholder="••••••••" 
-                                {...field} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <FormItem>
+                        <FormLabel>{t('Confirm new password')}</FormLabel>
+                        <FormControl>
+                          <Input type="password" />
+                        </FormControl>
+                      </FormItem>
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit">{t('Save changes')}</Button>
-                </CardFooter>
-              </form>
-            </Form>
+                  
+                  <Button type="submit" className="mr-auto" disabled={isUpdating}>
+                    {isUpdating ? (
+                      <>
+                        <Loader2 className="ml-2 h-4 w-4 animate-spin" />
+                        {t('Saving...')}
+                      </>
+                    ) : (
+                      t('Save changes')
+                    )}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
           </Card>
         </TabsContent>
         
@@ -355,53 +211,67 @@ const Settings = () => {
                 {t('Manage your API keys and webhooks')}
               </CardDescription>
             </CardHeader>
-            <Form {...apiForm}>
-              <form onSubmit={apiForm.handleSubmit(onApiSubmit)}>
-                <CardContent className="space-y-6">
+            <CardContent>
+              <Form {...apiForm}>
+                <form onSubmit={apiForm.handleSubmit(onApiSubmit)} className="space-y-6">
                   <div className="space-y-4">
-                    <FormField
-                      control={apiForm.control}
-                      name="apiKey"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>{t('API Key')}</FormLabel>
-                          <div className="flex gap-2">
-                            <FormControl>
-                              <Input 
-                                readOnly 
-                                {...field} 
-                                placeholder={t('No API key generated')}
-                              />
-                            </FormControl>
-                            <Button type="button" onClick={generateApiKey}>
-                              {t('Generate')}
+                    <div className="space-y-2">
+                      <h3 className="text-base font-semibold">{t('API Key')}</h3>
+                      {!apiKey ? (
+                        <div className="flex items-center gap-4">
+                          <p className="text-sm text-muted-foreground">{t('No API key generated')}</p>
+                          <Button type="button" onClick={generateApiKey} variant="outline" size="sm">
+                            {t('Generate')}
+                          </Button>
+                        </div>
+                      ) : (
+                        <div className="space-y-2">
+                          <div className="flex items-center justify-between border rounded-md p-2 bg-muted/30">
+                            <code className="text-sm font-mono">{apiKey}</code>
+                            <Button type="button" onClick={() => {
+                              navigator.clipboard.writeText(apiKey);
+                              toast.success("تم نسخ مفتاح API");
+                            }} variant="ghost" size="sm">
+                              نسخ
                             </Button>
                           </div>
-                          <FormDescription>
+                          <p className="text-xs text-muted-foreground">
                             {t('Use this key to access the ArabInsights API')}
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
+                          </p>
+                        </div>
                       )}
-                    />
+                    </div>
                     
                     <FormField
                       control={apiForm.control}
-                      name="accessLevel"
+                      name="access_level"
                       render={({ field }) => (
-                        <FormItem>
+                        <FormItem className="space-y-2">
                           <FormLabel>{t('Access Level')}</FormLabel>
-                          <FormControl>
-                            <Select value={field.value} onValueChange={field.onChange}>
-                              <SelectTrigger>
-                                <SelectValue placeholder={t('Select access level')} />
-                              </SelectTrigger>
-                              <SelectContent>
-                                <SelectItem value="read_only">{t('Read Only')}</SelectItem>
-                                <SelectItem value="read_write">{t('Read & Write')}</SelectItem>
-                              </SelectContent>
-                            </Select>
-                          </FormControl>
+                          <div className="flex items-center space-x-4">
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id="read"
+                                value="read"
+                                checked={field.value === "read"}
+                                onChange={() => field.onChange("read")}
+                                className="h-4 w-4"
+                              />
+                              <label htmlFor="read" className="text-sm">{t('Read Only')}</label>
+                            </div>
+                            <div className="flex items-center space-x-2">
+                              <input
+                                type="radio"
+                                id="write"
+                                value="write"
+                                checked={field.value === "write"}
+                                onChange={() => field.onChange("write")}
+                                className="h-4 w-4"
+                              />
+                              <label htmlFor="write" className="text-sm">{t('Read & Write')}</label>
+                            </div>
+                          </div>
                           <FormDescription>
                             {t('Control the level of access for this API key')}
                           </FormDescription>
@@ -412,16 +282,12 @@ const Settings = () => {
                     
                     <FormField
                       control={apiForm.control}
-                      name="webhookUrl"
+                      name="webhook_url"
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>{t('Webhook URL (Optional)')}</FormLabel>
                           <FormControl>
-                            <Input 
-                              placeholder="https://your-server.com/webhook" 
-                              {...field} 
-                              dir="ltr"
-                            />
+                            <Input {...field} placeholder="https://" />
                           </FormControl>
                           <FormDescription>
                             {t('We\'ll send alert notifications to this URL')}
@@ -431,12 +297,13 @@ const Settings = () => {
                       )}
                     />
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit">{t('Save API settings')}</Button>
-                </CardFooter>
-              </form>
-            </Form>
+                  
+                  <Button type="submit">
+                    {t('Save API settings')}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
           </Card>
         </TabsContent>
         
@@ -448,18 +315,18 @@ const Settings = () => {
                 {t('Choose how and when you receive notifications')}
               </CardDescription>
             </CardHeader>
-            <Form {...notificationForm}>
-              <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)}>
-                <CardContent className="space-y-6">
+            <CardContent>
+              <Form {...notificationForm}>
+                <form onSubmit={notificationForm.handleSubmit(onNotificationSubmit)} className="space-y-6">
                   <div className="space-y-4">
                     <div>
-                      <h3 className="text-lg font-medium">{t('Delivery Methods')}</h3>
-                      <div className="space-y-4 mt-4">
+                      <h3 className="text-base font-semibold mb-2">{t('Delivery Methods')}</h3>
+                      <div className="space-y-2">
                         <FormField
                           control={notificationForm.control}
-                          name="emailNotifications"
+                          name="email_notifications"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
                                 <FormLabel>{t('Email Notifications')}</FormLabel>
                                 <FormDescription>
@@ -478,9 +345,9 @@ const Settings = () => {
                         
                         <FormField
                           control={notificationForm.control}
-                          name="appNotifications"
+                          name="app_notifications"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
                                 <FormLabel>{t('App Notifications')}</FormLabel>
                                 <FormDescription>
@@ -500,13 +367,13 @@ const Settings = () => {
                     </div>
                     
                     <div>
-                      <h3 className="text-lg font-medium">{t('Alert Types')}</h3>
-                      <div className="space-y-4 mt-4">
+                      <h3 className="text-base font-semibold mb-2">{t('Alert Types')}</h3>
+                      <div className="space-y-2">
                         <FormField
                           control={notificationForm.control}
-                          name="sentimentAlerts"
+                          name="sentiment_alerts"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
                                 <FormLabel>{t('Sentiment Alerts')}</FormLabel>
                                 <FormDescription>
@@ -525,9 +392,9 @@ const Settings = () => {
                         
                         <FormField
                           control={notificationForm.control}
-                          name="dialectAlerts"
+                          name="dialect_alerts"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
                                 <FormLabel>{t('Dialect Alerts')}</FormLabel>
                                 <FormDescription>
@@ -546,9 +413,9 @@ const Settings = () => {
                         
                         <FormField
                           control={notificationForm.control}
-                          name="reportGeneration"
+                          name="report_notifications"
                           render={({ field }) => (
-                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3 shadow-sm">
+                            <FormItem className="flex flex-row items-center justify-between rounded-lg border p-3">
                               <div className="space-y-0.5">
                                 <FormLabel>{t('Report Generation')}</FormLabel>
                                 <FormDescription>
@@ -567,12 +434,13 @@ const Settings = () => {
                       </div>
                     </div>
                   </div>
-                </CardContent>
-                <CardFooter>
-                  <Button type="submit">{t('Save notification preferences')}</Button>
-                </CardFooter>
-              </form>
-            </Form>
+                  
+                  <Button type="submit">
+                    {t('Save notification preferences')}
+                  </Button>
+                </form>
+              </Form>
+            </CardContent>
           </Card>
         </TabsContent>
       </Tabs>

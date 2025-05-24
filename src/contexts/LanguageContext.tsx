@@ -109,11 +109,11 @@ const translations = {
   'Alert Types': 'أنواع التنبيهات',
   'Different types of alerts you can set up': 'أنواع مختلفة من التنبيهات التي يمكنك إعدادها',
   'Sentiment Alerts': 'تنبيهات المشاعر',
-  'Get notified when sentiment about a topic or keyword crosses a threshold.': 'احصل على إشعار عندما تتجاوز المشاعر حول موضوع أو كلمة رئيسية عتبة معينة.',
+  'Get notified when sentiment thresholds are triggered': 'احصل على إشعار عند تجاوز عتبات المشاعر',
   'Engagement Alerts': 'تنبيهات التفاعل',
-  'Monitor when engagement levels spike or drop for your topics of interest.': 'مراقبة متى ترتفع أو تنخفض مستويات التفاعل للمواضيع التي تهمك.',
+  'Monitor when engagement levels spike or drop for your topics of interest': 'مراقبة متى ترتفع أو تنخفض مستويات التفاعل للمواضيع التي تهمك',
   'Dialect Alerts': 'تنبيهات اللهجة',
-  'Get notified about posts in specific dialects for targeted monitoring.': 'احصل على إشعارات حول المنشورات بلهجات محددة للمراقبة المستهدفة.',
+  'Get notified about posts in specific dialects for targeted monitoring': 'احصل على إشعارات حول المنشورات بلهجات محددة للمراقبة المستهدفة',
   'Test Alert': 'اختبار التنبيه',
   
   // Reports page
@@ -143,7 +143,6 @@ const translations = {
   // Settings page
   'Account': 'الحساب',
   'API': 'واجهة برمجة التطبيقات',
-  'Notifications': 'الإشعارات',
   'Update your personal information and password': 'تحديث المعلومات الشخصية وكلمة المرور',
   'Name': 'الاسم',
   'Email': 'البريد الإلكتروني',
@@ -175,12 +174,11 @@ const translations = {
   'Receive notifications via email': 'تلقي الإشعارات عبر البريد الإلكتروني',
   'App Notifications': 'إشعارات التطبيق',
   'Receive notifications in the dashboard': 'تلقي الإشعارات في لوحة التحكم',
-  'Alert Types': 'أنواع التنبيهات',
   'Notify when sentiment thresholds are triggered': 'الإشعار عند تجاوز عتبات المشاعر',
   'Notify about dialect-specific triggers': 'الإشعار حول مشغلات اللهجة المحددة',
   'Report Generation': 'إنشاء التقارير',
   'Notify when reports are ready for viewing': 'الإشعار عندما تكون التقارير جاهزة للعرض',
-  'Save notification preferences': 'حفظ تفضيلات الإشعارات',
+  'Save notification preferences': 'حفظ تفضيلات الإشعارات'
 };
 
 export const LanguageProvider = ({ children }: { children: ReactNode }) => {
