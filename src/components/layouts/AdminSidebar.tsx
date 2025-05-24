@@ -1,124 +1,140 @@
 
-import { Link, useLocation } from "react-router-dom";
+import { NavLink } from "react-router-dom";
+import { SidebarFooter, SidebarHeader, SidebarSection } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
 import { 
-  BarChart3, 
-  Users, 
-  CreditCard, 
-  Settings, 
-  LogOut,
-  Tag,
-  MessageSquare,
-  LayoutDashboard,
-  Gauge,
-  LineChart
+  Users, Briefcase, CreditCard, PieChart, Settings, 
+  Activity, Database, BarChart3, Coins, CreditCardIcon
 } from "lucide-react";
-import { cn } from "@/lib/utils";
-import { useAuth } from "@/contexts/AuthContext";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarFooter,
-  SidebarHeader,
-  SidebarMenu,
-  SidebarMenuItem,
-  SidebarMenuButton,
-} from "@/components/ui/sidebar";
+import { useLanguage } from "@/contexts/LanguageContext";
 
 const AdminSidebar = () => {
-  const { pathname } = useLocation();
-  const { logout, user, profile } = useAuth();
-
-  // Admin menu items
-  const menuItems = [
-    { 
-      icon: LayoutDashboard, 
-      label: "لوحة القيادة", 
-      href: "/admin" 
-    },
-    { 
-      icon: LineChart, 
-      label: "المؤشرات", 
-      href: "/admin/analytics" 
-    },
-    { 
-      icon: Users, 
-      label: "المستخدمين", 
-      href: "/admin/users" 
-    },
-    { 
-      icon: Tag, 
-      label: "الباقات", 
-      href: "/admin/plans" 
-    },
-    { 
-      icon: CreditCard, 
-      label: "الاشتراكات", 
-      href: "/admin/subscriptions" 
-    },
-    { 
-      icon: MessageSquare, 
-      label: "المدفوعات", 
-      href: "/admin/transactions" 
-    },
-    { 
-      icon: Settings, 
-      label: "الإعدادات", 
-      href: "/admin/settings" 
-    },
-  ];
-
+  const { t, isRTL } = useLanguage();
+  
   return (
-    <Sidebar side="right" variant="floating" className="border-r border-t-0 border-b-0 border-l-0">
-      <SidebarHeader className="border-b py-4">
-        <Link to="/admin" className="flex items-center gap-2 px-4">
-          <div className="rounded-md bg-primary p-1.5">
-            <Gauge className="h-5 w-5 text-white" />
+    <>
+      <SidebarHeader className="bg-sidebar py-4">
+        <div className="flex items-center gap-2 px-5">
+          <div className="rounded bg-primary p-1">
+            <BarChart3 className="h-5 w-5 text-primary-foreground" />
           </div>
-          <span className="font-semibold text-xl">
-            رؤى عربية
+          <span className="font-semibold text-sidebar-foreground">
+            لوحة الإدارة
           </span>
-        </Link>
+        </div>
       </SidebarHeader>
-      <SidebarContent className="pt-6">
-        <SidebarMenu>
-          {menuItems.map((item) => (
-            <SidebarMenuItem key={item.href}>
-              <SidebarMenuButton asChild className={
-                cn("w-full justify-start gap-4", 
-                  pathname === item.href && "bg-sidebar-accent text-primary",
-                  "[&>a]:flex [&>a]:items-center [&>a]:gap-4"
-                )
-              }>
-                <Link to={item.href}>
-                  <item.icon className="h-5 w-5" />
-                  <span>{item.label}</span>
-                </Link>
-              </SidebarMenuButton>
-            </SidebarMenuItem>
-          ))}
-        </SidebarMenu>
-      </SidebarContent>
-      <SidebarFooter className="border-t p-4">
-        <div className="flex flex-col gap-4">
-          <div className="flex items-center gap-3 px-2">
-            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg">
-              {profile?.full_name?.charAt(0) || user?.email?.charAt(0)}
+      
+      <div className="flex-1 overflow-auto py-2">
+        <SidebarSection title="نظرة عامة">
+          <NavLink to="/admin" end>
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <PieChart className="mr-2 h-4 w-4" />
+                لوحة المعلومات
+              </Button>
+            )}
+          </NavLink>
+        </SidebarSection>
+        
+        <SidebarSection title="إدارة">
+          <NavLink to="/admin/users">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <Users className="mr-2 h-4 w-4" />
+                المستخدمين
+              </Button>
+            )}
+          </NavLink>
+          <NavLink to="/admin/plans">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <Briefcase className="mr-2 h-4 w-4" />
+                الخطط
+              </Button>
+            )}
+          </NavLink>
+          <NavLink to="/admin/subscriptions">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <Activity className="mr-2 h-4 w-4" />
+                الاشتراكات
+              </Button>
+            )}
+          </NavLink>
+          <NavLink to="/admin/transactions">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <CreditCard className="mr-2 h-4 w-4" />
+                المعاملات
+              </Button>
+            )}
+          </NavLink>
+        </SidebarSection>
+        
+        <SidebarSection title="إعدادات النظام">
+          <NavLink to="/admin/settings">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <Settings className="mr-2 h-4 w-4" />
+                الإعدادات العامة
+              </Button>
+            )}
+          </NavLink>
+          <NavLink to="/admin/payment-settings">
+            {({ isActive }) => (
+              <Button
+                variant={isActive ? "sidebar" : "ghost"}
+                className="w-full justify-start"
+                size="sm"
+              >
+                <Coins className="mr-2 h-4 w-4" />
+                إعدادات الدفع
+              </Button>
+            )}
+          </NavLink>
+        </SidebarSection>
+      </div>
+      
+      <SidebarFooter>
+        <div className="bg-sidebar-accent rounded-md mx-3 p-4">
+          <h3 className="font-medium text-sm mb-2">إحصائيات النظام</h3>
+          <div className="grid gap-2">
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">المستخدمون</span>
+              <span className="font-medium">345</span>
             </div>
-            <div className="flex flex-col overflow-hidden">
-              <span className="text-sm font-medium truncate">{profile?.full_name || "مدير"}</span>
-              <span className="text-xs text-muted-foreground truncate">{user?.email}</span>
+            <div className="flex justify-between text-xs">
+              <span className="text-muted-foreground">الإيرادات</span>
+              <span className="font-medium">$12,435</span>
             </div>
           </div>
-          <button 
-            onClick={() => logout()}
-            className="w-full flex items-center gap-3 px-3 py-2 text-sm rounded-md hover:bg-sidebar-accent text-right"
-          >
-            <LogOut className="h-4 w-4 ml-1" />
-            <span>تسجيل الخروج</span>
-          </button>
         </div>
       </SidebarFooter>
-    </Sidebar>
+    </>
   );
 };
 

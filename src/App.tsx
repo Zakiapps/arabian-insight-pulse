@@ -28,6 +28,7 @@ import AdminPlans from "./pages/admin/AdminPlans";
 import AdminSubscriptions from "./pages/admin/AdminSubscriptions";
 import AdminTransactions from "./pages/admin/AdminTransactions";
 import AdminSettings from "./pages/admin/AdminSettings";
+import PaymentSettings from "./pages/admin/PaymentSettings";
 
 const queryClient = new QueryClient();
 
@@ -76,6 +77,7 @@ const App = () => (
                   <Route path="subscriptions" element={<AdminSubscriptions />} />
                   <Route path="transactions" element={<AdminTransactions />} />
                   <Route path="settings" element={<AdminSettings />} />
+                  <Route path="payment-settings" element={<PaymentSettings />} />
                 </Route>
                 
                 {/* التقاط جميع المسارات غير الموجودة */}
