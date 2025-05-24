@@ -1,7 +1,8 @@
+
 import React, { useState, useEffect } from 'react';
 import { motion } from 'framer-motion';
 import { Link, useNavigate } from 'react-router-dom';
-import { UserCircle2 } from 'lucide-react';
+import { UserCircle2, Star, StarHalf } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { toast } from 'sonner';
@@ -60,21 +61,6 @@ interface Review {
   review: string;
   avatar: string | null;
 }
-
-// Star rating component
-const StarRating = ({ rating }: { rating: number }) => {
-  const fullStars = Math.floor(rating);
-  const hasHalfStar = rating % 1 !== 0;
-  
-  return (
-    <div className="flex">
-      {Array(fullStars).fill(0).map((_, i) => (
-        <Star key={i} className="w-5 h-5 fill-yellow-400 text-yellow-400" />
-      ))}
-      {hasHalfStar && <StarHalf className="w-5 h-5 fill-yellow-400 text-yellow-400" />}
-    </div>
-  );
-};
 
 const Reviews = () => {
   const { t } = useLanguage();
