@@ -1,13 +1,13 @@
 
 import React from "react";
 import { useNavigate } from "react-router-dom";
-import DashboardHeader from "@/components/dashboard/DashboardHeader";
+import { DashboardHeader } from "@/components/dashboard/DashboardHeader";
 import StatsCards from "@/components/dashboard/StatsCards";
 import SentimentAnalysis from "@/components/dashboard/SentimentAnalysis";
-import TopTopics from "@/components/dashboard/TopTopics";
+import { TopTopics } from "@/components/dashboard/TopTopics";
 import CategoryDistribution from "@/components/dashboard/CategoryDistribution";
-import PlatformDistribution from "@/components/dashboard/PlatformDistribution";
-import DialectDetection from "@/components/dashboard/DialectDetection";
+import { PlatformDistribution } from "@/components/dashboard/PlatformDistribution";
+import { DialectDetection } from "@/components/dashboard/DialectDetection";
 
 const Dashboard = () => {
   const navigate = useNavigate();
