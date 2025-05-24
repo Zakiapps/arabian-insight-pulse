@@ -161,6 +161,7 @@ export type Database = {
           created_at: string
           currency: string
           id: string
+          metadata: Json | null
           payment_method: string | null
           status: string
           stripe_payment_id: string | null
@@ -172,6 +173,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          metadata?: Json | null
           payment_method?: string | null
           status: string
           stripe_payment_id?: string | null
@@ -183,6 +185,7 @@ export type Database = {
           created_at?: string
           currency?: string
           id?: string
+          metadata?: Json | null
           payment_method?: string | null
           status?: string
           stripe_payment_id?: string | null

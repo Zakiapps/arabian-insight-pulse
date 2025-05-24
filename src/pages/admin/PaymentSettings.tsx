@@ -62,9 +62,9 @@ const PaymentSettings = () => {
           return;
         }
         
-        if (data) {
+        if (data && data.metadata) {
           // Settings are stored in the metadata field as JSON
-          const settings = data.metadata ? JSON.parse(data.metadata) : {};
+          const settings = typeof data.metadata === 'string' ? JSON.parse(data.metadata) : data.metadata;
           
           form.reset({
             bank_name: settings.bank_name || "",
@@ -89,18 +89,25 @@ const PaymentSettings = () => {
     setIsLoading(true);
     
     try {
+      // Get the current user's ID
+      const currentUser = await supabase.auth.getUser();
+      const userId = currentUser.data.user?.id;
+      
+      if (!userId) {
+        throw new Error("User not authenticated");
+      }
+      
       // Store settings in transactions table with a special payment_method
-      // This is a workaround until we create a proper system_settings table
       const { error } = await supabase
         .from('transactions')
         .upsert({
           id: SETTINGS_KEY, // Use a constant string as ID for settings
-          user_id: (await supabase.auth.getUser()).data.user?.id,
+          user_id: userId,
           amount: 0, // Not a real transaction
           status: 'system',
           payment_method: SETTINGS_KEY,
           currency: 'system',
-          metadata: JSON.stringify(values), // Store settings as JSON in metadata
+          metadata: values, // Store settings in metadata field
         });
         
       if (error) throw error;
