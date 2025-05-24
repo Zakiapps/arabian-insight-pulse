@@ -13,7 +13,7 @@ import { zodResolver } from "@hookform/resolvers/zod";
 import * as z from "zod";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { UserPlus, Edit, Trash2, Shield, Users, Activity, RefreshCw } from "lucide-react";
+import { UserPlus, Edit, Trash2, Shield, Users, Activity } from "lucide-react";
 
 const userFormSchema = z.object({
   email: z.string().email("البريد الإلكتروني غير صالح"),
@@ -29,14 +29,17 @@ type UserFormData = z.infer<typeof userFormSchema>;
 interface User {
   id: string;
   email: string;
-  full_name: string;
-  role: string;
-  subscription_plan: string;
-  avatar_url: string;
   created_at: string;
-  last_sign_in_at: string;
-  is_online: boolean;
-  payment_methods_count: number;
+  profile?: {
+    full_name: string;
+    role: string;
+  };
+  subscription?: {
+    status: string;
+    plan: {
+      name: string;
+    };
+  };
 }
 
 const UserManagement = () => {
@@ -60,11 +63,47 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase.rpc('get_all_users_admin');
+      const { data: profiles, error: profilesError } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          role,
+          created_at
+        `);
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      setUsers(data || []);
+      // Get user emails from auth.users through a function call
+      const usersList: User[] = [];
+      
+      for (const profile of profiles || []) {
+        // Get subscription info
+        const { data: subscription } = await supabase
+          .from('subscriptions')
+          .select(`
+            status,
+            plan:plan_id (
+              name
+            )
+          `)
+          .eq('user_id', profile.id)
+          .eq('status', 'active')
+          .single();
+
+        usersList.push({
+          id: profile.id,
+          email: profile.id, // We'll use a placeholder for now
+          created_at: profile.created_at,
+          profile: {
+            full_name: profile.full_name || '',
+            role: profile.role,
+          },
+          subscription,
+        });
+      }
+
+      setUsers(usersList);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('خطأ في جلب بيانات المستخدمين');
@@ -79,20 +118,32 @@ const UserManagement = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      const { error: profileError } = await supabase
-        .from('profiles')
-        .insert({
-          id: crypto.randomUUID(),
-          full_name: data.full_name,
-          role: data.role,
-        });
+      // Create user through Supabase auth
+      const { data: authData, error: authError } = await supabase.auth.admin.createUser({
+        email: data.email,
+        password: data.password || 'temp123456',
+        email_confirm: true,
+      });
 
-      if (profileError) throw profileError;
+      if (authError) throw authError;
 
-      toast.success('تم إنشاء المستخدم بنجاح');
-      setIsDialogOpen(false);
-      form.reset();
-      fetchUsers();
+      if (authData.user) {
+        // Create profile
+        const { error: profileError } = await supabase
+          .from('profiles')
+          .insert({
+            id: authData.user.id,
+            full_name: data.full_name,
+            role: data.role,
+          });
+
+        if (profileError) throw profileError;
+
+        toast.success('تم إنشاء المستخدم بنجاح');
+        setIsDialogOpen(false);
+        form.reset();
+        fetchUsers();
+      }
     } catch (error: any) {
       console.error('Error creating user:', error);
       toast.error(error.message || 'خطأ في إنشاء المستخدم');
@@ -128,11 +179,7 @@ const UserManagement = () => {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
 
     try {
-      const { error } = await supabase
-        .from('profiles')
-        .delete()
-        .eq('id', userId);
-
+      const { error } = await supabase.auth.admin.deleteUser(userId);
       if (error) throw error;
 
       toast.success('تم حذف المستخدم بنجاح');
@@ -147,21 +194,21 @@ const UserManagement = () => {
     setEditingUser(user);
     form.reset({
       email: user.email,
-      full_name: user.full_name || '',
-      role: user.role as "user" | "admin" || 'user',
+      full_name: user.profile?.full_name || '',
+      role: user.profile?.role as "user" | "admin" || 'user',
     });
     setIsDialogOpen(true);
   };
 
   const filteredUsers = users.filter(user => {
-    const matchesSearch = user.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+    const matchesSearch = user.profile?.full_name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
                          user.email.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesRole = roleFilter === 'all' || user.role === roleFilter;
+    const matchesRole = roleFilter === 'all' || user.profile?.role === roleFilter;
     return matchesSearch && matchesRole;
   });
 
-  const activeUsers = users.filter(user => user.is_online).length;
-  const adminUsers = users.filter(user => user.role === 'admin').length;
+  const activeUsers = users.filter(user => user.subscription?.status === 'active').length;
+  const adminUsers = users.filter(user => user.profile?.role === 'admin').length;
 
   return (
     <div className="space-y-6" dir="rtl">
@@ -170,109 +217,98 @@ const UserManagement = () => {
           <h2 className="text-2xl font-bold">إدارة المستخدمين</h2>
           <p className="text-muted-foreground">إدارة حسابات المستخدمين والصلاحيات</p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={fetchUsers}
-            disabled={loading}
-            size="sm"
-          >
-            <RefreshCw className="h-4 w-4 ml-2" />
-            تحديث
-          </Button>
-          <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
-            <DialogTrigger asChild>
-              <Button onClick={() => {
-                setEditingUser(null);
-                form.reset();
-              }}>
-                <UserPlus className="h-4 w-4 ml-2" />
-                إضافة مستخدم جديد
-              </Button>
-            </DialogTrigger>
-            <DialogContent>
-              <DialogHeader>
-                <DialogTitle>
-                  {editingUser ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}
-                </DialogTitle>
-                <DialogDescription>
-                  {editingUser ? 'تعديل بيانات المستخدم' : 'إنشاء حساب مستخدم جديد'}
-                </DialogDescription>
-              </DialogHeader>
-              <Form {...form}>
-                <form onSubmit={form.handleSubmit(editingUser ? handleUpdateUser : handleCreateUser)} className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>البريد الإلكتروني</FormLabel>
-                        <FormControl>
-                          <Input {...field} disabled={!!editingUser} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="full_name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>الاسم الكامل</FormLabel>
-                        <FormControl>
-                          <Input {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="role"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>الدور</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="اختر دور المستخدم" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            <SelectItem value="user">مستخدم</SelectItem>
-                            <SelectItem value="admin">مشرف</SelectItem>
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  {!editingUser && (
-                    <FormField
-                      control={form.control}
-                      name="password"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>كلمة المرور (اختيارية)</FormLabel>
-                          <FormControl>
-                            <Input type="password" {...field} placeholder="كلمة مرور مؤقتة" />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+        <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+          <DialogTrigger asChild>
+            <Button onClick={() => {
+              setEditingUser(null);
+              form.reset();
+            }}>
+              <UserPlus className="h-4 w-4 ml-2" />
+              إضافة مستخدم جديد
+            </Button>
+          </DialogTrigger>
+          <DialogContent>
+            <DialogHeader>
+              <DialogTitle>
+                {editingUser ? 'تعديل المستخدم' : 'إضافة مستخدم جديد'}
+              </DialogTitle>
+              <DialogDescription>
+                {editingUser ? 'تعديل بيانات المستخدم' : 'إنشاء حساب مستخدم جديد'}
+              </DialogDescription>
+            </DialogHeader>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(editingUser ? handleUpdateUser : handleCreateUser)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>البريد الإلكتروني</FormLabel>
+                      <FormControl>
+                        <Input {...field} disabled={!!editingUser} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
                   )}
-                  <DialogFooter>
-                    <Button type="submit">
-                      {editingUser ? 'تحديث' : 'إنشاء'}
-                    </Button>
-                  </DialogFooter>
-                </form>
-              </Form>
-            </DialogContent>
-          </Dialog>
-        </div>
+                />
+                <FormField
+                  control={form.control}
+                  name="full_name"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>الاسم الكامل</FormLabel>
+                      <FormControl>
+                        <Input {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="role"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>الدور</FormLabel>
+                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="اختر دور المستخدم" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          <SelectItem value="user">مستخدم</SelectItem>
+                          <SelectItem value="admin">مشرف</SelectItem>
+                        </SelectContent>
+                      </Select>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                {!editingUser && (
+                  <FormField
+                    control={form.control}
+                    name="password"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>كلمة المرور (اختيارية)</FormLabel>
+                        <FormControl>
+                          <Input type="password" {...field} placeholder="كلمة مرور مؤقتة" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
+                <DialogFooter>
+                  <Button type="submit">
+                    {editingUser ? 'تحديث' : 'إنشاء'}
+                  </Button>
+                </DialogFooter>
+              </form>
+            </Form>
+          </DialogContent>
+        </Dialog>
       </div>
 
       <div className="grid gap-4 md:grid-cols-3">
@@ -332,67 +368,63 @@ const UserManagement = () => {
           {loading ? (
             <div className="text-center py-4">جاري التحميل...</div>
           ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>الاسم</TableHead>
-                    <TableHead>البريد الإلكتروني</TableHead>
-                    <TableHead>الدور</TableHead>
-                    <TableHead>الحالة</TableHead>
-                    <TableHead>الاشتراك</TableHead>
-                    <TableHead>تاريخ الإنشاء</TableHead>
-                    <TableHead>الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredUsers.map((user) => (
-                    <TableRow key={user.id}>
-                      <TableCell>{user.full_name || 'غير محدد'}</TableCell>
-                      <TableCell>{user.email}</TableCell>
-                      <TableCell>
-                        <Badge variant={user.role === 'admin' ? 'destructive' : 'secondary'}>
-                          {user.role === 'admin' ? 'مشرف' : 'مستخدم'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={user.is_online ? 'default' : 'secondary'}>
-                          {user.is_online ? 'نشط' : 'غير نشط'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>الاسم</TableHead>
+                  <TableHead>البريد الإلكتروني</TableHead>
+                  <TableHead>الدور</TableHead>
+                  <TableHead>الاشتراك</TableHead>
+                  <TableHead>تاريخ الإنشاء</TableHead>
+                  <TableHead>الإجراءات</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredUsers.map((user) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.profile?.full_name || 'غير محدد'}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>
+                      <Badge variant={user.profile?.role === 'admin' ? 'destructive' : 'secondary'}>
+                        {user.profile?.role === 'admin' ? 'مشرف' : 'مستخدم'}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {user.subscription ? (
                         <Badge variant="outline">
-                          {user.subscription_plan || 'مجاني'}
+                          {user.subscription.plan?.name || 'نشط'}
                         </Badge>
-                      </TableCell>
-                      <TableCell>
-                        {new Date(user.created_at).toLocaleDateString('ar-SA')}
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex gap-2">
+                      ) : (
+                        <Badge variant="secondary">مجاني</Badge>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {new Date(user.created_at).toLocaleDateString('ar-SA')}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => openEditDialog(user)}
+                        >
+                          <Edit className="h-4 w-4" />
+                        </Button>
+                        {user.email !== 'admin@arabinsights.com' && (
                           <Button
                             variant="outline"
                             size="sm"
-                            onClick={() => openEditDialog(user)}
+                            onClick={() => handleDeleteUser(user.id)}
                           >
-                            <Edit className="h-4 w-4" />
+                            <Trash2 className="h-4 w-4" />
                           </Button>
-                          {user.email !== 'admin@arabinsights.com' && (
-                            <Button
-                              variant="outline"
-                              size="sm"
-                              onClick={() => handleDeleteUser(user.id)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
           )}
         </CardContent>
       </Card>

@@ -13,10 +13,14 @@ const AdminLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isAuthenticated, isAdmin, loading } = useAuth();
-  const { language } = useLanguage();
+  
+  // Use language context instead of forcing Arabic
+  const { language, setLanguage } = useLanguage();
 
+  // Track admin session for online status
   useUserSession();
 
+  // Fix hydration mismatch
   useEffect(() => {
     setMounted(true);
   }, []);
@@ -41,19 +45,12 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-muted/10" dir="rtl">
-        {/* Sidebar positioned on the right */}
-        <div className="order-2">
-          <AppSidebar />
-        </div>
-        
-        {/* Main content area */}
-        <div className="flex flex-col flex-1 overflow-hidden order-1 min-w-0">
+      <div className="min-h-screen flex w-full bg-muted/10">
+        <AppSidebar />
+        <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
           <main className="flex-1 p-6 overflow-auto">
-            <div className="max-w-7xl mx-auto">
-              <Outlet />
-            </div>
+            <Outlet />
           </main>
         </div>
       </div>

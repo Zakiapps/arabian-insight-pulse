@@ -1,5 +1,6 @@
+
 import { useState } from "react";
-import { Upload as UploadIcon, FileText, X, Check, AlertCircle, Sparkles } from "lucide-react";
+import { Upload as UploadIcon, FileText, X, Check, AlertCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
@@ -11,7 +12,6 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
 import Papa from "papaparse";
-import AdvancedTextAnalyzer from "@/components/analysis/AdvancedTextAnalyzer";
 
 const Upload = () => {
   const { t } = useLanguage();
@@ -21,6 +21,7 @@ const Upload = () => {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
   const [uploadStatus, setUploadStatus] = useState<'idle' | 'uploading' | 'success' | 'error'>('idle');
+  const [singleText, setSingleText] = useState("");
 
   const processCSV = async (text: string): Promise<any[]> => {
     return new Promise((resolve) => {
@@ -34,43 +35,20 @@ const Upload = () => {
   };
 
   const analyzeSentiment = (text: string) => {
-    // Enhanced sentiment analysis logic
-    const positiveWords = ['رائع', 'ممتاز', 'جميل', 'أحب', 'سعيد', 'مذهل', 'عظيم'];
-    const negativeWords = ['سيء', 'فظيع', 'أكره', 'حزين', 'مؤلم', 'غاضب', 'مخيب'];
+    // Simplified sentiment analysis logic for demo
+    // In a real app, this would call an AI service
+    const length = text.length;
+    let score;
     
-    const textLower = text.toLowerCase();
-    let score = 0.5; // neutral baseline
-    
-    positiveWords.forEach(word => {
-      if (textLower.includes(word)) score += 0.1;
-    });
-    
-    negativeWords.forEach(word => {
-      if (textLower.includes(word)) score -= 0.1;
-    });
-    
-    // Clamp score between 0 and 1
-    score = Math.max(0, Math.min(1, score));
-    
-    let sentiment;
-    if (score > 0.6) sentiment = 'positive';
-    else if (score < 0.4) sentiment = 'negative';
-    else sentiment = 'neutral';
-    
-    return { sentiment, score };
+    if (length % 3 === 0) return { sentiment: 'positive', score: 0.7 + Math.random() * 0.3 };
+    if (length % 3 === 1) return { sentiment: 'neutral', score: 0.4 + Math.random() * 0.3 };
+    return { sentiment: 'negative', score: Math.random() * 0.4 };
   };
 
   const detectDialect = (text: string) => {
-    const jordanianTerms = [
-      "زلمة", "يا زلمة", "خرفنة", "تسليك", "احشش", "انكب", "راعي", "هسا", "شو", "كيفك",
-      "إربد", "عمان", "واللهي", "عال", "بدك", "مش عارف", "تمام", "فش", "عالسريع", 
-      "يلا", "خلص", "دبس", "بسطة", "جاي", "روح", "حياتي", "عن جد", "بكفي", 
-      "ما بدي", "طيب", "قديش", "وينك", "عالطول", "شايف", "هسه", "بتعرف", 
-      "بس", "يعني", "كتير", "شوي", "حبتين"
-    ];
-    
-    const textLower = text.toLowerCase();
-    return jordanianTerms.some(term => textLower.includes(term.toLowerCase()));
+    // Simplified dialect detection for demo
+    // In a real app, this would call an AI service
+    return text.length % 2 === 0;
   };
 
   const handleFileSelect = (event: React.ChangeEvent<HTMLInputElement>) => {
@@ -108,6 +86,7 @@ const Upload = () => {
     setUploadProgress(0);
     
     try {
+      // Read the file
       const text = await selectedFile.text();
       const records = await processCSV(text);
       
@@ -118,6 +97,7 @@ const Upload = () => {
         return;
       }
       
+      // Simulate progress
       const progressInterval = setInterval(() => {
         setUploadProgress(prev => {
           const newProgress = prev + 5;
@@ -129,6 +109,7 @@ const Upload = () => {
         });
       }, 200);
       
+      // Process and upload each record
       const batchSize = 10;
       let processed = 0;
       let postsProcessed = 0;
@@ -140,7 +121,7 @@ const Upload = () => {
           return {
             user_id: user.id,
             content: record.content,
-            source: record.platform || 'csv-upload',
+            source: record.platform || 'unknown',
             sentiment: sentimentResult.sentiment,
             sentiment_score: sentimentResult.score,
             is_jordanian_dialect: detectDialect(record.content),
@@ -164,6 +145,7 @@ const Upload = () => {
         processed++;
         postsProcessed += batch.length;
         
+        // Update progress
         setUploadProgress(Math.min(90 + (processed / (Math.ceil(records.length / batchSize)) * 10), 100));
       }
       
@@ -187,30 +169,71 @@ const Upload = () => {
     setUploadStatus('idle');
   };
 
+  const handleTextAnalysis = async () => {
+    if (!singleText.trim() || !user) {
+      toast.error("يرجى إدخال نص عربي للتحليل");
+      return;
+    }
+    
+    toast.info("جاري تحليل النص...");
+    
+    // Process the single text entry
+    try {
+      const sentimentResult = analyzeSentiment(singleText);
+      const isJordanian = detectDialect(singleText);
+      
+      const { error } = await supabase
+        .from('analyzed_posts')
+        .insert({
+          user_id: user.id,
+          content: singleText,
+          source: 'manual-entry',
+          sentiment: sentimentResult.sentiment,
+          sentiment_score: sentimentResult.score,
+          is_jordanian_dialect: isJordanian,
+          engagement_count: 0
+        });
+      
+      if (error) {
+        console.error("Error inserting record:", error);
+        toast.error("حدث خطأ أثناء حفظ التحليل");
+        return;
+      }
+      
+      toast.success("تم تحليل النص بنجاح!");
+      
+      // Show simple results
+      const sentimentMap = {
+        'positive': 'إيجابي',
+        'neutral': 'محايد',
+        'negative': 'سلبي'
+      };
+      
+      toast.success(`نتائج التحليل: المشاعر: ${sentimentMap[sentimentResult.sentiment as keyof typeof sentimentMap]}, اللهجة: ${isJordanian ? 'أردنية' : 'غير أردنية'}`);
+      
+      // Clear the input
+      setSingleText("");
+      
+    } catch (error) {
+      console.error("Analysis error:", error);
+      toast.error("حدث خطأ أثناء تحليل النص");
+    }
+  };
+
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-          <Sparkles className="h-6 w-6 text-yellow-500" />
-          {t('Data Upload')}
-        </h1>
+        <h1 className="text-2xl font-bold tracking-tight">{t('Data Upload')}</h1>
         <p className="text-muted-foreground">
           {t('Upload social media posts for AI sentiment and dialect analysis')}
         </p>
       </div>
 
-      <Tabs defaultValue="advanced" className="w-full">
-        <TabsList className="grid w-full grid-cols-2">
-          <TabsTrigger value="advanced" className="flex items-center gap-2">
-            <Sparkles className="h-4 w-4" />
-            تحليل متقدم
-          </TabsTrigger>
+      <Tabs defaultValue="batch" className="w-full">
+        <TabsList>
           <TabsTrigger value="batch">{t('Batch Upload')}</TabsTrigger>
+          <TabsTrigger value="single">{t('Single Post Analysis')}</TabsTrigger>
         </TabsList>
-        
-        <TabsContent value="advanced">
-          <AdvancedTextAnalyzer />
-        </TabsContent>
         
         <TabsContent value="batch">
           <Card>
@@ -302,6 +325,40 @@ const Upload = () => {
                 </Button>
               </CardFooter>
             )}
+          </Card>
+        </TabsContent>
+        
+        <TabsContent value="single">
+          <Card>
+            <CardHeader>
+              <CardTitle>{t('Analyze Single Post')}</CardTitle>
+              <CardDescription>
+                {t('Enter Arabic text to analyze sentiment and dialect')}
+              </CardDescription>
+            </CardHeader>
+            <CardContent>
+              <div className="space-y-4">
+                <div className="grid gap-2">
+                  <label htmlFor="post-content" className="text-sm font-medium">
+                    {t('Post Content')}
+                  </label>
+                  <textarea
+                    id="post-content"
+                    rows={5}
+                    placeholder={t('Enter Arabic text...')}
+                    className="flex w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2"
+                    value={singleText}
+                    onChange={(e) => setSingleText(e.target.value)}
+                    dir="rtl"
+                  ></textarea>
+                </div>
+              </div>
+            </CardContent>
+            <CardFooter>
+              <Button onClick={handleTextAnalysis}>
+                {t('Analyze Text')}
+              </Button>
+            </CardFooter>
           </Card>
         </TabsContent>
       </Tabs>

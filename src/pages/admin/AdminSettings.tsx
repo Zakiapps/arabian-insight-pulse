@@ -1,13 +1,13 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
-import { Globe, CreditCard, BellRing, Shield, Mail, TestTube, RefreshCw, AlertTriangle } from "lucide-react";
+import { Globe, CreditCard, BellRing, Shield, Mail, TestTube, RefreshCw } from "lucide-react";
 
 export default function AdminSettings() {
   // General settings state
@@ -51,17 +51,6 @@ export default function AdminSettings() {
     logApiCalls: true
   });
 
-  // Enhanced system settings with maintenance mode
-  const [systemSettings, setSystemSettings] = useState({
-    maintenanceMode: false,
-    maintenanceMessage: "النظام تحت الصيانة حالياً. يرجى المحاولة لاحقاً.",
-    maxFileSize: 10,
-    allowedFileTypes: "csv,xlsx,txt",
-    sessionTimeout: 24,
-    enableLogging: true,
-    enableAnalytics: true,
-  });
-
   // Handle general settings form submission
   const saveGeneralSettings = (e: React.FormEvent) => {
     e.preventDefault();
@@ -102,128 +91,17 @@ export default function AdminSettings() {
     toast.success("تم مزامنة Stripe Webhooks بنجاح");
   };
 
-  // Handle system settings form submission
-  const saveSystemSettings = (e: React.FormEvent) => {
-    e.preventDefault();
-    toast.success("تم حفظ إعدادات النظام بنجاح");
-  };
-
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold">إعدادات النظام</h1>
       
-      <Tabs defaultValue="system">
-        <TabsList className="grid grid-cols-5 w-full sm:w-auto">
-          <TabsTrigger value="system">النظام</TabsTrigger>
+      <Tabs defaultValue="general">
+        <TabsList className="grid grid-cols-4 w-full sm:w-auto">
           <TabsTrigger value="general">عام</TabsTrigger>
           <TabsTrigger value="payment">المدفوعات</TabsTrigger>
           <TabsTrigger value="email">البريد الإلكتروني</TabsTrigger>
           <TabsTrigger value="api">واجهة API</TabsTrigger>
         </TabsList>
-        
-        {/* System Settings Tab */}
-        <TabsContent value="system">
-          <Card>
-            <CardHeader>
-              <CardTitle className="flex items-center gap-2">
-                <Shield className="h-5 w-5" />
-                إعدادات النظام
-              </CardTitle>
-              <CardDescription>
-                إعدادات النظام العامة ووضع الصيانة
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <form onSubmit={saveSystemSettings} className="space-y-6">
-                <div className="space-y-4 p-4 border border-orange-200 bg-orange-50 rounded-lg">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="maintenance-mode"
-                      checked={systemSettings.maintenanceMode}
-                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, maintenanceMode: checked})}
-                    />
-                    <Label htmlFor="maintenance-mode" className="flex items-center gap-2">
-                      <AlertTriangle className="h-4 w-4 text-orange-600" />
-                      تفعيل وضع الصيانة
-                    </Label>
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="maintenance-message">رسالة الصيانة</Label>
-                    <Input 
-                      id="maintenance-message"
-                      value={systemSettings.maintenanceMessage}
-                      onChange={(e) => setSystemSettings({...systemSettings, maintenanceMessage: e.target.value})}
-                      disabled={!systemSettings.maintenanceMode}
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-4 md:grid-cols-2">
-                  <div className="grid gap-2">
-                    <Label htmlFor="max-file-size">الحد الأقصى لحجم الملف (MB)</Label>
-                    <Input 
-                      id="max-file-size"
-                      type="number"
-                      value={systemSettings.maxFileSize}
-                      onChange={(e) => setSystemSettings({...systemSettings, maxFileSize: parseInt(e.target.value)})}
-                      min={1}
-                      max={100}
-                    />
-                  </div>
-                  
-                  <div className="grid gap-2">
-                    <Label htmlFor="allowed-types">أنواع الملفات المسموحة</Label>
-                    <Input 
-                      id="allowed-types"
-                      value={systemSettings.allowedFileTypes}
-                      onChange={(e) => setSystemSettings({...systemSettings, allowedFileTypes: e.target.value})}
-                      placeholder="csv,xlsx,txt"
-                    />
-                  </div>
-                </div>
-
-                <div className="grid gap-2">
-                  <Label htmlFor="session-timeout">مهلة انتهاء الجلسة (ساعات)</Label>
-                  <Input 
-                    id="session-timeout"
-                    type="number"
-                    value={systemSettings.sessionTimeout}
-                    onChange={(e) => setSystemSettings({...systemSettings, sessionTimeout: parseInt(e.target.value)})}
-                    min={1}
-                    max={168}
-                  />
-                </div>
-
-                <div className="space-y-4">
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="enable-logging"
-                      checked={systemSettings.enableLogging}
-                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, enableLogging: checked})}
-                    />
-                    <Label htmlFor="enable-logging">
-                      تمكين تسجيل العمليات
-                    </Label>
-                  </div>
-                  
-                  <div className="flex items-center space-x-2">
-                    <Switch
-                      id="enable-analytics"
-                      checked={systemSettings.enableAnalytics}
-                      onCheckedChange={(checked) => setSystemSettings({...systemSettings, enableAnalytics: checked})}
-                    />
-                    <Label htmlFor="enable-analytics">
-                      تمكين تحليلات الاستخدام
-                    </Label>
-                  </div>
-                </div>
-                
-                <Button type="submit" className="mt-4">حفظ إعدادات النظام</Button>
-              </form>
-            </CardContent>
-          </Card>
-        </TabsContent>
         
         {/* General Settings Tab */}
         <TabsContent value="general">

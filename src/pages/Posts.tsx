@@ -1,285 +1,387 @@
 
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Filter, Search, ChevronDown, Download, MessageSquare } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { getCategoryById } from "@/lib/utils";
+import { useLocation, useNavigate } from "react-router-dom";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuGroup,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import {
+  Select,
+  SelectContent,
+  SelectGroup,
+  SelectItem,
+  SelectLabel,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
-import { useAuth } from "@/contexts/AuthContext";
-import { Search, Filter, Download, RefreshCw } from "lucide-react";
+import { cn, categories } from "@/lib/utils";
 
-interface Post {
-  id: string;
-  content: string;
-  sentiment: string;
-  sentiment_score: number;
-  is_jordanian_dialect: boolean;
-  source: string;
-  engagement_count: number;
-  created_at: string;
-}
+// Mock data for posts - focusing only on Jordanian dialect and adding categories
+const samplePosts = [
+  {
+    id: "p1",
+    content: "الحكومة تعلن عن إجراءات جديدة لدعم الاقتصاد المحلي",
+    platform: "Twitter",
+    sentiment: "positive",
+    category: "politics",
+    date: "2023-06-10",
+    engagement: 245
+  },
+  {
+    id: "p2",
+    content: "أسعار المحروقات ترتفع مجدداً والمواطنون يعبرون عن استيائهم",
+    platform: "Facebook",
+    sentiment: "negative",
+    category: "economy",
+    date: "2023-06-09",
+    engagement: 513
+  },
+  {
+    id: "p3",
+    content: "افتتاح معرض للمنتجات المحلية في العاصمة عمان",
+    platform: "Twitter",
+    sentiment: "positive",
+    category: "economy",
+    date: "2023-06-08",
+    engagement: 189
+  },
+  {
+    id: "p4",
+    content: "وزارة التربية تعلن عن نتائج التوجيهي خلال الأسبوع القادم",
+    platform: "Facebook",
+    sentiment: "neutral",
+    category: "education",
+    date: "2023-06-08",
+    engagement: 782
+  },
+  {
+    id: "p5",
+    content: "خبراء الاقتصاد يتوقعون تحسن في أداء السوق المالي",
+    platform: "Twitter",
+    sentiment: "positive",
+    category: "economy",
+    date: "2023-06-07",
+    engagement: 122
+  },
+  {
+    id: "p6",
+    content: "مطالبات بتحسين الخدمات الصحية في المناطق النائية",
+    platform: "Facebook",
+    sentiment: "negative",
+    category: "health",
+    date: "2023-06-07",
+    engagement: 345
+  },
+  {
+    id: "p7",
+    content: "إطلاق مبادرة لدعم المشاريع الصغيرة والمتوسطة",
+    platform: "Twitter",
+    sentiment: "positive",
+    category: "economy",
+    date: "2023-06-06",
+    engagement: 267
+  },
+  {
+    id: "p8",
+    content: "نقابة المعلمين تعلن عن سلسلة مطالب جديدة",
+    platform: "Facebook",
+    sentiment: "neutral",
+    category: "education",
+    date: "2023-06-05",
+    engagement: 401
+  },
+];
 
-export default function Posts() {
-  const { user } = useAuth();
-  const [posts, setPosts] = useState<Post[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState("");
-  const [sentimentFilter, setSentimentFilter] = useState<string>("all");
-  const [dialectFilter, setDialectFilter] = useState<string>("all");
-  const [sourceFilter, setSourceFilter] = useState<string>("all");
-
-  useEffect(() => {
-    if (user) {
-      fetchPosts();
-    }
-  }, [user]);
-
-  const fetchPosts = async () => {
-    try {
-      setLoading(true);
-      
-      // Fetch only real posts (exclude dummy/system generated posts)
-      const { data, error } = await supabase
-        .from('analyzed_posts')
-        .select('*')
-        .eq('user_id', user?.id)
-        .not('source', 'eq', 'dummy') // Exclude dummy posts
-        .not('source', 'eq', 'system') // Exclude system posts
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-
-      setPosts(data || []);
-    } catch (error) {
-      console.error('Error fetching posts:', error);
-      toast.error("خطأ في جلب المنشورات");
-    } finally {
-      setLoading(false);
-    }
+const SentimentBadge = ({ sentiment }: { sentiment: string }) => {
+  const variants: Record<string, string> = {
+    positive: "bg-green-500/10 text-green-500 hover:bg-green-500/20",
+    neutral: "bg-gray-500/10 text-gray-500 hover:bg-gray-500/20",
+    negative: "bg-red-500/10 text-red-500 hover:bg-red-500/20",
   };
-
-  const filteredPosts = posts.filter(post => {
-    const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesSentiment = sentimentFilter === "all" || post.sentiment === sentimentFilter;
-    const matchesDialect = dialectFilter === "all" || 
-      (dialectFilter === "jordanian" && post.is_jordanian_dialect) ||
-      (dialectFilter === "non-jordanian" && !post.is_jordanian_dialect);
-    const matchesSource = sourceFilter === "all" || post.source === sourceFilter;
-
-    return matchesSearch && matchesSentiment && matchesDialect && matchesSource;
-  });
-
-  const exportToCsv = () => {
-    if (filteredPosts.length === 0) {
-      toast.error("لا توجد منشورات للتصدير");
-      return;
-    }
-
-    const headers = ['المحتوى', 'المشاعر', 'درجة الثقة', 'اللهجة الأردنية', 'المصدر', 'التفاعل', 'التاريخ'];
-    const csvContent = [
-      headers.join(','),
-      ...filteredPosts.map(post => [
-        `"${post.content.replace(/"/g, '""')}"`,
-        post.sentiment,
-        post.sentiment_score?.toFixed(2) || '0',
-        post.is_jordanian_dialect ? 'نعم' : 'لا',
-        post.source,
-        post.engagement_count || 0,
-        new Date(post.created_at).toLocaleDateString('ar-SA')
-      ].join(','))
-    ].join('\n');
-
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const link = document.createElement('a');
-    link.href = URL.createObjectURL(blob);
-    link.download = `posts_${new Date().toISOString().split('T')[0]}.csv`;
-    link.click();
-    
-    toast.success("تم تصدير المنشورات بنجاح");
-  };
-
-  const getSentimentBadge = (sentiment: string) => {
-    switch (sentiment) {
-      case 'positive':
-        return <Badge className="bg-green-500">إيجابي</Badge>;
-      case 'negative':
-        return <Badge className="bg-red-500">سلبي</Badge>;
-      case 'neutral':
-        return <Badge variant="secondary">محايد</Badge>;
-      default:
-        return <Badge variant="outline">غير محدد</Badge>;
-    }
-  };
-
-  const uniqueSources = Array.from(new Set(posts.map(post => post.source)));
 
   return (
-    <div className="space-y-6" dir="rtl">
-      <div className="flex items-center justify-between">
+    <Badge className={cn("capitalize", variants[sentiment])}>
+      {sentiment}
+    </Badge>
+  );
+};
+
+const CategoryBadge = ({ category, language }: { category: string, language: string }) => {
+  const categoryObj = categories.find(cat => cat.id === category);
+  const color = categoryObj ? categoryObj.color.replace('bg-', '') : "gray-500";
+  
+  return (
+    <Badge className={cn(`bg-${color}/10 text-${color} hover:bg-${color}/20`)}>
+      {getCategoryById(category, language)}
+    </Badge>
+  );
+};
+
+const Posts = () => {
+  const { language } = useLanguage();
+  const location = useLocation();
+  const navigate = useNavigate();
+  const [searchTerm, setSearchTerm] = useState("");
+  const [sentimentFilter, setSentimentFilter] = useState("all");
+  const [categoryFilter, setCategoryFilter] = useState("all");
+  const [platformFilter, setPlatformFilter] = useState("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const itemsPerPage = 6;
+
+  // Check for category filter in URL when component mounts
+  useEffect(() => {
+    const searchParams = new URLSearchParams(location.search);
+    const categoryParam = searchParams.get('category');
+    
+    if (categoryParam) {
+      setCategoryFilter(categoryParam);
+    }
+  }, [location.search]);
+
+  // Update URL when filter changes
+  useEffect(() => {
+    if (categoryFilter !== 'all') {
+      navigate(`/dashboard/posts?category=${categoryFilter}`, { replace: true });
+    } else {
+      navigate('/dashboard/posts', { replace: true });
+    }
+  }, [categoryFilter, navigate]);
+
+  const translations = {
+    posts: language === 'ar' ? "المنشورات" : "Posts",
+    searchDesc: language === 'ar' ? "ابحث وصنف منشورات التواصل الاجتماعي العربية باللهجة الأردنية" : "Search and filter monitored Arabic social media posts in Jordanian dialect",
+    export: language === 'ar' ? "تصدير" : "Export",
+    exportCSV: language === 'ar' ? "تصدير كملف CSV" : "Export as CSV",
+    exportExcel: language === 'ar' ? "تصدير كملف Excel" : "Export as Excel",
+    searchFilter: language === 'ar' ? "البحث والتصفية" : "Post Search & Filtering",
+    searchFilterDesc: language === 'ar' ? "حدد النتائج حسب النص أو المشاعر أو المنصة أو الفئة" : "Narrow down results by text, sentiment, platform, or category",
+    search: language === 'ar' ? "بحث في المنشورات..." : "Search posts...",
+    sentiment: language === 'ar' ? "المشاعر" : "Sentiment",
+    category: language === 'ar' ? "الفئة" : "Category",
+    platform: language === 'ar' ? "المنصة" : "Platform",
+    all: language === 'ar' ? "الكل" : "All",
+    positive: language === 'ar' ? "إيجابي" : "Positive",
+    neutral: language === 'ar' ? "محايد" : "Neutral",
+    negative: language === 'ar' ? "سلبي" : "Negative",
+    content: language === 'ar' ? "المحتوى" : "Content",
+    date: language === 'ar' ? "التاريخ" : "Date",
+    engagement: language === 'ar' ? "التفاعل" : "Engagement",
+    noPostsFound: language === 'ar' ? "لم يتم العثور على منشورات" : "No posts found",
+    tryAdjusting: language === 'ar' ? "حاول تعديل معايير البحث أو التصفية" : "Try adjusting your search or filter criteria",
+    showing: language === 'ar' ? "عرض" : "Showing",
+    of: language === 'ar' ? "من" : "of",
+    previous: language === 'ar' ? "السابق" : "Previous",
+    next: language === 'ar' ? "التالي" : "Next",
+  };
+
+  // Apply filters
+  const filteredPosts = samplePosts.filter(post => {
+    const matchesSearch = post.content.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesSentiment = sentimentFilter === 'all' || post.sentiment === sentimentFilter;
+    const matchesCategory = categoryFilter === 'all' || post.category === categoryFilter;
+    const matchesPlatform = platformFilter === 'all' || post.platform === platformFilter;
+    return matchesSearch && matchesSentiment && matchesCategory && matchesPlatform;
+  });
+
+  // Calculate pagination
+  const totalPages = Math.ceil(filteredPosts.length / itemsPerPage);
+  const startIndex = (currentPage - 1) * itemsPerPage;
+  const endIndex = startIndex + itemsPerPage;
+  const paginatedPosts = filteredPosts.slice(startIndex, endIndex);
+
+  // Handle page change
+  const handlePageChange = (page: number) => {
+    setCurrentPage(page);
+  };
+
+  return (
+    <div className="space-y-6">
+      <div className="flex flex-col space-y-4 sm:flex-row sm:items-center sm:justify-between sm:space-y-0">
         <div>
-          <h1 className="text-3xl font-bold">المنشورات المحللة</h1>
-          <p className="text-muted-foreground">عرض وتصفية المنشورات التي تم تحليلها</p>
+          <h1 className="text-2xl font-bold tracking-tight">{translations.posts}</h1>
+          <p className="text-muted-foreground">
+            {translations.searchDesc}
+          </p>
         </div>
-        <div className="flex gap-2">
-          <Button
-            variant="outline"
-            onClick={fetchPosts}
-            disabled={loading}
-            size="sm"
-          >
-            <RefreshCw className="h-4 w-4 ml-2" />
-            تحديث
-          </Button>
-          <Button
-            variant="outline"
-            onClick={exportToCsv}
-            disabled={filteredPosts.length === 0}
-            size="sm"
-          >
-            <Download className="h-4 w-4 ml-2" />
-            تصدير CSV
-          </Button>
+        <div>
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="outline" className="gap-1">
+                <Download className="h-4 w-4 ml-1 mr-1" />
+                {translations.export}
+                <ChevronDown className="h-4 w-4" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem>{translations.exportCSV}</DropdownMenuItem>
+              <DropdownMenuItem>{translations.exportExcel}</DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
         </div>
       </div>
 
       <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Filter className="h-5 w-5" />
-            فلترة المنشورات
-          </CardTitle>
+        <CardHeader className="pb-3">
+          <CardTitle>{translations.searchFilter}</CardTitle>
           <CardDescription>
-            استخدم الفلاتر للبحث عن منشورات محددة
+            {translations.searchFilterDesc}
           </CardDescription>
         </CardHeader>
         <CardContent>
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-            <div className="space-y-2">
-              <label className="text-sm font-medium">البحث في المحتوى</label>
-              <div className="relative">
-                <Search className="absolute right-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                <Input
-                  placeholder="ابحث في المحتوى..."
-                  value={searchTerm}
-                  onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pr-10"
-                />
-              </div>
+            <div className="relative">
+              <Search className="absolute right-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="text"
+                placeholder={translations.search}
+                className="pl-4 pr-9"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">المشاعر</label>
-              <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="جميع المشاعر" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع المشاعر</SelectItem>
-                  <SelectItem value="positive">إيجابي</SelectItem>
-                  <SelectItem value="neutral">محايد</SelectItem>
-                  <SelectItem value="negative">سلبي</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">اللهجة</label>
-              <Select value={dialectFilter} onValueChange={setDialectFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="جميع اللهجات" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع اللهجات</SelectItem>
-                  <SelectItem value="jordanian">أردنية</SelectItem>
-                  <SelectItem value="non-jordanian">غير أردنية</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-
-            <div className="space-y-2">
-              <label className="text-sm font-medium">المصدر</label>
-              <Select value={sourceFilter} onValueChange={setSourceFilter}>
-                <SelectTrigger>
-                  <SelectValue placeholder="جميع المصادر" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">جميع المصادر</SelectItem>
-                  {uniqueSources.map(source => (
-                    <SelectItem key={source} value={source}>
-                      {source}
+            
+            <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={translations.sentiment} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>{translations.sentiment}</SelectLabel>
+                  <SelectItem value="all">{translations.all}</SelectItem>
+                  <SelectItem value="positive">{translations.positive}</SelectItem>
+                  <SelectItem value="neutral">{translations.neutral}</SelectItem>
+                  <SelectItem value="negative">{translations.negative}</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            <Select value={categoryFilter} onValueChange={setCategoryFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={translations.category} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>{translations.category}</SelectLabel>
+                  <SelectItem value="all">{translations.all}</SelectItem>
+                  {categories.map(cat => (
+                    <SelectItem key={cat.id} value={cat.id}>
+                      {language === 'ar' ? cat.nameAr : cat.nameEn}
                     </SelectItem>
                   ))}
-                </SelectContent>
-              </Select>
-            </div>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
+            
+            <Select value={platformFilter} onValueChange={setPlatformFilter}>
+              <SelectTrigger>
+                <SelectValue placeholder={translations.platform} />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectGroup>
+                  <SelectLabel>{translations.platform}</SelectLabel>
+                  <SelectItem value="all">{translations.all}</SelectItem>
+                  <SelectItem value="Twitter">Twitter</SelectItem>
+                  <SelectItem value="Facebook">Facebook</SelectItem>
+                </SelectGroup>
+              </SelectContent>
+            </Select>
           </div>
         </CardContent>
       </Card>
 
       <Card>
-        <CardHeader>
-          <CardTitle>النتائج ({filteredPosts.length} منشور)</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {loading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-            </div>
-          ) : filteredPosts.length === 0 ? (
-            <div className="text-center py-8 text-muted-foreground">
-              لا توجد منشورات تطابق معايير البحث
-            </div>
-          ) : (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>المحتوى</TableHead>
-                    <TableHead>المشاعر</TableHead>
-                    <TableHead>الثقة</TableHead>
-                    <TableHead>اللهجة</TableHead>
-                    <TableHead>المصدر</TableHead>
-                    <TableHead>التفاعل</TableHead>
-                    <TableHead>التاريخ</TableHead>
+        <CardContent className="pt-6">
+          {paginatedPosts.length > 0 ? (
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[400px]">{translations.content}</TableHead>
+                  <TableHead>{translations.platform}</TableHead>
+                  <TableHead>{translations.sentiment}</TableHead>
+                  <TableHead>{translations.category}</TableHead>
+                  <TableHead>{translations.date}</TableHead>
+                  <TableHead>{translations.engagement}</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedPosts.map((post) => (
+                  <TableRow key={post.id}>
+                    <TableCell className="font-medium" dir="rtl">{post.content}</TableCell>
+                    <TableCell>{post.platform}</TableCell>
+                    <TableCell>
+                      <SentimentBadge sentiment={post.sentiment} />
+                    </TableCell>
+                    <TableCell>
+                      <CategoryBadge category={post.category} language={language} />
+                    </TableCell>
+                    <TableCell>{post.date}</TableCell>
+                    <TableCell>{post.engagement}</TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredPosts.map((post) => (
-                    <TableRow key={post.id}>
-                      <TableCell className="max-w-xs">
-                        <div className="truncate" title={post.content}>
-                          {post.content}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        {getSentimentBadge(post.sentiment)}
-                      </TableCell>
-                      <TableCell>
-                        {post.sentiment_score ? `${(post.sentiment_score * 100).toFixed(1)}%` : 'غير محدد'}
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant={post.is_jordanian_dialect ? "default" : "secondary"}>
-                          {post.is_jordanian_dialect ? 'أردنية' : 'غير أردنية'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <Badge variant="outline">{post.source}</Badge>
-                      </TableCell>
-                      <TableCell>{post.engagement_count || 0}</TableCell>
-                      <TableCell>
-                        {new Date(post.created_at).toLocaleDateString('ar-SA')}
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                ))}
+              </TableBody>
+            </Table>
+          ) : (
+            <div className="flex flex-col items-center justify-center py-12">
+              <div className="rounded-full bg-muted p-3 mb-3">
+                <MessageSquare className="h-6 w-6 text-muted-foreground" />
+              </div>
+              <h3 className="text-lg font-semibold">{translations.noPostsFound}</h3>
+              <p className="text-muted-foreground text-center mt-2">
+                {translations.tryAdjusting}
+              </p>
             </div>
           )}
         </CardContent>
+        {filteredPosts.length > 0 && (
+          <CardFooter>
+            <div className="flex items-center justify-between w-full">
+              <p className="text-sm text-muted-foreground">
+                {translations.showing} {startIndex + 1}-{Math.min(endIndex, filteredPosts.length)} {translations.of} {filteredPosts.length} {translations.posts}
+              </p>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  {translations.previous}
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => handlePageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  {translations.next}
+                </Button>
+              </div>
+            </div>
+          </CardFooter>
+        )}
       </Card>
     </div>
   );
-}
+};
+
+export default Posts;
