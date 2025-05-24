@@ -13,15 +13,10 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Progressive vocabulary loading with chunks
-let vocabChunks: Map<string, number>[] = [];
-let currentChunkIndex = 0;
-let specialTokens: any = null;
-const CHUNK_SIZE = 5000;
-let fullVocabLoaded = false;
-let totalVocabLines: string[] = [];
+// Get Hugging Face API token
+const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
-// Memory-efficient Arabic text preprocessing
+// Arabic text preprocessing
 function preprocessArabicText(text: string): string {
   return text
     .replace(/[\u064B-\u065F\u0670\u06D6-\u06ED]/g, '') // Remove diacritics
@@ -31,9 +26,9 @@ function preprocessArabicText(text: string): string {
     .trim();
 }
 
-// Enhanced Jordanian dialect detection with minimal patterns
+// Enhanced Jordanian dialect detection
 function detectJordanianDialect(text: string): string {
-  const jordanianWords = ['زلمة', 'هسا', 'شو', 'بدك', 'يلا', 'تمام', 'خلاص', 'مش', 'هيك'];
+  const jordanianWords = ['زلمة', 'هسا', 'شو', 'بدك', 'يلا', 'تمام', 'خلاص', 'مش', 'هيك', 'بموت', 'فيك'];
   let matchCount = 0;
   
   for (const word of jordanianWords) {
@@ -49,235 +44,141 @@ function validateArabicText(text: string): boolean {
   return text && text.length >= 3 && /[\u0600-\u06FF]/.test(text);
 }
 
-// Load vocabulary progressively in chunks
-async function loadVocabChunk(chunkIndex: number): Promise<boolean> {
-  try {
-    console.log(`Loading vocabulary chunk ${chunkIndex + 1}...`);
-    
-    // Load full vocab only once if not already loaded
-    if (totalVocabLines.length === 0) {
-      const { data: vocabData, error } = await supabase.storage
-        .from('private-model')
-        .download('vocab.txt');
-      
-      if (error || !vocabData) {
-        throw new Error(`Vocab load failed: ${error?.message}`);
-      }
-      
-      const vocabText = await vocabData.text();
-      totalVocabLines = vocabText.split('\n').filter(line => line.trim());
-      console.log(`Total vocabulary size: ${totalVocabLines.length} tokens`);
-    }
-    
-    const startIndex = chunkIndex * CHUNK_SIZE;
-    const endIndex = Math.min(startIndex + CHUNK_SIZE, totalVocabLines.length);
-    
-    if (startIndex >= totalVocabLines.length) {
-      console.log('No more vocabulary chunks to load');
-      return false;
-    }
-    
-    // Create or extend the chunk
-    if (!vocabChunks[chunkIndex]) {
-      vocabChunks[chunkIndex] = new Map();
-    }
-    
-    const chunk = vocabChunks[chunkIndex];
-    for (let i = startIndex; i < endIndex; i++) {
-      const token = totalVocabLines[i].trim();
-      if (token) {
-        chunk.set(token, i);
-      }
-    }
-    
-    // Set special tokens from first chunk
-    if (chunkIndex === 0 && !specialTokens) {
-      specialTokens = {
-        cls: chunk.get('[CLS]') || 101,
-        sep: chunk.get('[SEP]') || 102,
-        pad: chunk.get('[PAD]') || 0,
-        unk: chunk.get('[UNK]') || 100
-      };
-    }
-    
-    console.log(`Loaded chunk ${chunkIndex + 1}: ${chunk.size} tokens (${startIndex}-${endIndex-1})`);
-    return true;
-  } catch (error) {
-    console.error(`Error loading vocab chunk ${chunkIndex}:`, error);
-    throw error;
-  }
-}
-
-// Find token in loaded chunks, load more if needed
-async function findTokenInVocab(word: string): Promise<number | null> {
-  // Search in currently loaded chunks
-  for (let i = 0; i < vocabChunks.length; i++) {
-    const chunk = vocabChunks[i];
-    if (chunk && chunk.has(word)) {
-      return chunk.get(word) || null;
-    }
-  }
-  
-  // If not found and more chunks available, load next chunk
-  const nextChunkIndex = vocabChunks.length;
-  const hasMoreChunks = await loadVocabChunk(nextChunkIndex);
-  
-  if (hasMoreChunks) {
-    const newChunk = vocabChunks[nextChunkIndex];
-    if (newChunk && newChunk.has(word)) {
-      return newChunk.get(word) || null;
-    }
-  }
-  
-  return null;
-}
-
-// Memory-efficient tokenization with progressive vocabulary loading
-async function tokenizeTextProgressive(text: string, maxLength: number = 128): Promise<number[]> {
-  if (!specialTokens) {
-    // Load first chunk to get special tokens
-    await loadVocabChunk(0);
-  }
-  
-  const tokens = [specialTokens.cls];
-  const words = text.split(/\s+/).slice(0, maxLength - 3);
-  
-  for (const word of words) {
-    if (tokens.length >= maxLength - 1) break;
-    
-    // Try to find token in vocabulary
-    let tokenId = await findTokenInVocab(word);
-    
-    if (tokenId === null) {
-      // Try variations
-      tokenId = await findTokenInVocab(`##${word}`) || 
-                await findTokenInVocab(word.toLowerCase()) || 
-                specialTokens.unk;
-    }
-    
-    tokens.push(tokenId);
-  }
-  
-  tokens.push(specialTokens.sep);
-  
-  // Pad to exact length
-  while (tokens.length < maxLength) {
-    tokens.push(specialTokens.pad);
-  }
-  
-  return tokens.slice(0, maxLength);
-}
-
-// Optimized ONNX inference with streaming and memory management
-async function runOptimizedONNXInference(inputIds: number[]): Promise<{
+// Hugging Face Inference API for sentiment analysis
+async function analyzeWithHuggingFace(text: string): Promise<{
   sentiment: string;
   confidence: number;
   positive_prob: number;
   negative_prob: number;
 }> {
-  let modelBuffer: ArrayBuffer | null = null;
-  let session: any = null;
-  
   try {
-    console.log('Starting optimized ONNX inference...');
+    console.log('Starting Hugging Face inference...');
     
-    // Load model with streaming
-    const { data: modelData, error } = await supabase.storage
-      .from('private-model')
-      .download('model.onnx');
-    
-    if (error || !modelData) {
-      throw new Error(`Model load failed: ${error?.message}`);
+    const response = await fetch(
+      'https://api-inference.huggingface.co/models/aubmindlab/bert-base-arabertv02-twitter',
+      {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${hfToken}`,
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({
+          inputs: text,
+          parameters: {
+            return_all_scores: true
+          }
+        }),
+      }
+    );
+
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('Hugging Face API error:', response.status, errorText);
+      throw new Error(`Hugging Face API error: ${response.status} - ${errorText}`);
     }
-    
-    modelBuffer = await modelData.arrayBuffer();
-    const modelSizeMB = (modelBuffer.byteLength / 1024 / 1024).toFixed(2);
-    console.log(`Model loaded: ${modelSizeMB}MB`);
-    
-    // Import ONNX Runtime with optimizations
-    const ort = await import('https://cdn.jsdelivr.net/npm/onnxruntime-web@1.17.0/dist/ort.min.js');
-    
-    // Optimized session options for memory efficiency
-    const sessionOptions = {
-      executionProviders: ['wasm'],
-      graphOptimizationLevel: 'all',
-      enableMemPattern: false,
-      enableCpuMemArena: false,
-      logSeverityLevel: 3,
-    };
-    
-    session = await ort.InferenceSession.create(modelBuffer, sessionOptions);
-    console.log('ONNX session created');
-    
-    // Create tensors efficiently
-    const inputTensor = new ort.Tensor('int64', 
-      BigInt64Array.from(inputIds.map(x => BigInt(x))), 
-      [1, inputIds.length]
+
+    const result = await response.json();
+    console.log('Hugging Face response:', result);
+
+    // Handle the response format from Hugging Face
+    let scores;
+    if (Array.isArray(result) && result.length > 0) {
+      scores = result[0];
+    } else if (result.scores) {
+      scores = result.scores;
+    } else {
+      throw new Error('Unexpected response format from Hugging Face');
+    }
+
+    // Find positive and negative scores
+    const positiveScore = scores.find((s: any) => 
+      s.label.toLowerCase().includes('positive') || 
+      s.label.toLowerCase().includes('pos') ||
+      s.label === 'LABEL_1'
     );
     
-    const attentionMask = new ort.Tensor('int64',
-      BigInt64Array.from(inputIds.map(x => x > 0 ? BigInt(1) : BigInt(0))),
-      [1, inputIds.length]
+    const negativeScore = scores.find((s: any) => 
+      s.label.toLowerCase().includes('negative') || 
+      s.label.toLowerCase().includes('neg') ||
+      s.label === 'LABEL_0'
     );
-    
-    // Run inference
-    const feeds: Record<string, any> = {};
-    const inputNames = session.inputNames;
-    feeds[inputNames[0]] = inputTensor;
-    if (inputNames.length > 1) {
-      feeds[inputNames[1]] = attentionMask;
+
+    let positive_prob = 0.5;
+    let negative_prob = 0.5;
+
+    if (positiveScore && negativeScore) {
+      positive_prob = positiveScore.score;
+      negative_prob = negativeScore.score;
+    } else if (scores.length >= 2) {
+      // Fallback: assume first two scores are negative and positive
+      negative_prob = scores[0].score;
+      positive_prob = scores[1].score;
     }
-    
-    const results = await session.run(feeds);
-    const outputKey = Object.keys(results)[0];
-    const logits = results[outputKey];
-    const logitsData = logits.data as Float32Array;
-    
-    // Calculate probabilities efficiently
-    const [neg_logit, pos_logit] = [logitsData[0], logitsData[1]];
-    const max_logit = Math.max(neg_logit, pos_logit);
-    const exp_neg = Math.exp(neg_logit - max_logit);
-    const exp_pos = Math.exp(pos_logit - max_logit);
-    const sum_exp = exp_neg + exp_pos;
-    
-    const negative_prob = exp_neg / sum_exp;
-    const positive_prob = exp_pos / sum_exp;
+
     const sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
     const confidence = Math.max(positive_prob, negative_prob);
-    
-    console.log('ONNX inference completed successfully');
-    
+
+    console.log('Hugging Face inference completed successfully');
+
     return {
       sentiment,
       confidence: Math.round(confidence * 10000) / 10000,
       positive_prob: Math.round(positive_prob * 10000) / 10000,
       negative_prob: Math.round(negative_prob * 10000) / 10000
     };
-    
+
   } catch (error) {
-    console.error('ONNX inference error:', error);
+    console.error('Hugging Face inference error:', error);
     throw error;
-  } finally {
-    // Aggressive cleanup
-    if (session) {
+  }
+}
+
+// Validate model with test data
+async function validateWithTestData(): Promise<void> {
+  try {
+    console.log('Loading test.csv for validation...');
+    
+    const { data: testData, error } = await supabase.storage
+      .from('private-model')
+      .download('test.csv');
+    
+    if (error || !testData) {
+      console.log('Test data not found, skipping validation');
+      return;
+    }
+    
+    const csvText = await testData.text();
+    const lines = csvText.split('\n').slice(1, 6); // Take first 5 test samples
+    
+    let correct = 0;
+    let total = 0;
+    
+    for (const line of lines) {
+      if (!line.trim()) continue;
+      
+      const [text, expectedLabel] = line.split(',').map(col => col.trim().replace(/"/g, ''));
+      if (!text || !expectedLabel) continue;
+      
       try {
-        session.release();
-        session = null;
-      } catch (e) {
-        console.error('Session cleanup error:', e);
+        const result = await analyzeWithHuggingFace(text);
+        const predicted = result.sentiment === 'positive' ? '1' : '0';
+        
+        if (predicted === expectedLabel) correct++;
+        total++;
+        
+        console.log(`Test: "${text.substring(0, 30)}..." | Expected: ${expectedLabel} | Predicted: ${predicted} | Confidence: ${result.confidence}`);
+      } catch (err) {
+        console.error('Error validating sample:', err);
       }
     }
     
-    if (modelBuffer) {
-      modelBuffer = null;
+    if (total > 0) {
+      const accuracy = (correct / total * 100).toFixed(1);
+      console.log(`Validation accuracy: ${accuracy}% (${correct}/${total})`);
     }
     
-    // Force garbage collection if available
-    if (globalThis.gc) {
-      globalThis.gc();
-    }
-    
-    console.log('Memory cleanup completed');
+  } catch (error) {
+    console.error('Validation error:', error);
   }
 }
 
@@ -291,6 +192,14 @@ serve(async (req) => {
     const { text } = await req.json();
     console.log('Processing text:', text?.substring(0, 50) + '...');
 
+    // Validate Hugging Face token
+    if (!hfToken) {
+      return new Response(
+        JSON.stringify({ error: 'Hugging Face API token not configured' }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
     // Validate input
     if (!validateArabicText(text)) {
       return new Response(
@@ -303,27 +212,20 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed');
 
-    // Load first vocabulary chunk if needed
-    if (vocabChunks.length === 0) {
-      await loadVocabChunk(0);
-    }
-    console.log('Initial vocabulary chunk loaded');
-    
-    // Tokenize text with progressive loading
-    const tokenIds = await tokenizeTextProgressive(preprocessedText, 128);
-    console.log('Text tokenized with progressive vocabulary');
-    
-    // Run optimized ONNX inference
-    const analysisResult = await runOptimizedONNXInference(tokenIds);
-    console.log('ONNX analysis completed');
+    // Analyze with Hugging Face AraBERTv0.2-Twitter model
+    const analysisResult = await analyzeWithHuggingFace(preprocessedText);
+    console.log('Hugging Face analysis completed');
     
     // Detect dialect efficiently
     const dialect = detectJordanianDialect(preprocessedText);
     
+    // Run validation in background (don't wait for it)
+    validateWithTestData().catch(err => console.error('Background validation error:', err));
+    
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'AraBERT_ONNX_Progressive'
+      modelSource: 'AraBERTv0.2-Twitter_HuggingFace'
     };
     
     console.log('Analysis completed successfully');
@@ -336,19 +238,9 @@ serve(async (req) => {
   } catch (error) {
     console.error('Function error:', error);
     
-    // Clear caches on error to free memory
-    vocabChunks = [];
-    specialTokens = null;
-    totalVocabLines = [];
-    currentChunkIndex = 0;
-    
-    if (globalThis.gc) {
-      globalThis.gc();
-    }
-    
     return new Response(
       JSON.stringify({ 
-        error: 'ONNX model analysis failed',
+        error: 'Sentiment analysis failed',
         details: error.message 
       }),
       { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
