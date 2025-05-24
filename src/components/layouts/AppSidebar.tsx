@@ -30,46 +30,19 @@ import {
   CreditCard,
   Receipt,
   BadgePercent,
-  Shield,
-  Download,
-  Filter,
-  Plus
+  Shield
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
-import { useNavigate } from "react-router-dom";
-import { useTaskHistory } from "@/hooks/useTaskHistory";
-import { useNotifications } from "@/hooks/useNotifications";
-import { toast } from "sonner";
 
 const AppSidebar = () => {
   const location = useLocation();
-  const navigate = useNavigate();
   const { profile, isAdmin, user } = useAuth();
   const { isRTL } = useLanguage();
-  const { startTask, completeTask } = useTaskHistory();
-  const { createNotification } = useNotifications();
 
   const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
-
-  // Quick action handlers
-  const handleQuickAction = async (action: string, path: string, taskName: string) => {
-    if (!user || !profile) {
-      toast.error('يجب تسجيل الدخول أولاً');
-      return;
-    }
-
-    const taskId = await startTask(action, taskName);
-    try {
-      navigate(path);
-      await completeTask(taskId, { page: path });
-      await createNotification('تم التنفيذ', `تم ${taskName} بنجاح`, 'success');
-    } catch (error) {
-      await completeTask(taskId, null, `فشل في ${taskName}`);
-    }
-  };
 
   const mainMenuItems = [
     {
@@ -86,25 +59,16 @@ const AppSidebar = () => {
       title: "رفع البيانات",
       url: "/dashboard/upload",
       icon: Upload,
-      quickAction: true,
-      action: "upload_data",
-      taskName: "الانتقال لرفع البيانات"
     },
     {
       title: "التنبيهات",
       url: "/dashboard/alerts",
       icon: Bell,
-      quickAction: true,
-      action: "setup_alert",
-      taskName: "الانتقال للتنبيهات"
     },
     {
       title: "التقارير",
       url: "/dashboard/reports",
       icon: FileText,
-      quickAction: true,
-      action: "view_reports",
-      taskName: "الانتقال للتقارير"
     },
   ];
 
@@ -134,33 +98,6 @@ const AppSidebar = () => {
       url: "/dashboard/dialects",
       icon: Languages,
     },
-  ];
-
-  const quickActionsItems = [
-    {
-      title: "تحليل جديد",
-      url: "/dashboard/upload",
-      icon: Plus,
-      quickAction: true,
-      action: "new_analysis",
-      taskName: "بدء تحليل جديد"
-    },
-    {
-      title: "تصفية البيانات",
-      url: "/dashboard/posts",
-      icon: Filter,
-      quickAction: true,
-      action: "filter_data",
-      taskName: "تصفية البيانات"
-    },
-    {
-      title: "تصدير البيانات",
-      url: "/dashboard/reports",
-      icon: Download,
-      quickAction: true,
-      action: "export_data",
-      taskName: "تصدير البيانات"
-    }
   ];
 
   const adminMenuItems = [
@@ -215,43 +152,10 @@ const AppSidebar = () => {
               {mainMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
-                    {item.quickAction ? (
-                      <button 
-                        onClick={() => handleQuickAction(item.action!, item.url, item.taskName!)}
-                        className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left"
-                      >
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                      </button>
-                    ) : (
-                      <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
-                        <item.icon className="h-4 w-4 shrink-0" />
-                        <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                      </Link>
-                    )}
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
-            إجراءات سريعة
-          </SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {quickActionsItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild tooltip={item.title}>
-                    <button 
-                      onClick={() => handleQuickAction(item.action!, item.url, item.taskName!)}
-                      className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors w-full text-left hover:bg-primary/10"
-                    >
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
                       <item.icon className="h-4 w-4 shrink-0" />
                       <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
-                    </button>
+                    </Link>
                   </SidebarMenuButton>
                 </SidebarMenuItem>
               ))}
