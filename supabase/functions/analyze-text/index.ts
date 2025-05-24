@@ -2,7 +2,7 @@
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { preprocessArabicText, validateArabicText } from './utils/textProcessing.ts';
+import { preprocessArabicText, validateArabicTextDetailed } from './utils/textProcessing.ts';
 import { detectJordanianDialect } from './utils/dialectDetection.ts';
 import { analyzeWithCustomEndpoint } from './utils/marbertAnalyzer.ts';
 import { validateWithTestData } from './utils/validation.ts';
@@ -41,24 +41,26 @@ serve(async (req) => {
       );
     }
 
-    // Validate input
-    if (!validateArabicText(text)) {
+    // Enhanced validation with detailed error messages
+    const validation = validateArabicTextDetailed(text);
+    if (!validation.isValid) {
       return new Response(
-        JSON.stringify({ error: 'Text is empty, too short, or not Arabic' }),
+        JSON.stringify({ error: validation.errorMessage }),
         { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Preprocess text
+    // Preprocess text using enhanced normalization
     const preprocessedText = preprocessArabicText(text);
-    console.log('Text preprocessed');
+    console.log('Text preprocessed with enhanced normalization');
 
     // Analyze with custom MARBERT endpoint
     const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, customEndpoint, hfToken);
     console.log('Custom MARBERT analysis completed');
     
-    // Detect dialect efficiently
+    // Detect dialect using enhanced Jordanian detection logic
     const dialect = detectJordanianDialect(preprocessedText);
+    console.log('Enhanced Jordanian dialect detection completed');
     
     // Run validation in background (don't wait for it)
     validateWithTestData(supabase, customEndpoint, hfToken).catch(err => 
@@ -68,10 +70,10 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'MARBERT_Custom_Endpoint'
+      modelSource: 'MARBERT_Custom_Endpoint_Enhanced'
     };
     
-    console.log('Analysis completed successfully');
+    console.log('Analysis completed successfully with enhanced dialect detection');
 
     return new Response(
       JSON.stringify(finalResult),
