@@ -18,6 +18,12 @@ const Index = () => {
               </Link>
             </div>
             <div className="flex items-center space-x-4 space-x-reverse">
+              <Link to="/pricing">
+                <Button variant="outline">الأسعار</Button>
+              </Link>
+              <Link to="/reviews">
+                <Button variant="outline">التقييمات</Button>
+              </Link>
               <Link to="/login">
                 <Button variant="outline">تسجيل الدخول</Button>
               </Link>
