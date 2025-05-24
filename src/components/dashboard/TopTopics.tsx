@@ -72,11 +72,11 @@ export const TopTopics = () => {
       .sort(([,a], [,b]) => b - a)
       .slice(0, 8)
       .map(([keyword, mentions], index) => {
-        // Generate a simple positive trend percentage
+        // Generate a simple positive trend percentage - fixed the arithmetic issue
         const trendValue = 15 + Math.floor(Math.random() * 30);
         return {
           topic: keyword,
-          mentions,
+          mentions: Number(mentions), // Ensure mentions is a number
           trend: `+${trendValue}%`,
           sentiment: getSentimentForTopic(keyword, postsData),
           rank: index + 1
