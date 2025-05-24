@@ -6,9 +6,9 @@ export function LanguageToggle() {
   const { toggleLanguage, isRTL } = useLanguage();
 
   return (
-    <Button variant="ghost" size="icon" onClick={toggleLanguage}>
-      <span className="font-semibold text-xs">{isRTL ? "EN" : "AR"}</span>
-      <span className="sr-only">Toggle Language</span>
+    <Button variant="ghost" size="icon" onClick={toggleLanguage} className="rounded-full w-9 h-9">
+      <span className="font-semibold text-xs">{isRTL ? "EN" : "عربي"}</span>
+      <span className="sr-only">تبديل اللغة</span>
     </Button>
   );
 }

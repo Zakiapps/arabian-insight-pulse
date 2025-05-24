@@ -7,7 +7,10 @@ import {
   Settings, 
   LogOut,
   Tag,
-  MessageSquare
+  MessageSquare,
+  LayoutDashboard,
+  Gauge,
+  LineChart
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useAuth } from "@/contexts/AuthContext";
@@ -28,9 +31,14 @@ const AdminSidebar = () => {
   // Admin menu items
   const menuItems = [
     { 
-      icon: BarChart3, 
-      label: "لوحة الإدارة", 
+      icon: LayoutDashboard, 
+      label: "لوحة القيادة", 
       href: "/admin" 
+    },
+    { 
+      icon: LineChart, 
+      label: "المؤشرات", 
+      href: "/admin/analytics" 
     },
     { 
       icon: Users, 
@@ -39,7 +47,7 @@ const AdminSidebar = () => {
     },
     { 
       icon: Tag, 
-      label: "الخطط", 
+      label: "الباقات", 
       href: "/admin/plans" 
     },
     { 
@@ -61,13 +69,13 @@ const AdminSidebar = () => {
 
   return (
     <Sidebar side="right" variant="floating" className="border-r border-t-0 border-b-0 border-l-0">
-      <SidebarHeader className="border-b py-3">
+      <SidebarHeader className="border-b py-4">
         <Link to="/admin" className="flex items-center gap-2 px-4">
-          <div className="rounded-md bg-red-600 p-1.5">
-            <BarChart3 className="h-5 w-5 text-white" />
+          <div className="rounded-md bg-primary p-1.5">
+            <Gauge className="h-5 w-5 text-white" />
           </div>
           <span className="font-semibold text-xl">
-            لوحة الإدارة
+            رؤى عربية
           </span>
         </Link>
       </SidebarHeader>
@@ -77,7 +85,7 @@ const AdminSidebar = () => {
             <SidebarMenuItem key={item.href}>
               <SidebarMenuButton asChild className={
                 cn("w-full justify-start gap-4", 
-                  pathname === item.href && "bg-sidebar-accent",
+                  pathname === item.href && "bg-sidebar-accent text-primary",
                   "[&>a]:flex [&>a]:items-center [&>a]:gap-4"
                 )
               }>
@@ -93,7 +101,7 @@ const AdminSidebar = () => {
       <SidebarFooter className="border-t p-4">
         <div className="flex flex-col gap-4">
           <div className="flex items-center gap-3 px-2">
-            <div className="h-9 w-9 rounded-full bg-red-600 flex items-center justify-center text-primary-foreground font-semibold">
+            <div className="h-10 w-10 rounded-full bg-primary flex items-center justify-center text-primary-foreground font-semibold text-lg">
               {profile?.full_name?.charAt(0) || user?.email?.charAt(0)}
             </div>
             <div className="flex flex-col overflow-hidden">

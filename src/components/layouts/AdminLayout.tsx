@@ -11,8 +11,16 @@ import { useAuth } from "@/contexts/AuthContext";
 const AdminLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
-  const { isRTL } = useLanguage();
   const { isAuthenticated, isAdmin, loading } = useAuth();
+
+  // Force RTL for admin panel
+  const { setLanguage } = useLanguage();
+
+  // Set language to Arabic for admin panel
+  useEffect(() => {
+    setLanguage('ar');
+    document.documentElement.dir = 'rtl';
+  }, [setLanguage]);
 
   // Fix hydration mismatch
   useEffect(() => {
@@ -39,11 +47,11 @@ const AdminLayout = () => {
 
   return (
     <SidebarProvider>
-      <div className="min-h-screen flex w-full bg-muted/20" dir={isRTL ? "rtl" : "ltr"}>
+      <div className="min-h-screen flex w-full bg-muted/10" dir="rtl">
         <AppSidebar />
         <div className="flex flex-col flex-1 overflow-hidden">
           <Navbar />
-          <main className="flex-1 p-4 md:p-6 overflow-auto">
+          <main className="flex-1 p-6 overflow-auto">
             <Outlet />
           </main>
         </div>

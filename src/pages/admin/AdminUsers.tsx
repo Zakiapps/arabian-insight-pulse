@@ -27,8 +27,9 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { MoreHorizontal, Search, Trash, Edit, UserPlus, Check, X, Shield, ShieldAlert } from "lucide-react";
+import { MoreHorizontal, Search, Trash, Edit, UserPlus, Check, X, Shield, ShieldAlert, Filter, ChevronDown } from "lucide-react";
 import { format } from "date-fns";
+import { Card, CardContent } from "@/components/ui/card";
 
 interface User {
   id: string;
@@ -52,44 +53,7 @@ export default function AdminUsers() {
     full_name: "",
     role: "user",
   });
-
-  // Fetch users
-  const fetchUsers = async () => {
-    setLoading(true);
-    try {
-      const { data: authUsers, error: authError } = await supabase.auth.admin.listUsers();
-      
-      if (authError) throw authError;
-
-      if (authUsers?.users) {
-        const userIds = authUsers.users.map(user => user.id);
-        
-        // Get profiles for these users
-        const { data: profiles, error: profilesError } = await supabase
-          .from("profiles")
-          .select("*")
-          .in("id", userIds);
-        
-        if (profilesError) throw profilesError;
-
-        // Combine auth data with profiles
-        const usersWithProfiles = authUsers.users.map(user => {
-          const profile = profiles?.find(p => p.id === user.id);
-          return {
-            ...user,
-            profile
-          };
-        });
-
-        setUsers(usersWithProfiles);
-      }
-    } catch (error) {
-      console.error("Error fetching users:", error);
-      toast.error("Failed to fetch users");
-    } finally {
-      setLoading(false);
-    }
-  };
+  const [filter, setFilter] = useState('all'); // all, admin, user
 
   // Mock fetching users since we can't use admin APIs in the client
   const mockFetchUsers = async () => {
@@ -105,28 +69,48 @@ export default function AdminUsers() {
             created_at: "2023-05-15T10:00:00Z",
             last_sign_in_at: "2023-06-15T10:00:00Z",
             profile: {
-              full_name: "Admin User",
+              full_name: "مدير النظام",
               role: "admin"
             }
           },
           {
             id: "2",
-            email: "user1@example.com",
+            email: "ahmad@example.com",
             created_at: "2023-05-16T10:00:00Z",
             last_sign_in_at: "2023-06-14T10:00:00Z",
             profile: {
-              full_name: "Regular User 1",
+              full_name: "أحمد محمد",
               role: "user"
             }
           },
           {
             id: "3",
-            email: "user2@example.com",
+            email: "fatima@example.com",
             created_at: "2023-05-17T10:00:00Z",
-            last_sign_in_at: null,
+            last_sign_in_at: "2023-06-12T10:00:00Z",
             profile: {
-              full_name: "Regular User 2",
+              full_name: "فاطمة أحمد",
               role: "user"
+            }
+          },
+          {
+            id: "4",
+            email: "omar@example.com",
+            created_at: "2023-05-18T10:00:00Z",
+            last_sign_in_at: "2023-06-10T10:00:00Z",
+            profile: {
+              full_name: "عمر خالد",
+              role: "user"
+            }
+          },
+          {
+            id: "5",
+            email: "supervisor@example.com",
+            created_at: "2023-05-19T10:00:00Z",
+            last_sign_in_at: "2023-06-16T10:00:00Z",
+            profile: {
+              full_name: "مشرف النظام",
+              role: "admin"
             }
           }
         ];
@@ -136,7 +120,7 @@ export default function AdminUsers() {
       }, 1000);
     } catch (error) {
       console.error("Error fetching users:", error);
-      toast.error("Failed to fetch users");
+      toast.error("فشل في جلب بيانات المستخدمين");
       setLoading(false);
     }
   };
@@ -147,13 +131,16 @@ export default function AdminUsers() {
     mockFetchUsers();
   }, []);
 
-  // Filter users based on search query
+  // Filter users based on search query and role filter
   const filteredUsers = users.filter(user => {
     const searchLower = searchQuery.toLowerCase();
-    return (
-      user.email.toLowerCase().includes(searchLower) ||
-      user.profile?.full_name?.toLowerCase().includes(searchLower)
-    );
+    const matchesSearch = user.email.toLowerCase().includes(searchLower) ||
+      user.profile?.full_name?.toLowerCase().includes(searchLower);
+    
+    if (filter === 'all') return matchesSearch;
+    if (filter === 'admin') return matchesSearch && user.profile?.role === 'admin';
+    if (filter === 'user') return matchesSearch && user.profile?.role === 'user';
+    return matchesSearch;
   });
 
   // Handle edit user
@@ -178,7 +165,7 @@ export default function AdminUsers() {
     
     try {
       // In a real app, this would update the user's profile
-      toast.success("User updated successfully");
+      toast.success("تم تحديث بيانات المستخدم بنجاح");
       
       // Update local state to reflect changes
       setUsers(users.map(u => {
@@ -198,7 +185,7 @@ export default function AdminUsers() {
       setIsEditDialogOpen(false);
     } catch (error) {
       console.error("Error updating user:", error);
-      toast.error("Failed to update user");
+      toast.error("فشل في تحديث بيانات المستخدم");
     }
   };
 
@@ -208,7 +195,7 @@ export default function AdminUsers() {
     
     try {
       // In a real app, this would delete the user
-      toast.success("User deleted successfully");
+      toast.success("تم حذف المستخدم بنجاح");
       
       // Update local state to remove the user
       setUsers(users.filter(u => u.id !== selectedUser.id));
@@ -216,118 +203,149 @@ export default function AdminUsers() {
       setIsDeleteDialogOpen(false);
     } catch (error) {
       console.error("Error deleting user:", error);
-      toast.error("Failed to delete user");
+      toast.error("فشل في حذف المستخدم");
     }
   };
 
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold">المستخدمين</h1>
+        <h1 className="text-2xl font-bold">المستخدمين</h1>
         <Button>
-          <UserPlus className="mr-2 h-4 w-4" />
+          <UserPlus className="ml-2 h-4 w-4" />
           إضافة مستخدم
         </Button>
       </div>
       
-      <div className="flex items-center space-x-2">
-        <div className="relative flex-1 max-w-sm">
-          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-          <Input
-            type="search"
-            placeholder="البحث عن المستخدمين..."
-            className="pl-8"
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-          />
-        </div>
-      </div>
+      <Card>
+        <CardContent className="p-6">
+          <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+            <div className="relative flex-1 max-w-sm">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                type="search"
+                placeholder="البحث عن مستخدم..."
+                className="pl-8"
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+              />
+            </div>
+            <div className="flex gap-2">
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="outline" className="gap-2">
+                    <Filter className="h-4 w-4" />
+                    <span>
+                      {filter === 'all' && 'جميع المستخدمين'}
+                      {filter === 'admin' && 'المدراء فقط'}
+                      {filter === 'user' && 'المستخدمين العاديين'}
+                    </span>
+                    <ChevronDown className="h-4 w-4" />
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem onClick={() => setFilter('all')}>جميع المستخدمين</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('admin')}>المدراء فقط</DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => setFilter('user')}>المستخدمين العاديين</DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            </div>
+          </div>
       
-      <div className="rounded-md border">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead>المستخدم</TableHead>
-              <TableHead>الدور</TableHead>
-              <TableHead>تاريخ الإنشاء</TableHead>
-              <TableHead>آخر تسجيل دخول</TableHead>
-              <TableHead className="w-[100px]">الإجراءات</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {loading ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  <div className="flex justify-center">
-                    <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  </div>
-                </TableCell>
-              </TableRow>
-            ) : filteredUsers.length === 0 ? (
-              <TableRow>
-                <TableCell colSpan={5} className="text-center py-8">
-                  لم يتم العثور على مستخدمين.
-                </TableCell>
-              </TableRow>
-            ) : (
-              filteredUsers.map(user => (
-                <TableRow key={user.id}>
-                  <TableCell className="font-medium">
-                    <div>
-                      <div>{user.profile?.full_name || "غير معروف"}</div>
-                      <div className="text-sm text-muted-foreground">{user.email}</div>
-                    </div>
-                  </TableCell>
-                  <TableCell>
-                    {user.profile?.role === "admin" ? (
-                      <Badge variant="destructive" className="flex items-center gap-1 w-fit">
-                        <ShieldAlert className="h-3 w-3" />
-                        مدير
-                      </Badge>
-                    ) : (
-                      <Badge variant="outline" className="flex items-center gap-1 w-fit">
-                        <Shield className="h-3 w-3" />
-                        مستخدم
-                      </Badge>
-                    )}
-                  </TableCell>
-                  <TableCell>{format(new Date(user.created_at), "yyyy/MM/dd")}</TableCell>
-                  <TableCell>
-                    {user.last_sign_in_at ? (
-                      format(new Date(user.last_sign_in_at), "yyyy/MM/dd")
-                    ) : (
-                      <span className="text-muted-foreground">لم يسجل الدخول بعد</span>
-                    )}
-                  </TableCell>
-                  <TableCell>
-                    <DropdownMenu>
-                      <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                          <MoreHorizontal className="h-4 w-4" />
-                          <span className="sr-only">فتح القائمة</span>
-                        </Button>
-                      </DropdownMenuTrigger>
-                      <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => handleEditUser(user)}>
-                          <Edit className="mr-2 h-4 w-4" />
-                          تعديل
-                        </DropdownMenuItem>
-                        <DropdownMenuItem 
-                          onClick={() => handleDeleteUser(user)}
-                          className="text-red-600 focus:text-red-600"
-                        >
-                          <Trash className="mr-2 h-4 w-4" />
-                          حذف
-                        </DropdownMenuItem>
-                      </DropdownMenuContent>
-                    </DropdownMenu>
-                  </TableCell>
+          <div className="rounded-md border mt-6">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead>المستخدم</TableHead>
+                  <TableHead>الدور</TableHead>
+                  <TableHead>تاريخ الإنشاء</TableHead>
+                  <TableHead>آخر تسجيل دخول</TableHead>
+                  <TableHead className="w-[100px]">الإجراءات</TableHead>
                 </TableRow>
-              ))
-            )}
-          </TableBody>
-        </Table>
-      </div>
+              </TableHeader>
+              <TableBody>
+                {loading ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      <div className="flex justify-center">
+                        <div className="h-6 w-6 animate-spin rounded-full border-4 border-primary border-t-transparent" />
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ) : filteredUsers.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="text-center py-8">
+                      لم يتم العثور على مستخدمين.
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  filteredUsers.map(user => (
+                    <TableRow key={user.id}>
+                      <TableCell className="font-medium">
+                        <div className="flex items-center gap-3">
+                          <div className="h-9 w-9 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-primary font-bold">
+                              {user.profile?.full_name?.charAt(0) || user.email.charAt(0)}
+                            </span>
+                          </div>
+                          <div>
+                            <div>{user.profile?.full_name || "غير معروف"}</div>
+                            <div className="text-sm text-muted-foreground">{user.email}</div>
+                          </div>
+                        </div>
+                      </TableCell>
+                      <TableCell>
+                        {user.profile?.role === "admin" ? (
+                          <Badge variant="secondary" className="flex items-center gap-1 w-fit bg-primary text-primary-foreground">
+                            <ShieldAlert className="h-3 w-3" />
+                            مدير
+                          </Badge>
+                        ) : (
+                          <Badge variant="outline" className="flex items-center gap-1 w-fit">
+                            <Shield className="h-3 w-3" />
+                            مستخدم
+                          </Badge>
+                        )}
+                      </TableCell>
+                      <TableCell>{format(new Date(user.created_at), "yyyy/MM/dd")}</TableCell>
+                      <TableCell>
+                        {user.last_sign_in_at ? (
+                          format(new Date(user.last_sign_in_at), "yyyy/MM/dd")
+                        ) : (
+                          <span className="text-muted-foreground">لم يسجل الدخول بعد</span>
+                        )}
+                      </TableCell>
+                      <TableCell>
+                        <DropdownMenu>
+                          <DropdownMenuTrigger asChild>
+                            <Button variant="ghost" size="icon">
+                              <MoreHorizontal className="h-4 w-4" />
+                              <span className="sr-only">فتح القائمة</span>
+                            </Button>
+                          </DropdownMenuTrigger>
+                          <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => handleEditUser(user)}>
+                              <Edit className="ml-2 h-4 w-4" />
+                              تعديل
+                            </DropdownMenuItem>
+                            <DropdownMenuItem 
+                              onClick={() => handleDeleteUser(user)}
+                              className="text-red-600 focus:text-red-600"
+                            >
+                              <Trash className="ml-2 h-4 w-4" />
+                              حذف
+                            </DropdownMenuItem>
+                          </DropdownMenuContent>
+                        </DropdownMenu>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Edit User Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
@@ -354,7 +372,7 @@ export default function AdminUsers() {
                   onClick={() => setEditFormData({...editFormData, role: "user"})}
                   className="flex-1"
                 >
-                  <Shield className="mr-2 h-4 w-4" />
+                  <Shield className="ml-2 h-4 w-4" />
                   مستخدم
                 </Button>
                 <Button
@@ -363,7 +381,7 @@ export default function AdminUsers() {
                   onClick={() => setEditFormData({...editFormData, role: "admin"})}
                   className="flex-1"
                 >
-                  <ShieldAlert className="mr-2 h-4 w-4" />
+                  <ShieldAlert className="ml-2 h-4 w-4" />
                   مدير
                 </Button>
               </div>
@@ -391,11 +409,11 @@ export default function AdminUsers() {
           </DialogHeader>
           <DialogFooter>
             <Button variant="outline" onClick={() => setIsDeleteDialogOpen(false)}>
-              <X className="mr-2 h-4 w-4" />
+              <X className="ml-2 h-4 w-4" />
               إلغاء
             </Button>
             <Button variant="destructive" onClick={confirmDeleteUser}>
-              <Check className="mr-2 h-4 w-4" />
+              <Check className="ml-2 h-4 w-4" />
               تأكيد الحذف
             </Button>
           </DialogFooter>
