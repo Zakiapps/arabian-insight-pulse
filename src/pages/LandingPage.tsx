@@ -1,4 +1,3 @@
-
 import React, { useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { 
@@ -92,6 +91,52 @@ const LandingPage = () => {
     { number: "99.9%", label: "دقة التحليل", icon: Target }
   ];
 
+  const pricingPlans = [
+    {
+      name: "المجاني",
+      price: "0",
+      period: "شهرياً",
+      features: [
+        "100 تحليل شهرياً",
+        "تحليل المشاعر الأساسي",
+        "كشف اللهجة الأردنية",
+        "تقارير أساسية"
+      ],
+      buttonText: "ابدأ مجاناً",
+      popular: false
+    },
+    {
+      name: "المحترف",
+      price: "99",
+      period: "شهرياً",
+      features: [
+        "10,000 تحليل شهرياً",
+        "تحليل متقدم للمشاعر",
+        "كشف جميع اللهجات العربية",
+        "تنبيهات ذكية",
+        "تقارير مفصلة",
+        "دعم فني متقدم"
+      ],
+      buttonText: "اشترك الآن",
+      popular: true
+    },
+    {
+      name: "المؤسسي",
+      price: "299",
+      period: "شهرياً",
+      features: [
+        "تحليل غير محدود",
+        "جميع الميزات المتقدمة",
+        "واجهة برمجة تطبيقات",
+        "تكامل مخصص",
+        "مدير حساب مخصص",
+        "دعم 24/7"
+      ],
+      buttonText: "تواصل معنا",
+      popular: false
+    }
+  ];
+
   const testimonials = [
     {
       name: "أحمد محمد",
@@ -147,13 +192,7 @@ const LandingPage = () => {
               <Link to="/" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">الرئيسية</Link>
             </motion.div>
             <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/services" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">خدماتنا</Link>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/pricing" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">الأسعار</Link>
-            </motion.div>
-            <motion.div whileHover={{ scale: 1.05 }}>
-              <Link to="/reviews" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">آراء العملاء</Link>
+              <Link to="/text-analysis" className="transition-colors hover:text-primary relative after:absolute after:bottom-0 after:left-0 after:h-0.5 after:w-0 after:bg-primary after:transition-all hover:after:w-full">جرب مجاناً</Link>
             </motion.div>
             
             {isAuthenticated ? (
@@ -528,10 +567,10 @@ const LandingPage = () => {
             <div className="space-y-4">
               <h3 className="text-lg font-semibold text-white">المنتج</h3>
               <ul className="space-y-3 text-sm">
-                <li><Link to="/services" className="hover:text-white transition-colors hover:underline">الخدمات</Link></li>
-                <li><Link to="/pricing" className="hover:text-white transition-colors hover:underline">الأسعار</Link></li>
                 <li><Link to="/text-analysis" className="hover:text-white transition-colors hover:underline">جرب مجاناً</Link></li>
-                <li><Link to="/reviews" className="hover:text-white transition-colors hover:underline">آراء العملاء</Link></li>
+                {isAuthenticated && (
+                  <li><Link to="/dashboard" className="hover:text-white transition-colors hover:underline">لوحة التحكم</Link></li>
+                )}
               </ul>
             </div>
             

@@ -10,7 +10,6 @@ import { ThemeProvider } from "next-themes";
 import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Import pages
-import Home from "@/pages/Home";
 import LandingPage from "@/pages/LandingPage";
 import TextAnalysis from "@/pages/TextAnalysis";
 import SignIn from "@/pages/SignIn";
@@ -53,9 +52,9 @@ function App() {
                 <TooltipProvider>
                   <Toaster />
                   <Routes>
-                    {/* Public routes */}
-                    <Route path="/" element={<Home />} />
-                    <Route path="/home" element={<Home />} />
+                    {/* Public routes - Landing page as home */}
+                    <Route path="/" element={<LandingPage />} />
+                    <Route path="/home" element={<LandingPage />} />
                     <Route path="/landing" element={<LandingPage />} />
                     <Route path="/text-analysis" element={<TextAnalysis />} />
                     <Route path="/signin" element={<SignIn />} />

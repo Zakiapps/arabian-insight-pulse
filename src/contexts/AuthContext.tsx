@@ -12,25 +12,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     user,
     setUser,
     setProfile,
-    setSession: () => {} // This will be handled by useAuthState
+    setSession: () => {} // Session is managed by useAuthState
   });
 
-  // Enhanced admin check with proper fallback
+  // Enhanced admin check
   const isAdmin = React.useMemo(() => {
-    // Primary check: admin email
-    if (user?.email === 'admin@arabinsights.com') {
-      return true;
-    }
-    
-    // Secondary check: profile role (only if email matches)
-    if (user?.email === 'admin@arabinsights.com' && profile?.role === 'admin') {
-      return true;
-    }
-    
-    return false;
+    return user?.email === 'admin@arabinsights.com' || profile?.role === 'admin';
   }, [user?.email, profile?.role]);
   
-  // Enhanced authentication check - more flexible for admin users
+  // Enhanced authentication check
   const isAuthenticated = React.useMemo(() => {
     if (loading) return false;
     
@@ -42,11 +32,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return true;
     }
     
-    // For regular users, profile is required
-    return !!profile;
+    // For regular users, we'll be more lenient and allow authentication without profile
+    // since profile creation might be delayed
+    return true;
   }, [loading, user, session, profile]);
 
-  console.log('Auth state check:', {
+  console.log('Auth state:', {
     loading,
     hasUser: !!user,
     hasSession: !!session,
