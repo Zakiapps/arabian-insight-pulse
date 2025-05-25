@@ -38,7 +38,7 @@ const ImprovedTextAnalyzer = () => {
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [recentPredictions, setRecentPredictions] = useState<PredictionRecord[]>([]);
   const [error, setError] = useState<string | null>(null);
-  const { profile } = useAuth();
+  const { user, profile, isAuthenticated } = useAuth();
 
   const fetchRecentPredictions = async () => {
     try {
@@ -46,7 +46,7 @@ const ImprovedTextAnalyzer = () => {
       const { data, error } = await supabase
         .from('analyzed_posts')
         .select('*')
-        .eq('user_id', profile?.id)
+        .eq('user_id', user?.id)
         .order('created_at', { ascending: false })
         .limit(5);
 
@@ -81,7 +81,8 @@ const ImprovedTextAnalyzer = () => {
       return;
     }
 
-    if (!profile?.id) {
+    // Check authentication - use isAuthenticated and user instead of just profile
+    if (!isAuthenticated || !user?.id) {
       toast.error('يجب تسجيل الدخول أولاً');
       return;
     }
@@ -101,7 +102,7 @@ const ImprovedTextAnalyzer = () => {
       const { error: insertError } = await supabase
         .from('analyzed_posts')
         .insert({
-          user_id: profile.id,
+          user_id: user.id, // Use user.id directly instead of profile.id
           content: text,
           sentiment: analysisData.sentiment,
           sentiment_score: analysisData.confidence,
@@ -155,7 +156,7 @@ const ImprovedTextAnalyzer = () => {
 
   // Fetch recent predictions on component mount
   useState(() => {
-    if (profile?.id) {
+    if (user?.id) {
       fetchRecentPredictions();
     }
   });
@@ -310,6 +311,30 @@ const ImprovedTextAnalyzer = () => {
       )}
     </div>
   );
+
+  function getSentimentColor(sentiment: string) {
+    switch (sentiment) {
+      case 'positive': return 'text-green-600 bg-green-50 border-green-200';
+      case 'negative': return 'text-red-600 bg-red-50 border-red-200';
+      default: return 'text-gray-600 bg-gray-50 border-gray-200';
+    }
+  }
+
+  function getSentimentEmoji(sentiment: string) {
+    switch (sentiment) {
+      case 'positive': return '😊';
+      case 'negative': return '😞';
+      default: return '😐';
+    }
+  }
+
+  function getSentimentText(sentiment: string) {
+    switch (sentiment) {
+      case 'positive': return 'إيجابي';
+      case 'negative': return 'سلبي';
+      default: return 'محايد';
+    }
+  }
 };
 
 export default ImprovedTextAnalyzer;
