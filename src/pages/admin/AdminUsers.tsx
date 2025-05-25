@@ -53,7 +53,7 @@ const AdminUsers = () => {
     try {
       setLoading(true);
       
-      // Get profiles data
+      // Get profiles data with explicit typing
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -63,7 +63,8 @@ const AdminUsers = () => {
           subscription_plan,
           avatar_url,
           created_at
-        `);
+        `)
+        .returns<ProfileData[]>();
 
       if (profilesError) throw profilesError;
 
@@ -79,7 +80,7 @@ const AdminUsers = () => {
         .eq('is_online', true);
 
       // Combine the data with proper typing
-      const combinedUsers: User[] = (profilesData as ProfileData[] || []).map((profile: ProfileData) => {
+      const combinedUsers: User[] = (profilesData || []).map((profile: ProfileData) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
