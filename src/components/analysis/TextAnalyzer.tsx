@@ -1,12 +1,11 @@
-
-import React, { useState } from 'react';
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, Brain, Loader2 } from "lucide-react";
+import React, { useCallback, useState } from 'react';
 import { toast } from "sonner";
-import { Loader2, Brain, AlertTriangle } from "lucide-react";
 
 interface AnalysisResult {
   sentiment: 'positive' | 'negative';
@@ -21,23 +20,43 @@ interface TextAnalyzerProps {
   title?: string;
   placeholder?: string;
   defaultText?: string;
+  minLength?: number;
+  maxLength?: number;
 }
 
 export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
-  title = "تحليل المشاعر بنموذج MARBERT",
+  title = "تحليل المشاعر بنموذج ONNX",
   placeholder = "أدخل النص العربي المراد تحليله...",
-  defaultText = ""
+  defaultText = "",
+  minLength = 3,
+  maxLength = 1000
 }) => {
   const [text, setText] = useState(defaultText);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const [result, setResult] = useState<AnalysisResult | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-  const analyzeText = async () => {
+  const validateInput = useCallback(() => {
     if (!text.trim()) {
       toast.error("يرجى إدخال نص للتحليل");
-      return;
+      return false;
     }
+
+    if (text.length < minLength) {
+      toast.error(`النص قصير جداً (الحد الأدنى ${minLength} أحرف)`);
+      return false;
+    }
+
+    if (text.length > maxLength) {
+      toast.error(`النص طويل جداً (الحد الأقصى ${maxLength} أحرف)`);
+      return false;
+    }
+
+    return true;
+  }, [text, minLength, maxLength]);
+
+  const analyzeText = useCallback(async () => {
+    if (!validateInput()) return;
 
     setIsAnalyzing(true);
     setError(null);
@@ -45,70 +64,107 @@ export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
     
     try {
       const { data, error: functionError } = await supabase.functions.invoke('analyze-text', {
-        body: { text: text.trim() }
+        body: { 
+          text: text.trim(),
+          options: {
+            focus: ['positive', 'negative'] // Explicitly request these sentiment classes
+          }
+        }
       });
 
       if (functionError) {
         throw functionError;
       }
 
-      if (data?.error) {
-        setError(data.error);
-        toast.error("فشل في تحليل النص");
-        return;
+      if (!data || data.error) {
+        throw new Error(data?.error || "No data received from analysis");
       }
 
-      setResult(data);
-      toast.success("تم تحليل النص بنجاح باستخدام نموذج MARBERT");
+      // Validate the response structure
+      if (
+        !data.sentiment || 
+        !['positive', 'negative'].includes(data.sentiment) ||
+        typeof data.confidence !== 'number'
+      ) {
+        throw new Error("Invalid analysis response format");
+      }
+
+      setResult({
+        ...data,
+        positive_prob: data.positive_prob ?? (data.sentiment === 'positive' ? data.confidence : 1 - data.confidence),
+        negative_prob: data.negative_prob ?? (data.sentiment === 'negative' ? data.confidence : 1 - data.confidence)
+      });
+      
+      toast.success("تم تحليل النص بنجاح");
     } catch (error: any) {
-      console.error('Error analyzing text:', error);
-      setError(error.message || "حدث خطأ أثناء التحليل");
-      toast.error("فشل في تحليل النص");
+      console.error('Analysis error:', error);
+      const errorMessage = error.message || "حدث خطأ أثناء التحليل";
+      setError(errorMessage);
+      toast.error(errorMessage);
     } finally {
       setIsAnalyzing(false);
     }
-  };
+  }, [text, validateInput]);
 
-  const getSentimentColor = (sentiment: string) => {
-    return sentiment === 'positive' ? 'bg-green-500' : 'bg-red-500';
-  };
+  const getSentimentDetails = useCallback((sentiment: string) => {
+    const details = {
+      positive: {
+        color: 'bg-green-500',
+        text: 'إيجابي',
+        icon: '👍'
+      },
+      negative: {
+        color: 'bg-red-500',
+        text: 'سلبي',
+        icon: '👎'
+      }
+    };
+    return details[sentiment as keyof typeof details] || details.positive;
+  }, []);
 
-  const getSentimentText = (sentiment: string) => {
-    return sentiment === 'positive' ? 'إيجابي' : 'سلبي';
-  };
+  const sentimentDetails = result ? getSentimentDetails(result.sentiment) : null;
 
   return (
-    <Card className="w-full">
+    <Card className="w-full max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="h-5 w-5" />
           {title}
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          مدعوم بنموذج MARBERT المتخصص في اللهجة الأردنية والعربية
+          تحليل المشاعر الإيجابية والسلبية في النص العربي مع تحديد اللهجة
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
         <Textarea
           value={text}
-          onChange={(e) => setText(e.target.value)}
+          onChange={(e) => {
+            if (e.target.value.length <= maxLength) {
+              setText(e.target.value);
+            }
+          }}
           placeholder={placeholder}
-          className="min-h-[100px] resize-none"
+          className="min-h-[120px] resize-none"
           dir="rtl"
+          disabled={isAnalyzing}
         />
+        <div className="text-xs text-muted-foreground text-right">
+          {text.length}/{maxLength}
+        </div>
         
         <Button 
           onClick={analyzeText} 
-          disabled={isAnalyzing || !text.trim()}
+          disabled={isAnalyzing || !text.trim() || text.length < minLength}
           className="w-full"
+          size="lg"
         >
           {isAnalyzing ? (
             <>
               <Loader2 className="h-4 w-4 animate-spin ml-2" />
-              جاري التحليل بنموذج MARBERT...
+              جاري التحليل...
             </>
           ) : (
-            'تحليل بنموذج MARBERT'
+            'تحليل المشاعر'
           )}
         </Button>
 
@@ -122,47 +178,51 @@ export const TextAnalyzer: React.FC<TextAnalyzerProps> = ({
         )}
 
         {result && (
-          <div className="space-y-3 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border">
+          <div className="space-y-4 p-4 bg-gradient-to-r from-blue-50 to-green-50 rounded-lg border">
             <div className="flex items-center justify-between">
               <span className="font-medium">النتيجة:</span>
-              <Badge 
-                className={`${getSentimentColor(result.sentiment)} text-white`}
-              >
-                {getSentimentText(result.sentiment)}
-              </Badge>
+              <div className="flex items-center gap-2">
+                <span className="text-lg">{sentimentDetails?.icon}</span>
+                <Badge className={`${sentimentDetails?.color} text-white`}>
+                  {sentimentDetails?.text}
+                </Badge>
+              </div>
             </div>
             
-            <div className="flex items-center justify-between">
-              <span className="text-sm text-muted-foreground">درجة الثقة:</span>
-              <span className="text-sm font-medium">
-                {(result.confidence * 100).toFixed(1)}%
-              </span>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4 text-sm">
-              <div className="text-center p-2 bg-green-100 rounded">
-                <div className="font-medium text-green-700">
-                  {(result.positive_prob * 100).toFixed(1)}%
-                </div>
-                <div className="text-green-600">إيجابي</div>
+            <div className="space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-sm text-muted-foreground">درجة الثقة:</span>
+                <span className="text-sm font-medium">
+                  {(result.confidence * 100).toFixed(1)}%
+                </span>
               </div>
-              <div className="text-center p-2 bg-red-100 rounded">
-                <div className="font-medium text-red-700">
-                  {(result.negative_prob * 100).toFixed(1)}%
+
+              <div className="grid grid-cols-2 gap-4">
+                <div className="text-center p-3 bg-green-50 border border-green-100 rounded-lg">
+                  <div className="text-2xl font-bold text-green-600">
+                    {(result.positive_prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-green-800">إيجابي</div>
                 </div>
-                <div className="text-red-600">سلبي</div>
+                <div className="text-center p-3 bg-red-50 border border-red-100 rounded-lg">
+                  <div className="text-2xl font-bold text-red-600">
+                    {(result.negative_prob * 100).toFixed(1)}%
+                  </div>
+                  <div className="text-sm text-red-800">سلبي</div>
+                </div>
               </div>
             </div>
 
-            <div className="flex items-center justify-between text-sm">
-              <span className="text-muted-foreground">اللهجة:</span>
-              <Badge variant="outline">
-                {result.dialect === 'Jordanian' ? 'أردنية' : 'غير أردنية'}
-              </Badge>
-            </div>
-
-            <div className="text-xs text-center text-muted-foreground mt-2">
-              تم التحليل باستخدام نموذج {result.modelSource}
+            <div className="flex items-center justify-between text-sm pt-2 border-t">
+              <span className="text-muted-foreground">تفاصيل:</span>
+              <div className="flex gap-2">
+                <Badge variant="outline">
+                  {result.dialect === 'Jordanian' ? 'لهجة أردنية' : 'لهجة عربية'}
+                </Badge>
+                <Badge variant="outline">
+                  {result.modelSource}
+                </Badge>
+              </div>
             </div>
           </div>
         )}

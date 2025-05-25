@@ -1,18 +1,26 @@
-import React, { useEffect, lazy, Suspense } from 'react';
-import { Link } from 'react-router-dom';
-import { 
-  BarChart3, ChevronLeft, ChevronRight, ArrowLeft, 
-  ArrowRight, Check, ExternalLink, Users, MessageSquare,
-  TrendingUp, Globe, Languages, Bell, Shield, Zap,
-  Target, Eye, Heart, Share2, FileText, Upload,
-  Star, Award, Sparkles, Brain, Lightbulb, Clock
-} from 'lucide-react';
+import SoundEffects from '@/components/landing/SoundEffects';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
-import SoundEffects from '@/components/landing/SoundEffects';
+import {
+    ArrowLeft,
+    Award,
+    BarChart3,
+    Brain,
+    Eye,
+    Globe,
+    Shield,
+    Sparkles,
+    Star,
+    Target,
+    TrendingUp,
+    Users,
+    Zap
+} from 'lucide-react';
+import { lazy } from 'react';
+import { Link } from 'react-router-dom';
 
 // Lazy load the 3D scene component for better performance
 const ThreeDScene = lazy(() => import('@/components/landing/ThreeDScene'));
@@ -142,7 +150,7 @@ const LandingPage = () => {
       name: "أحمد محمد",
       role: "مدير التسويق الرقمي",
       company: "شركة الرؤية التقنية",
-      content: "Arab Insights غيّر طريقة فهمنا لآراء العملاء. التحليل دقيق والتقارير مفصلة جداً.",
+      content: "افاق الابتكار للاستشارات و التدريب غيّر طريقة فهمنا لآراء العملاء. التحليل دقيق والتقارير مفصلة جداً.",
       rating: 5
     },
     {
@@ -182,7 +190,7 @@ const LandingPage = () => {
               <BarChart3 className="h-6 w-6 text-white" />
             </div>
             <div>
-              <span className="font-bold text-2xl bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">Arab Insights</span>
+              <span className="font-bold text-2xl bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">افاق الابتكار للاستشارات و التدريب</span>
               <div className="text-xs text-muted-foreground">منصة تحليل المشاعر العربية</div>
             </div>
           </motion.div>
@@ -265,7 +273,7 @@ const LandingPage = () => {
                 transition={{ delay: 0.5, duration: 0.8 }}
                 className="text-xl text-muted-foreground leading-relaxed max-w-2xl"
               >
-                منصة Arab Insights تستخدم أحدث تقنيات الذكاء الاصطناعي لتحليل المشاعر والآراء في النصوص العربية مع دقة استثنائية وكشف متطور للهجات العربية المختلفة.
+                منصة افاق الابتكار للاستشارات و التدريب تستخدم أحدث تقنيات الذكاء الاصطناعي لتحليل المشاعر والآراء في النصوص العربية مع دقة استثنائية وكشف متطور للهجات العربية المختلفة.
               </motion.p>
               
               <motion.div 
@@ -341,7 +349,7 @@ const LandingPage = () => {
                     <Badge className="bg-green-100 text-green-700">جاهز للتحليل</Badge>
                   </div>
                   <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-6">
-                    <p className="text-lg leading-relaxed">"هذا المنتج رائع حقاً وأنصح الجميع بتجربته. الجودة عالية والخدمة ممتازة."</p>
+                    <p className="text-lg leading-relaxed">"هذا المنتج روعة والله، أنصح الكل يجربوه. الجودة عالية والخدمة زَيّ الفل."</p>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
                     <div className="text-center p-4 bg-green-50 rounded-xl">
@@ -457,7 +465,7 @@ const LandingPage = () => {
             <Badge className="mb-4">شهادات العملاء</Badge>
             <h2 className="text-4xl font-bold tracking-tight mb-4">ماذا يقول عملاؤنا؟</h2>
             <p className="mx-auto max-w-2xl text-muted-foreground text-xl">
-              اكتشف تجارب عملائنا الحقيقية مع منصة Arab Insights
+              اكتشف تجارب عملائنا الحقيقية مع منصة افاق الابتكار للاستشارات و التدريب
             </p>
           </motion.div>
 
@@ -513,7 +521,7 @@ const LandingPage = () => {
             className="text-center"
           >
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              ابدأ رحلتك مع Arab Insights
+              ابدأ رحلتك مع افاق الابتكار للاستشارات و التدريب
             </h2>
             <p className="mx-auto max-w-3xl text-xl md:text-2xl mb-10 opacity-90 leading-relaxed">
               انضم إلى مئات الشركات والمؤسسات التي تستخدم منصتنا المتطورة لفهم الرأي العام العربي واتخاذ قرارات مدروسة ومبنية على البيانات
@@ -554,13 +562,13 @@ const LandingPage = () => {
                 <div className="rounded-xl bg-gradient-to-br from-primary to-blue-600 p-2">
                   <BarChart3 className="h-5 w-5 text-white" />
                 </div>
-                <span className="font-bold text-xl text-white">Arab Insights</span>
+                <span className="font-bold text-xl text-white">افاق الابتكار للاستشارات و التدريب</span>
               </div>
               <p className="text-slate-400 leading-relaxed">
                 منصة متطورة لتحليل المشاعر والبيانات الاجتماعية باللغة العربية باستخدام أحدث تقنيات الذكاء الاصطناعي
               </p>
               <p className="text-xs text-slate-500">
-                © 2025 Arab Insights. جميع الحقوق محفوظة.
+                © 2025 افاق الابتكار للاستشارات و التدريب. جميع الحقوق محفوظة.
               </p>
             </div>
             

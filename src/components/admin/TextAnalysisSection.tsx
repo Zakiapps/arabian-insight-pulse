@@ -1,12 +1,12 @@
 
-import React, { useState } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
-import { Textarea } from "@/components/ui/textarea";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Textarea } from "@/components/ui/textarea";
 import { supabase } from "@/integrations/supabase/client";
+import { AlertTriangle, Brain, Globe, TrendingDown, TrendingUp } from "lucide-react";
+import { useState } from 'react';
 import { toast } from "sonner";
-import { Brain, TrendingUp, TrendingDown, Globe, AlertTriangle } from "lucide-react";
 
 interface AnalysisResult {
   sentiment: string;
@@ -66,7 +66,7 @@ const TextAnalysisSection = () => {
         console.error('Error saving prediction:', saveError);
         toast.error('تم التحليل بنجاح ولكن فشل في حفظ النتيجة');
       } else {
-        toast.success('تم التحليل والحفظ بنجاح باستخدام نموذج MARBERT');
+        toast.success('تم التحليل والحفظ بنجاح باستخدام نموذج ONNX');
       }
 
     } catch (err: any) {
@@ -83,10 +83,10 @@ const TextAnalysisSection = () => {
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Brain className="h-5 w-5" />
-          تحليل النصوص العربية - نموذج MARBERT
+          تحليل النصوص العربية - نموذج ONNX
         </CardTitle>
         <p className="text-sm text-muted-foreground">
-          لوحة إدارة تحليل المشاعر باستخدام نموذج MARBERT المدرب على اللهجة الأردنية
+          لوحة إدارة تحليل المشاعر باستخدام نموذج ONNX المدرب على اللهجة الأردنية
         </p>
       </CardHeader>
       <CardContent className="space-y-4">
@@ -112,12 +112,12 @@ const TextAnalysisSection = () => {
           {isAnalyzing ? (
             <>
               <Brain className="h-4 w-4 animate-pulse ml-2" />
-              جاري التحليل بنموذج MARBERT...
+              جاري التحليل بنموذج ONNX...
             </>
           ) : (
             <>
               <Brain className="h-4 w-4 ml-2" />
-              تحليل بنموذج MARBERT
+              تحليل بنموذج ONNX
             </>
           )}
         </Button>
@@ -134,7 +134,7 @@ const TextAnalysisSection = () => {
         {result && (
           <div className="space-y-4 p-4 bg-gray-50 rounded-lg">
             <div className="flex items-center justify-between">
-              <h3 className="font-semibold text-lg">نتائج تحليل MARBERT:</h3>
+              <h3 className="font-semibold text-lg">نتائج تحليل ONNX:</h3>
               <div className="flex items-center gap-1 text-blue-600">
                 <Brain className="h-4 w-4" />
                 <span className="text-xs">نموذج مخصص للأردنية</span>

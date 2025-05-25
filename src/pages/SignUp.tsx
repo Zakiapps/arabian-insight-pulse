@@ -1,11 +1,11 @@
 
-import React, { useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
+import React, { useState } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import { toast } from 'sonner';
 
 const SignUp = () => {
@@ -41,7 +41,7 @@ const SignUp = () => {
         <CardHeader className="text-center">
           <CardTitle className="text-2xl font-bold">إنشاء حساب جديد</CardTitle>
           <CardDescription>
-            أنشئ حسابك للبدء في استخدام Arab Insights
+            أنشئ حسابك للبدء في استخدام افاق الابتكار للاستشارات و التدريب
           </CardDescription>
         </CardHeader>
         <CardContent>

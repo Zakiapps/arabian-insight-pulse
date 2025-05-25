@@ -1,17 +1,20 @@
 
-import React from 'react';
-import { Link } from 'react-router-dom';
-import { Button } from '@/components/ui/button';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
-import { 
-  BarChart3, MessageSquare, TrendingUp, Globe, Languages, Bell, 
-  Shield, Zap, Target, Eye, Heart, Share2, FileText, Upload,
-  Check, Users, ArrowLeft, ArrowRight
-} from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
+import {
+  ArrowLeft,
+  BarChart3,
+  Bell,
+  Check,
+  Globe, Languages,
+  MessageSquare,
+  Shield,
+  TrendingUp
+} from 'lucide-react';
+import { Link } from 'react-router-dom';
 
 const Home = () => {
   const { isAuthenticated, isAdmin } = useAuth();
@@ -34,7 +37,7 @@ const Home = () => {
     {
       icon: BarChart3,
       title: "تحليل المشاعر المتقدم",
-      description: "تحليل دقيق للمشاعر في النصوص العربية باستخدام نماذج MARBERT المتطورة",
+      description: "تحليل دقيق للمشاعر في النصوص العربية باستخدام نماذج ONNX المتطورة",
       color: "bg-blue-500"
     },
     {
@@ -139,7 +142,7 @@ const Home = () => {
             <div className="rounded-md bg-primary p-1.5">
               <BarChart3 className="h-5 w-5 text-white" />
             </div>
-            <span className="font-semibold text-xl">Arab Insights</span>
+            <span className="font-semibold text-xl">افاق الابتكار للاستشارات و التدريب</span>
           </motion.div>
           <nav className="hidden md:flex items-center gap-5 text-sm">
             <motion.div whileHover={{ scale: 1.05 }}>
@@ -205,7 +208,7 @@ const Home = () => {
               transition={{ delay: 0.5, duration: 0.8 }}
               className="text-muted-foreground md:text-xl/relaxed lg:text-base/relaxed xl:text-xl/relaxed max-w-3xl mx-auto"
             >
-              منصة Arab Insights تستخدم نماذج MARBERT المتطورة لتحليل مشاعر النصوص العربية 
+              منصة افاق الابتكار للاستشارات و التدريب تستخدم نماذج ONNX المتطورة لتحليل مشاعر النصوص العربية 
               وكشف اللهجة الأردنية بدقة عالية مع رؤى عميقة وتقارير شاملة
             </motion.p>
             <motion.div 
@@ -391,7 +394,7 @@ const Home = () => {
             className="text-center"
           >
             <h2 className="text-3xl font-bold tracking-tighter sm:text-4xl md:text-5xl mb-4">
-              ابدأ رحلتك مع Arab Insights اليوم
+              ابدأ رحلتك مع افاق الابتكار للاستشارات و التدريب اليوم
             </h2>
             <p className="mx-auto max-w-[600px] text-primary-foreground/80 md:text-xl mb-8">
               انضم إلى المستخدمين الذين يستخدمون منصتنا لفهم الرأي العام العربي واكتشاف اللهجة الأردنية
@@ -431,13 +434,13 @@ const Home = () => {
                 <div className="rounded-md bg-primary p-1">
                   <BarChart3 className="h-4 w-4 text-white" />
                 </div>
-                <span className="font-semibold">Arab Insights</span>
+                <span className="font-semibold">افاق الابتكار للاستشارات و التدريب</span>
               </div>
               <p className="text-sm text-muted-foreground">
                 منصة متطورة لتحليل المشاعر وكشف اللهجة الأردنية في النصوص العربية
               </p>
               <p className="text-xs text-muted-foreground">
-                © 2025 Arab Insights. جميع الحقوق محفوظة.
+                © 2025 افاق الابتكار للاستشارات و التدريب. جميع الحقوق محفوظة.
               </p>
             </div>
             

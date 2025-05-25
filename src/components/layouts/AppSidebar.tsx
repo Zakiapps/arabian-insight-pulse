@@ -1,41 +1,39 @@
 
-import { Link, useLocation } from "react-router-dom";
-import { Button } from "@/components/ui/button";
-import {
-  Sidebar,
-  SidebarContent,
-  SidebarGroup,
-  SidebarGroupContent,
-  SidebarGroupLabel,
-  SidebarMenu,
-  SidebarMenuButton,
-  SidebarMenuItem,
-  SidebarHeader,
-  SidebarFooter,
-} from "@/components/ui/sidebar";
-import {
-  ChevronLeft,
-  LayoutDashboard,
-  MessageSquare,
-  Upload,
-  Bell,
-  FileText,
-  BarChart3,
-  PieChart,
-  Globe,
-  TrendingUp,
-  Languages,
-  Settings,
-  Users2,
-  CreditCard,
-  Receipt,
-  BadgePercent,
-  Shield
-} from "lucide-react";
-import { useAuth } from "@/contexts/AuthContext";
-import { useLanguage } from "@/contexts/LanguageContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
+import {
+    Sidebar,
+    SidebarContent,
+    SidebarFooter,
+    SidebarGroup,
+    SidebarGroupContent,
+    SidebarGroupLabel,
+    SidebarHeader,
+    SidebarMenu,
+    SidebarMenuButton,
+    SidebarMenuItem,
+} from "@/components/ui/sidebar";
+import { useAuth } from "@/contexts/AuthContext";
+import { useLanguage } from "@/contexts/LanguageContext";
+import {
+    BadgePercent,
+    BarChart3,
+    Bell,
+    CreditCard,
+    FileText,
+    Globe,
+    Languages,
+    LayoutDashboard,
+    MessageSquare,
+    PieChart,
+    Receipt,
+    Settings,
+    Shield,
+    TrendingUp,
+    Upload,
+    Users2
+} from "lucide-react";
+import { Link, useLocation } from "react-router-dom";
 
 const AppSidebar = () => {
   const location = useLocation();
@@ -136,7 +134,7 @@ const AppSidebar = () => {
             <BarChart3 className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-            <h2 className="font-bold text-lg">Arab Insights</h2>
+            <h2 className="font-bold text-lg">افاق الابتكار للاستشارات و التدريب</h2>
             <p className="text-xs text-muted-foreground">تحليل البيانات الاجتماعية</p>
           </div>
         </div>
