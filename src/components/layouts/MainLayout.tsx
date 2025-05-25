@@ -5,16 +5,13 @@ import { useMediaQuery } from "@/hooks/use-media-query";
 import { SidebarProvider } from "@/components/ui/sidebar";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useUserSession } from "@/hooks/useUserSession";
-import { useAuth } from "@/contexts/AuthContext";
-import { Navigate } from "react-router-dom";
 import AppSidebar from "./AppSidebar";
 import Navbar from "./Navbar";
 
-const AdminLayout = () => {
+const MainLayout = () => {
   const [mounted, setMounted] = useState(false);
   const isDesktop = useMediaQuery("(min-width: 1024px)");
   const { isRTL } = useLanguage();
-  const { isAuthenticated, isAdmin, loading } = useAuth();
 
   // Track user session for online status
   useUserSession();
@@ -24,21 +21,7 @@ const AdminLayout = () => {
     setMounted(true);
   }, []);
 
-  if (!mounted || loading) {
-    return (
-      <div className="flex items-center justify-center h-screen">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
-      </div>
-    );
-  }
-
-  if (!isAuthenticated) {
-    return <Navigate to="/login" replace />;
-  }
-
-  if (!isAdmin) {
-    return <Navigate to="/dashboard" replace />;
-  }
+  if (!mounted) return null;
 
   return (
     <SidebarProvider defaultOpen={isDesktop}>
@@ -57,4 +40,4 @@ const AdminLayout = () => {
   );
 };
 
-export default AdminLayout;
+export default MainLayout;
