@@ -502,7 +502,6 @@ const SocialMediaScraping = () => {
                           <Switch
                             checked={config.is_active}
                             onCheckedChange={() => toggleConfigStatus(config.id, config.is_active)}
-                            size="sm"
                           />
                           <span className="text-sm">
                             {config.is_active ? 'نشط' : 'معطل'}

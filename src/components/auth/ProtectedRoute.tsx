@@ -6,12 +6,14 @@ import { useSubscription } from "@/contexts/SubscriptionContext";
 interface ProtectedRouteProps {
   children: React.ReactNode;
   adminOnly?: boolean;
+  requireAdmin?: boolean; // Add this prop
   requiredFeature?: string;
 }
 
 const ProtectedRoute: React.FC<ProtectedRouteProps> = ({ 
   children,
   adminOnly = false,
+  requireAdmin = false, // Add this prop with default value
   requiredFeature
 }) => {
   const { isAuthenticated, isAdmin, loading, user } = useAuth();
@@ -23,6 +25,7 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     isAuthenticated,
     isAdmin,
     adminOnly,
+    requireAdmin, // Log the new prop
     userEmail: user?.email,
     currentPath: location.pathname,
     requiredFeature
@@ -46,8 +49,8 @@ const ProtectedRoute: React.FC<ProtectedRouteProps> = ({
     return <Navigate to="/signin" state={{ from: location }} replace />;
   }
 
-  // Check admin access for admin-only routes
-  if (adminOnly && !isAdmin) {
+  // Check admin access for admin-only routes (support both props)
+  if ((adminOnly || requireAdmin) && !isAdmin) {
     console.log('Admin required but user is not admin, redirecting to dashboard');
     return <Navigate to="/dashboard" replace />;
   }
