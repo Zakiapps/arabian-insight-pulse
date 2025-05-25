@@ -12,7 +12,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useAuth } from "@/contexts/AuthContext";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import EnhancedTextAnalyzer from "@/components/analysis/EnhancedTextAnalyzer";
+import ImprovedTextAnalyzer from "@/components/analysis/ImprovedTextAnalyzer";
 import { motion, AnimatePresence } from "framer-motion";
 import {
   Upload as UploadIcon,
@@ -174,7 +174,7 @@ const ImprovedUpload = () => {
                 try {
                   const analysisResult = await analyzeText(item.content);
                   
-                  // Store in database
+                  // Store in analyzed_posts table instead of predictions
                   const { error: insertError } = await supabase
                     .from('analyzed_posts')
                     .insert({
@@ -182,7 +182,7 @@ const ImprovedUpload = () => {
                       content: item.content,
                       sentiment: analysisResult.sentiment,
                       sentiment_score: analysisResult.confidence,
-                      is_jordanian_dialect: analysisResult.dialect === 'jordanian',
+                      is_jordanian_dialect: analysisResult.dialect === 'Jordanian',
                       source: item.source || 'csv_upload',
                       engagement_count: item.engagement_count ? parseInt(item.engagement_count) : null
                     });
@@ -413,7 +413,7 @@ const ImprovedUpload = () => {
         </TabsList>
 
         <TabsContent value="text" className="mt-8">
-          <EnhancedTextAnalyzer />
+          <ImprovedTextAnalyzer />
         </TabsContent>
 
         <TabsContent value="bulk" className="mt-8">

@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -43,24 +44,33 @@ export const useAdminUsers = () => {
         return;
       }
 
-      // Combine the data with proper typing
-      const combinedUsers: User[] = profilesData.map((profile: ProfileData) => {
-        const authUser = authData.users.find(u => u.id === profile.id);
-        const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
-        
-        return {
-          id: profile.id,
-          email: authUser?.email || '',
-          full_name: profile.full_name || '',
-          role: profile.role,
-          subscription_plan: profile.subscription_plan || 'free',
-          avatar_url: profile.avatar_url || undefined,
-          created_at: profile.created_at,
-          last_sign_in_at: authUser?.last_sign_in_at,
-          is_online: isOnline,
-          payment_methods_count: 0 // Will be updated separately if needed
-        };
-      });
+      // Check if authData exists and has users array
+      if (!authData?.users || !Array.isArray(authData.users)) {
+        console.warn('No auth users found');
+        setUsers([]);
+        return;
+      }
+
+      // Combine the data with proper typing and validation
+      const combinedUsers: User[] = profilesData
+        .filter((profile): profile is ProfileData => profile && typeof profile.id === 'string')
+        .map((profile: ProfileData) => {
+          const authUser = authData.users.find(u => u.id === profile.id);
+          const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
+          
+          return {
+            id: profile.id,
+            email: authUser?.email || '',
+            full_name: profile.full_name || '',
+            role: profile.role,
+            subscription_plan: profile.subscription_plan || 'free',
+            avatar_url: profile.avatar_url || undefined,
+            created_at: profile.created_at,
+            last_sign_in_at: authUser?.last_sign_in_at,
+            is_online: isOnline,
+            payment_methods_count: 0 // Will be updated separately if needed
+          };
+        });
 
       setUsers(combinedUsers);
     } catch (error: any) {
