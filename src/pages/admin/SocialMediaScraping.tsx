@@ -1,29 +1,15 @@
-
-import React, { useState, useEffect } from 'react';
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { useState, useEffect } from 'react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { Badge } from "@/components/ui/badge";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
+import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
+import { Textarea } from "@/components/ui/textarea";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
-import { 
-  Play, 
-  Pause, 
-  Plus, 
-  Settings, 
-  Trash2, 
-  Activity, 
-  Database,
-  Download,
-  RefreshCw
-} from "lucide-react";
 import { supabase } from '@/integrations/supabase/client';
-import { FluidContainer, ModernLayout, ModernGrid } from '@/components/layouts/ModernLayout';
-import { ModernButton } from '@/components/ui/modern-button';
+import { Plus, Trash2, Settings, Play, Pause } from 'lucide-react';
 
 interface ScrapingConfig {
   id: string;
@@ -32,14 +18,13 @@ interface ScrapingConfig {
   hashtags?: string[];
   location_filters?: string[];
   is_active: boolean;
-  last_scrape_at?: string;
   created_at: string;
+  last_scrape_at?: string;
 }
 
 const SocialMediaScraping = () => {
   const [configs, setConfigs] = useState<ScrapingConfig[]>([]);
   const [loading, setLoading] = useState(true);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [newConfig, setNewConfig] = useState({
     platform: 'twitter',
     search_terms: '',
@@ -48,35 +33,38 @@ const SocialMediaScraping = () => {
     is_active: true
   });
 
+  useEffect(() => {
+    fetchConfigs();
+  }, []);
+
   const fetchConfigs = async () => {
     try {
       setLoading(true);
+      
+      // Fetch scraping configs directly without joins to avoid RLS issues
       const { data, error } = await supabase
         .from('scraping_configs')
         .select('*')
         .order('created_at', { ascending: false });
 
-      if (error) {
-        console.error('Error fetching scraping configs:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       setConfigs(data || []);
     } catch (error: any) {
       console.error('Error fetching configs:', error);
-      toast.error('خطأ في جلب إعدادات الاستخراج: ' + (error.message || 'خطأ غير معروف'));
+      toast.error('خطأ في جلب إعدادات الاستخراج');
     } finally {
       setLoading(false);
     }
   };
 
   const createConfig = async () => {
-    try {
-      if (!newConfig.search_terms.trim()) {
-        toast.error('يرجى إدخال كلمات البحث');
-        return;
-      }
+    if (!newConfig.search_terms.trim()) {
+      toast.error('يرجى إدخال كلمات البحث');
+      return;
+    }
 
+    try {
       const { error } = await supabase
         .from('scraping_configs')
         .insert({
@@ -87,13 +75,9 @@ const SocialMediaScraping = () => {
           is_active: newConfig.is_active
         });
 
-      if (error) {
-        console.error('Error creating config:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('تم إنشاء إعداد الاستخراج بنجاح');
-      setIsCreateDialogOpen(false);
       setNewConfig({
         platform: 'twitter',
         search_terms: '',
@@ -104,7 +88,7 @@ const SocialMediaScraping = () => {
       fetchConfigs();
     } catch (error: any) {
       console.error('Error creating config:', error);
-      toast.error('خطأ في إنشاء إعداد الاستخراج: ' + (error.message || 'خطأ غير معروف'));
+      toast.error('خطأ في إنشاء إعداد الاستخراج');
     }
   };
 
@@ -112,19 +96,16 @@ const SocialMediaScraping = () => {
     try {
       const { error } = await supabase
         .from('scraping_configs')
-        .update({ is_active: !isActive })
+        .update({ is_active: isActive })
         .eq('id', configId);
 
-      if (error) {
-        console.error('Error toggling config:', error);
-        throw error;
-      }
+      if (error) throw error;
 
-      toast.success(isActive ? 'تم إيقاف الاستخراج' : 'تم تفعيل الاستخراج');
+      toast.success(isActive ? 'تم تفعيل الاستخراج' : 'تم إيقاف الاستخراج');
       fetchConfigs();
     } catch (error: any) {
       console.error('Error toggling config:', error);
-      toast.error('خطأ في تغيير حالة الاستخراج');
+      toast.error('خطأ في تحديث حالة الاستخراج');
     }
   };
 
@@ -139,10 +120,7 @@ const SocialMediaScraping = () => {
         .delete()
         .eq('id', configId);
 
-      if (error) {
-        console.error('Error deleting config:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('تم حذف الإعداد بنجاح');
       fetchConfigs();
@@ -152,238 +130,207 @@ const SocialMediaScraping = () => {
     }
   };
 
-  useEffect(() => {
-    fetchConfigs();
-  }, []);
+  const startScraping = async (configId: string) => {
+    try {
+      const { error } = await supabase.functions.invoke('scrape-social-media', {
+        body: { config_id: configId }
+      });
+
+      if (error) throw error;
+
+      toast.success('تم بدء عملية الاستخراج');
+    } catch (error: any) {
+      console.error('Error starting scraping:', error);
+      toast.error('خطأ في بدء الاستخراج');
+    }
+  };
 
   if (loading) {
     return (
-      <FluidContainer>
-        <div className="flex items-center justify-center min-h-64">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-primary"></div>
-        </div>
-      </FluidContainer>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
+      </div>
     );
   }
 
   return (
-    <FluidContainer>
-      <ModernLayout spacing="lg">
-        {/* Header */}
-        <div className="flex items-center justify-between" dir="rtl">
-          <div>
-            <h1 className="text-3xl font-bold flex items-center gap-3">
-              <Activity className="h-8 w-8 text-primary" />
-              استخراج وسائل التواصل الاجتماعي
-            </h1>
-            <p className="text-muted-foreground mt-2">إدارة وتكوين استخراج المحتوى من منصات التواصل الاجتماعي</p>
-          </div>
-          
-          <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
-            <DialogTrigger asChild>
-              <ModernButton className="shadow-lg">
-                <Plus className="h-5 w-5 ml-2" />
-                إضافة إعداد جديد
-              </ModernButton>
-            </DialogTrigger>
-            <DialogContent className="max-w-md" dir="rtl">
-              <DialogHeader>
-                <DialogTitle className="flex items-center gap-3">
-                  <Plus className="h-5 w-5" />
-                  إعداد استخراج جديد
-                </DialogTitle>
-              </DialogHeader>
-              <div className="space-y-4 mt-4">
-                <div>
-                  <Label>المنصة</Label>
-                  <Select value={newConfig.platform} onValueChange={(value) => setNewConfig(prev => ({ ...prev, platform: value }))}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="twitter">تويتر</SelectItem>
-                      <SelectItem value="facebook">فيسبوك</SelectItem>
-                      <SelectItem value="instagram">إنستغرام</SelectItem>
-                      <SelectItem value="youtube">يوتيوب</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                <div>
-                  <Label>كلمات البحث (مفصولة بفواصل)</Label>
-                  <Input
-                    value={newConfig.search_terms}
-                    onChange={(e) => setNewConfig(prev => ({ ...prev, search_terms: e.target.value }))}
-                    placeholder="الأردن، عمان، السياسة"
-                  />
-                </div>
-                <div>
-                  <Label>الهاشتاجز (اختيارية)</Label>
-                  <Input
-                    value={newConfig.hashtags}
-                    onChange={(e) => setNewConfig(prev => ({ ...prev, hashtags: e.target.value }))}
-                    placeholder="#الأردن، #عمان، #السياسة"
-                  />
-                </div>
-                <div>
-                  <Label>فلاتر المواقع (اختيارية)</Label>
-                  <Input
-                    value={newConfig.location_filters}
-                    onChange={(e) => setNewConfig(prev => ({ ...prev, location_filters: e.target.value }))}
-                    placeholder="عمان، الأردن، الزرقاء"
-                  />
-                </div>
-                <div className="flex items-center space-x-2">
-                  <Switch
-                    checked={newConfig.is_active}
-                    onCheckedChange={(checked) => setNewConfig(prev => ({ ...prev, is_active: checked }))}
-                  />
-                  <Label>تفعيل الاستخراج</Label>
-                </div>
-                <div className="flex gap-3 pt-4">
-                  <ModernButton onClick={createConfig} className="flex-1">
-                    إنشاء الإعداد
-                  </ModernButton>
-                  <ModernButton variant="outline" onClick={() => setIsCreateDialogOpen(false)} className="flex-1">
-                    إلغاء
-                  </ModernButton>
-                </div>
-              </div>
-            </DialogContent>
-          </Dialog>
-        </div>
+    <div className="space-y-6">
+      <div>
+        <h1 className="text-3xl font-bold">استخراج وسائل التواصل الاجتماعي</h1>
+        <p className="text-muted-foreground">إدارة إعدادات استخراج البيانات من المنصات الاجتماعية</p>
+      </div>
 
-        {/* Statistics */}
-        <ModernGrid cols={4}>
-          <Card className="border-0 bg-gradient-to-br from-blue-50 to-blue-100">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-blue-600">إجمالي الإعدادات</p>
-                  <p className="text-3xl font-bold text-blue-900">{configs.length}</p>
-                </div>
-                <Settings className="h-8 w-8 text-blue-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 bg-gradient-to-br from-green-50 to-green-100">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-green-600">الإعدادات النشطة</p>
-                  <p className="text-3xl font-bold text-green-900">{configs.filter(c => c.is_active).length}</p>
-                </div>
-                <Play className="h-8 w-8 text-green-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 bg-gradient-to-br from-purple-50 to-purple-100">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-purple-600">المنصات المدعومة</p>
-                  <p className="text-3xl font-bold text-purple-900">4</p>
-                </div>
-                <Database className="h-8 w-8 text-purple-500" />
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-0 bg-gradient-to-br from-orange-50 to-orange-100">
-            <CardContent className="p-6">
-              <div className="flex items-center justify-between">
-                <div>
-                  <p className="text-sm font-medium text-orange-600">آخر استخراج</p>
-                  <p className="text-sm font-bold text-orange-900">منذ ساعة</p>
-                </div>
-                <RefreshCw className="h-8 w-8 text-orange-500" />
-              </div>
-            </CardContent>
-          </Card>
-        </ModernGrid>
-
-        {/* Configs Table */}
-        <Card className="border-0 shadow-lg">
-          <CardHeader>
-            <CardTitle className="text-right" dir="rtl">
-              إعدادات الاستخراج ({configs.length})
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="text-right" dir="rtl">
-                    <TableHead className="text-right">المنصة</TableHead>
-                    <TableHead className="text-right">كلمات البحث</TableHead>
-                    <TableHead className="text-right">الحالة</TableHead>
-                    <TableHead className="text-right">آخر استخراج</TableHead>
-                    <TableHead className="text-right">الإجراءات</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {configs.map((config) => (
-                    <TableRow key={config.id} className="hover:bg-muted/50">
-                      <TableCell>
-                        <Badge variant="outline">
-                          {config.platform === 'twitter' ? 'تويتر' : 
-                           config.platform === 'facebook' ? 'فيسبوك' :
-                           config.platform === 'instagram' ? 'إنستغرام' :
-                           config.platform === 'youtube' ? 'يوتيوب' : config.platform}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="max-w-xs">
-                          {config.search_terms.slice(0, 3).join(', ')}
-                          {config.search_terms.length > 3 && '...'}
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <div className={`h-2 w-2 rounded-full ${config.is_active ? 'bg-green-500' : 'bg-gray-300'}`} />
-                          <span className="text-sm">
-                            {config.is_active ? 'نشط' : 'متوقف'}
-                          </span>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <span className="text-sm text-muted-foreground">
-                          {config.last_scrape_at ? 
-                            new Date(config.last_scrape_at).toLocaleString('ar-SA') : 
-                            'لم يتم بعد'
-                          }
-                        </span>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => toggleConfig(config.id, config.is_active)}
-                          >
-                            {config.is_active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
-                          </Button>
-                          
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => deleteConfig(config.id)}
-                            className="text-red-600 hover:text-red-700 hover:bg-red-50"
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+      {/* Create New Config */}
+      <Card>
+        <CardHeader>
+          <CardTitle>إنشاء إعداد جديد</CardTitle>
+          <CardDescription>أضف إعداد جديد لاستخراج البيانات من المنصات الاجتماعية</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label htmlFor="platform">المنصة</Label>
+              <Select value={newConfig.platform} onValueChange={(value) => setNewConfig(prev => ({ ...prev, platform: value }))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="twitter">تويتر</SelectItem>
+                  <SelectItem value="facebook">فيسبوك</SelectItem>
+                  <SelectItem value="instagram">إنستغرام</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
-          </CardContent>
-        </Card>
-      </ModernLayout>
-    </FluidContainer>
+
+            <div>
+              <Label htmlFor="search_terms">كلمات البحث (مفصولة بفواصل)</Label>
+              <Input
+                id="search_terms"
+                value={newConfig.search_terms}
+                onChange={(e) => setNewConfig(prev => ({ ...prev, search_terms: e.target.value }))}
+                placeholder="الأردن، عمان، السياسة"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="hashtags">الهاشتاغات (مفصولة بفواصل)</Label>
+              <Input
+                id="hashtags"
+                value={newConfig.hashtags}
+                onChange={(e) => setNewConfig(prev => ({ ...prev, hashtags: e.target.value }))}
+                placeholder="#الأردن، #عمان، #السياسة"
+              />
+            </div>
+
+            <div>
+              <Label htmlFor="location_filters">فلاتر الموقع (مفصولة بفواصل)</Label>
+              <Input
+                id="location_filters"
+                value={newConfig.location_filters}
+                onChange={(e) => setNewConfig(prev => ({ ...prev, location_filters: e.target.value }))}
+                placeholder="عمان، الأردن، إربد"
+              />
+            </div>
+          </div>
+
+          <div className="flex items-center space-x-2">
+            <Switch
+              id="is_active"
+              checked={newConfig.is_active}
+              onCheckedChange={(checked) => setNewConfig(prev => ({ ...prev, is_active: checked }))}
+            />
+            <Label htmlFor="is_active">تفعيل الاستخراج</Label>
+          </div>
+
+          <Button onClick={createConfig} className="w-full">
+            <Plus className="h-4 w-4 mr-2" />
+            إنشاء إعداد الاستخراج
+          </Button>
+        </CardContent>
+      </Card>
+
+      {/* Existing Configs */}
+      <Card>
+        <CardHeader>
+          <CardTitle>إعدادات الاستخراج الحالية</CardTitle>
+          <CardDescription>إدارة إعدادات الاستخراج الموجودة</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {configs.length === 0 ? (
+            <div className="text-center py-8 text-muted-foreground">
+              لا توجد إعدادات استخراج
+            </div>
+          ) : (
+            <div className="space-y-4">
+              {configs.map((config) => (
+                <div key={config.id} className="border rounded-lg p-4">
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium capitalize">{config.platform}</h3>
+                      <Badge variant={config.is_active ? "default" : "secondary"}>
+                        {config.is_active ? "نشط" : "متوقف"}
+                      </Badge>
+                    </div>
+                    <div className="flex gap-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => startScraping(config.id)}
+                        disabled={!config.is_active}
+                      >
+                        <Play className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => toggleConfig(config.id, !config.is_active)}
+                      >
+                        {config.is_active ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
+                      </Button>
+                      <Button
+                        variant="destructive"
+                        size="sm"
+                        onClick={() => deleteConfig(config.id)}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-4 text-sm">
+                    <div>
+                      <span className="font-medium">كلمات البحث:</span>
+                      <div className="flex flex-wrap gap-1 mt-1">
+                        {config.search_terms.map((term, index) => (
+                          <Badge key={index} variant="outline" className="text-xs">
+                            {term}
+                          </Badge>
+                        ))}
+                      </div>
+                    </div>
+
+                    {config.hashtags && config.hashtags.length > 0 && (
+                      <div>
+                        <span className="font-medium">الهاشتاغات:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {config.hashtags.map((tag, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              #{tag}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+
+                    {config.location_filters && config.location_filters.length > 0 && (
+                      <div>
+                        <span className="font-medium">المواقع:</span>
+                        <div className="flex flex-wrap gap-1 mt-1">
+                          {config.location_filters.map((location, index) => (
+                            <Badge key={index} variant="outline" className="text-xs">
+                              {location}
+                            </Badge>
+                          ))}
+                        </div>
+                      </div>
+                    )}
+                  </div>
+
+                  <div className="mt-4 text-xs text-muted-foreground">
+                    تم الإنشاء: {new Date(config.created_at).toLocaleString('ar-SA')}
+                    {config.last_scrape_at && (
+                      <span className="ml-4">
+                        آخر استخراج: {new Date(config.last_scrape_at).toLocaleString('ar-SA')}
+                      </span>
+                    )}
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 };
 

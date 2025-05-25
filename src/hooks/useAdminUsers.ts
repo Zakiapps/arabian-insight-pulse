@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -12,7 +11,7 @@ export const useAdminUsers = () => {
     try {
       setLoading(true);
       
-      // Get profiles data
+      // Get profiles data with explicit typing
       const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -25,45 +24,66 @@ export const useAdminUsers = () => {
         `)
         .returns<ProfileData[]>();
 
-      if (profilesError) {
-        console.error('Error fetching profiles:', profilesError);
-        throw profilesError;
-      }
+      if (profilesError) throw profilesError;
 
-      if (!profilesData || !Array.isArray(profilesData)) {
-        console.warn('No profiles found');
-        setUsers([]);
-        return;
-      }
+      // Get auth data separately
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
+      
+      if (authError) throw authError;
 
-      // Get online status
+      // Get online status separately
       const { data: sessionsData } = await supabase
         .from('user_sessions')
         .select('user_id, is_online')
         .eq('is_online', true);
 
-      // Transform profiles to users
-      const usersList: User[] = profilesData.map((profile: ProfileData) => {
+      // Ensure we have valid data before mapping
+      if (!profilesData || !Array.isArray(profilesData) || profilesData.length === 0) {
+        setUsers([]);
+        return;
+      }
+
+      // Check if authData exists and has users array
+      if (!authData?.users || !Array.isArray(authData.users)) {
+        console.warn('No auth users found');
+        setUsers([]);
+        return;
+      }
+
+      // Combine the data with proper typing and validation
+      const validProfiles: ProfileData[] = profilesData.filter((profile): profile is ProfileData => {
+        return profile !== null && 
+               profile !== undefined && 
+               typeof profile === 'object' &&
+               'id' in profile &&
+               typeof profile.id === 'string' &&
+               profile.id.length > 0;
+      });
+
+      const combinedUsers: User[] = validProfiles.map((profile: ProfileData) => {
+        // Ensure authData.users is typed properly
+        const authUsers = authData.users as Array<{ id: string; email?: string; last_sign_in_at?: string }>;
+        const authUser = authUsers.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
         return {
           id: profile.id,
-          email: profile.id, // Using ID as email placeholder
+          email: authUser?.email || '',
           full_name: profile.full_name || '',
           role: profile.role,
           subscription_plan: profile.subscription_plan || 'free',
           avatar_url: profile.avatar_url || undefined,
           created_at: profile.created_at,
-          last_sign_in_at: undefined,
+          last_sign_in_at: authUser?.last_sign_in_at,
           is_online: isOnline,
-          payment_methods_count: 0
+          payment_methods_count: 0 // Will be updated separately if needed
         };
       });
 
-      setUsers(usersList);
+      setUsers(combinedUsers);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-      toast.error('خطأ في تحميل بيانات المستخدمين: ' + (error.message || 'خطأ غير معروف'));
+      toast.error('خطأ في تحميل بيانات المستخدمين');
     } finally {
       setLoading(false);
     }
@@ -83,21 +103,14 @@ export const useAdminUsers = () => {
         role_param: newUser.role
       });
 
-      if (error) {
-        console.error('Error creating user:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('تم إنشاء المستخدم بنجاح');
       fetchUsers();
       return true;
     } catch (error: any) {
       console.error('Error creating user:', error);
-      if (error.message.includes('already exists')) {
-        toast.error('المستخدم موجود بالفعل');
-      } else {
-        toast.error('خطأ في إنشاء المستخدم: ' + (error.message || 'خطأ غير معروف'));
-      }
+      toast.error('خطأ في إنشاء المستخدم: ' + error.message);
       return false;
     }
   };
@@ -109,16 +122,13 @@ export const useAdminUsers = () => {
         new_role: newRole
       });
 
-      if (error) {
-        console.error('Error updating user role:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('تم تحديث دور المستخدم بنجاح');
       fetchUsers();
     } catch (error: any) {
       console.error('Error updating user role:', error);
-      toast.error('خطأ في تحديث دور المستخدم: ' + (error.message || 'خطأ غير معروف'));
+      toast.error('خطأ في تحديث دور المستخدم');
     }
   };
 
@@ -132,16 +142,13 @@ export const useAdminUsers = () => {
         user_id_param: userId
       });
 
-      if (error) {
-        console.error('Error deleting user:', error);
-        throw error;
-      }
+      if (error) throw error;
 
       toast.success('تم حذف المستخدم بنجاح');
       fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error('خطأ في حذف المستخدم: ' + (error.message || 'خطأ غير معروف'));
+      toast.error('خطأ في حذف المستخدم');
     }
   };
 
