@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -101,7 +100,23 @@ const UserManagement = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      // Call the admin_create_user function
+      // First check if a profile with this email already exists
+      const { data: existingProfile, error: profileCheckError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', data.email)
+        .single();
+
+      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
+        throw profileCheckError;
+      }
+
+      if (existingProfile) {
+        toast.error('مستخدم بهذا البريد الإلكتروني موجود بالفعل');
+        return;
+      }
+
+      // Call the admin_create_user function if no existing profile found
       const { data: result, error } = await supabase.rpc('admin_create_user', {
         email_param: data.email,
         password_param: data.password || 'temp123456',
