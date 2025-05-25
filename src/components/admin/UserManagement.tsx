@@ -1,4 +1,3 @@
-
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
@@ -21,7 +20,7 @@ const userFormSchema = z.object({
   role: z.enum(["user", "admin"], {
     required_error: "يجب اختيار دور المستخدم",
   }),
-  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل").optional(),
+  password: z.string().min(6, "كلمة المرور يجب أن تكون 6 أحرف على الأقل"),
 });
 
 type UserFormData = z.infer<typeof userFormSchema>;
@@ -63,7 +62,6 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Get profiles with user data
       const { data: profiles, error: profilesError } = await supabase
         .from('profiles')
         .select(`
@@ -75,10 +73,9 @@ const UserManagement = () => {
 
       if (profilesError) throw profilesError;
 
-      // Transform profiles to user objects
       const usersList: User[] = (profiles || []).map(profile => ({
         id: profile.id,
-        email: profile.id, // We'll show the ID as email placeholder
+        email: profile.id,
         created_at: profile.created_at,
         profile: {
           full_name: profile.full_name || '',
@@ -101,15 +98,31 @@ const UserManagement = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      // Call the admin_create_user function
-      const { data: result, error } = await supabase.rpc('admin_create_user', {
-        email_param: data.email,
-        password_param: data.password || 'temp123456',
-        full_name_param: data.full_name,
-        role_param: data.role
+      // First create the user in Auth
+      const { data: authData, error: authError } = await supabase.auth.signUp({
+        email: data.email,
+        password: data.password,
+        options: {
+          data: {
+            full_name: data.full_name,
+            role: data.role,
+          }
+        }
       });
 
-      if (error) throw error;
+      if (authError) throw authError;
+      if (!authData.user) throw new Error('Failed to create user');
+
+      // Create the profile using the new user's ID
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .insert({
+          id: authData.user.id,
+          full_name: data.full_name,
+          role: data.role,
+        });
+
+      if (profileError) throw profileError;
 
       toast.success('تم إنشاء المستخدم بنجاح');
       setIsDialogOpen(false);
@@ -125,7 +138,6 @@ const UserManagement = () => {
     if (!editingUser) return;
 
     try {
-      // Update profile
       const { error: profileError } = await supabase
         .from('profiles')
         .update({
@@ -151,12 +163,15 @@ const UserManagement = () => {
     if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) return;
 
     try {
-      // Call the admin_delete_user function
-      const { error } = await supabase.rpc('admin_delete_user', {
-        user_id_param: userId
-      });
+      const { error: authError } = await supabase.auth.admin.deleteUser(userId);
+      if (authError) throw authError;
 
-      if (error) throw error;
+      const { error: profileError } = await supabase
+        .from('profiles')
+        .delete()
+        .eq('id', userId);
+      
+      if (profileError) throw profileError;
 
       toast.success('تم حذف المستخدم بنجاح');
       fetchUsers();
@@ -267,9 +282,9 @@ const UserManagement = () => {
                     name="password"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>كلمة المرور (اختيارية)</FormLabel>
+                        <FormLabel>كلمة المرور</FormLabel>
                         <FormControl>
-                          <Input type="password" {...field} placeholder="كلمة مرور مؤقتة" />
+                          <Input type="password" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
