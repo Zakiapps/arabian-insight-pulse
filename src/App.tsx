@@ -1,6 +1,7 @@
 
 import React from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { Toaster } from 'sonner';
 import { ThemeProvider } from '@/contexts/ThemeContext';
 import { LanguageProvider } from '@/contexts/LanguageContext';
@@ -41,6 +42,16 @@ import SocialMediaScraping from '@/pages/admin/SocialMediaScraping';
 // Feature Pages
 import TextAnalysis from '@/pages/features/TextAnalysis';
 import SocialMediaAnalysis from '@/pages/features/SocialMediaAnalysis';
+
+// Create a new QueryClient instance
+const queryClient = new QueryClient({
+  defaultOptions: {
+    queries: {
+      retry: 1,
+      refetchOnWindowFocus: false,
+    },
+  },
+});
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -105,71 +116,73 @@ const PublicRoute = ({ children }: { children: React.ReactNode }) => {
 
 function App() {
   return (
-    <ThemeProvider defaultTheme="light">
-      <LanguageProvider>
-        <AuthProvider>
-          <Router>
-            <Toaster position="top-center" richColors />
-            <Routes>
-              {/* Public Routes - redirect to dashboard if authenticated */}
-              <Route path="/" element={
-                <PublicRoute>
-                  <MainLayout />
-                </PublicRoute>
-              }>
-                <Route index element={<Home />} />
-                <Route path="pricing" element={<Pricing />} />
-                <Route path="text-analysis" element={<TextAnalysis />} />
-              </Route>
+    <QueryClientProvider client={queryClient}>
+      <ThemeProvider defaultTheme="light">
+        <LanguageProvider>
+          <AuthProvider>
+            <Router>
+              <Toaster position="top-center" richColors />
+              <Routes>
+                {/* Public Routes - redirect to dashboard if authenticated */}
+                <Route path="/" element={
+                  <PublicRoute>
+                    <MainLayout />
+                  </PublicRoute>
+                }>
+                  <Route index element={<Home />} />
+                  <Route path="pricing" element={<Pricing />} />
+                  <Route path="text-analysis" element={<TextAnalysis />} />
+                </Route>
 
-              {/* Auth Routes - redirect to dashboard if authenticated */}
-              <Route path="/" element={
-                <PublicRoute>
-                  <AuthLayout />
-                </PublicRoute>
-              }>
-                <Route path="login" element={<Login />} />
-                <Route path="register" element={<Register />} />
-                <Route path="forgot-password" element={<ForgotPassword />} />
-                <Route path="reset-password" element={<ResetPassword />} />
-              </Route>
+                {/* Auth Routes - redirect to dashboard if authenticated */}
+                <Route path="/" element={
+                  <PublicRoute>
+                    <AuthLayout />
+                  </PublicRoute>
+                }>
+                  <Route path="login" element={<Login />} />
+                  <Route path="register" element={<Register />} />
+                  <Route path="forgot-password" element={<ForgotPassword />} />
+                  <Route path="reset-password" element={<ResetPassword />} />
+                </Route>
 
-              {/* Protected Dashboard Routes */}
-              <Route path="/dashboard" element={
-                <ProtectedRoute>
-                  <DashboardLayout />
-                </ProtectedRoute>
-              }>
-                <Route index element={<Dashboard />} />
-                <Route path="posts" element={<Posts />} />
-                <Route path="upload" element={<Upload />} />
-                <Route path="reports" element={<Reports />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="sentiment-analysis" element={<SentimentAnalysis />} />
-                <Route path="social-media-analysis" element={<SocialMediaAnalysis />} />
-              </Route>
+                {/* Protected Dashboard Routes */}
+                <Route path="/dashboard" element={
+                  <ProtectedRoute>
+                    <DashboardLayout />
+                  </ProtectedRoute>
+                }>
+                  <Route index element={<Dashboard />} />
+                  <Route path="posts" element={<Posts />} />
+                  <Route path="upload" element={<Upload />} />
+                  <Route path="reports" element={<Reports />} />
+                  <Route path="settings" element={<Settings />} />
+                  <Route path="profile" element={<Profile />} />
+                  <Route path="sentiment-analysis" element={<SentimentAnalysis />} />
+                  <Route path="social-media-analysis" element={<SocialMediaAnalysis />} />
+                </Route>
 
-              {/* Admin Routes */}
-              <Route path="/admin" element={
-                <AdminRoute>
-                  <AdminLayout />
-                </AdminRoute>
-              }>
-                <Route index element={<ModernAdminDashboard />} />
-                <Route path="control-panel" element={<AdminControlPanel />} />
-                <Route path="users" element={<AdminUsers />} />
-                <Route path="users-management" element={<AdminUsersManagement />} />
-                <Route path="social-media-scraping" element={<SocialMediaScraping />} />
-              </Route>
+                {/* Admin Routes */}
+                <Route path="/admin" element={
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
+                }>
+                  <Route index element={<ModernAdminDashboard />} />
+                  <Route path="control-panel" element={<AdminControlPanel />} />
+                  <Route path="users" element={<AdminUsers />} />
+                  <Route path="users-management" element={<AdminUsersManagement />} />
+                  <Route path="social-media-scraping" element={<SocialMediaScraping />} />
+                </Route>
 
-              {/* 404 Route */}
-              <Route path="*" element={<NotFound />} />
-            </Routes>
-          </Router>
-        </AuthProvider>
-      </LanguageProvider>
-    </ThemeProvider>
+                {/* 404 Route */}
+                <Route path="*" element={<NotFound />} />
+              </Routes>
+            </Router>
+          </AuthProvider>
+        </LanguageProvider>
+      </ThemeProvider>
+    </QueryClientProvider>
   );
 }
 
