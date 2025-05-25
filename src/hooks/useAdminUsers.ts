@@ -51,15 +51,16 @@ export const useAdminUsers = () => {
       }
 
       // Combine the data with proper typing and validation
-      const validProfiles = profilesData.filter((profile): profile is ProfileData => {
+      const validProfiles: ProfileData[] = profilesData.filter((profile): profile is ProfileData => {
         return profile !== null && 
                profile !== undefined && 
                typeof profile === 'object' &&
+               'id' in profile &&
                typeof profile.id === 'string' &&
                profile.id.length > 0;
       });
 
-      const combinedUsers: User[] = validProfiles.map((profile) => {
+      const combinedUsers: User[] = validProfiles.map((profile: ProfileData) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
