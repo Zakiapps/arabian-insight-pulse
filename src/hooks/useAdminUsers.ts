@@ -22,8 +22,7 @@ export const useAdminUsers = () => {
           subscription_plan,
           avatar_url,
           created_at
-        `)
-        .returns<ProfileData[]>();
+        `);
 
       if (profilesError) throw profilesError;
 
@@ -38,7 +37,7 @@ export const useAdminUsers = () => {
         .select('user_id, is_online')
         .eq('is_online', true);
 
-      // Combine the data with proper typing
+      // Combine the data with proper typing - ensure profilesData is not null
       const combinedUsers: User[] = (profilesData || []).map((profile) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
