@@ -36,9 +36,14 @@ export const useAdminUsers = () => {
         .select('user_id, is_online')
         .eq('is_online', true);
 
+      // Ensure we have valid data before mapping
+      if (!profilesData) {
+        setUsers([]);
+        return;
+      }
+
       // Type the profilesData explicitly and combine the data
-      const typedProfilesData = profilesData as ProfileData[];
-      const combinedUsers: User[] = (typedProfilesData || []).map((profile) => {
+      const combinedUsers: User[] = profilesData.map((profile: ProfileData) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
