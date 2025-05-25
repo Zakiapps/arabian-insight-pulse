@@ -10,19 +10,33 @@ export const dashboardRoutes = {
   alerts: '/dashboard/alerts',
   settings: '/dashboard/settings',
   
-  // Analytics pages
+  // Analytics pages - أدوات التحليل
   sentiment: '/dashboard/sentiment',
   categories: '/dashboard/categories',
   platforms: '/dashboard/platforms',
   topics: '/dashboard/topics',
   dialects: '/dashboard/dialects',
   
+  // Additional analysis tools
+  sentimentAnalysis: '/dashboard/sentiment-analysis',
+  categoryDistribution: '/dashboard/category-distribution',
+  platformDistribution: '/dashboard/platform-distribution',
+  topTopics: '/dashboard/top-topics',
+  dialectDetection: '/dashboard/dialect-detection',
+  
   // Admin routes
   adminUsers: '/admin/users',
   adminPlans: '/admin/plans',
   adminSubscriptions: '/admin/subscriptions',
   adminTransactions: '/admin/transactions',
-  adminSettings: '/admin/settings'
+  adminSettings: '/admin/settings',
+  
+  // Public routes
+  home: '/',
+  textAnalysis: '/text-analysis',
+  login: '/login',
+  register: '/register',
+  pricing: '/pricing'
 } as const;
 
 export type DashboardRoute = typeof dashboardRoutes[keyof typeof dashboardRoutes];
@@ -30,3 +44,37 @@ export type DashboardRoute = typeof dashboardRoutes[keyof typeof dashboardRoutes
 export const isValidRoute = (path: string): path is DashboardRoute => {
   return Object.values(dashboardRoutes).includes(path as DashboardRoute);
 };
+
+// Analysis tools navigation helper
+export const analysisTools = [
+  {
+    title: 'تحليل المشاعر',
+    description: 'تحليل مفصل لمشاعر المنشورات',
+    route: dashboardRoutes.sentimentAnalysis,
+    icon: 'TrendingUp'
+  },
+  {
+    title: 'توزيع الفئات',
+    description: 'تصنيف المحتوى حسب الفئات',
+    route: dashboardRoutes.categoryDistribution,
+    icon: 'BarChart3'
+  },
+  {
+    title: 'توزيع المنصات',
+    description: 'تحليل البيانات حسب المنصة',
+    route: dashboardRoutes.platformDistribution,
+    icon: 'Globe'
+  },
+  {
+    title: 'أهم المواضيع',
+    description: 'اكتشاف المواضيع الرائجة',
+    route: dashboardRoutes.topTopics,
+    icon: 'MessageSquare'
+  },
+  {
+    title: 'كشف اللهجة',
+    description: 'تمييز اللهجة الأردنية',
+    route: dashboardRoutes.dialectDetection,
+    icon: 'Languages'
+  }
+];
