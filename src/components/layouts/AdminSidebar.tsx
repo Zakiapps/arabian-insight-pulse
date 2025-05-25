@@ -24,7 +24,6 @@ import {
   CreditCard as PaymentCardIcon,
   Shield,
   BarChart3,
-  Rss,
 } from "lucide-react";
 import { useAuth } from "@/contexts/AuthContext";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -46,11 +45,6 @@ const AdminSidebar = () => {
       title: "إدارة المستخدمين",
       url: "/admin/users",
       icon: Users2,
-    },
-    {
-      title: "مراقبة التواصل",
-      url: "/admin/social-media-scraping",
-      icon: Rss,
     },
     {
       title: "خطط الاشتراك",

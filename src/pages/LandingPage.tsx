@@ -1,9 +1,8 @@
-
-import React, { useEffect } from 'react';
+import React, { useEffect, lazy, Suspense } from 'react';
 import { Link } from 'react-router-dom';
 import { 
-  BarChart3, ArrowLeft, 
-  ArrowRight, Check, Users, MessageSquare,
+  BarChart3, ChevronLeft, ChevronRight, ArrowLeft, 
+  ArrowRight, Check, ExternalLink, Users, MessageSquare,
   TrendingUp, Globe, Languages, Bell, Shield, Zap,
   Target, Eye, Heart, Share2, FileText, Upload,
   Star, Award, Sparkles, Brain, Lightbulb, Clock
@@ -14,6 +13,9 @@ import { Badge } from '@/components/ui/badge';
 import { useAuth } from '@/contexts/AuthContext';
 import { motion } from 'framer-motion';
 import SoundEffects from '@/components/landing/SoundEffects';
+
+// Lazy load the 3D scene component for better performance
+const ThreeDScene = lazy(() => import('@/components/landing/ThreeDScene'));
 
 const LandingPage = () => {
   const { isAuthenticated } = useAuth();
@@ -89,6 +91,52 @@ const LandingPage = () => {
     { number: "99.9%", label: "دقة التحليل", icon: Target }
   ];
 
+  const pricingPlans = [
+    {
+      name: "المجاني",
+      price: "0",
+      period: "شهرياً",
+      features: [
+        "100 تحليل شهرياً",
+        "تحليل المشاعر الأساسي",
+        "كشف اللهجة الأردنية",
+        "تقارير أساسية"
+      ],
+      buttonText: "ابدأ مجاناً",
+      popular: false
+    },
+    {
+      name: "المحترف",
+      price: "99",
+      period: "شهرياً",
+      features: [
+        "10,000 تحليل شهرياً",
+        "تحليل متقدم للمشاعر",
+        "كشف جميع اللهجات العربية",
+        "تنبيهات ذكية",
+        "تقارير مفصلة",
+        "دعم فني متقدم"
+      ],
+      buttonText: "اشترك الآن",
+      popular: true
+    },
+    {
+      name: "المؤسسي",
+      price: "299",
+      period: "شهرياً",
+      features: [
+        "تحليل غير محدود",
+        "جميع الميزات المتقدمة",
+        "واجهة برمجة تطبيقات",
+        "تكامل مخصص",
+        "مدير حساب مخصص",
+        "دعم 24/7"
+      ],
+      buttonText: "تواصل معنا",
+      popular: false
+    }
+  ];
+
   const testimonials = [
     {
       name: "أحمد محمد",
@@ -162,10 +210,10 @@ const LandingPage = () => {
             ) : (
               <div className="flex items-center gap-4">
                 <motion.div whileHover={{ scale: 1.05 }}>
-                  <Link to="/login" className="font-medium transition-colors hover:text-primary">تسجيل الدخول</Link>
+                  <Link to="/signin" className="font-medium transition-colors hover:text-primary">تسجيل الدخول</Link>
                 </motion.div>
                 <motion.div whileHover={{ scale: 1.05 }}>
-                  <Link to="/register">
+                  <Link to="/signup">
                     <Button className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 shadow-lg">إنشاء حساب</Button>
                   </Link>
                 </motion.div>
@@ -235,7 +283,7 @@ const LandingPage = () => {
                       </Button>
                     </Link>
                   ) : (
-                    <Link to="/register">
+                    <Link to="/signup">
                       <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl">
                         ابدأ التحليل مجاناً
                         <Sparkles className="ml-2 h-5 w-5" />
@@ -479,7 +527,7 @@ const LandingPage = () => {
                   </Button>
                 </Link>
               ) : (
-                <Link to="/register">
+                <Link to="/signup">
                   <Button size="lg" variant="secondary" className="text-lg px-10 py-6 group shadow-xl">
                     ابدأ التحليل مجاناً
                     <Sparkles className="ml-2 h-5 w-5 group-hover:scale-110 transition-transform" />

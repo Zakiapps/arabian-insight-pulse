@@ -25,7 +25,7 @@ const Navbar = () => {
   const handleSignOut = async () => {
     try {
       await logout();
-      navigate('/login'); // تصحيح: استخدام /login بدلاً من /
+      navigate('/');
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -74,10 +74,6 @@ const Navbar = () => {
             <DropdownMenuItem onClick={() => navigate('/dashboard/analysis-settings')}>
               <Settings className="mr-2 h-4 w-4" />
               إعدادات التحليل
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/pricing')}>
-              <Settings className="mr-2 h-4 w-4" />
-              خطط الاشتراك
             </DropdownMenuItem>
             <DropdownMenuSeparator />
             <DropdownMenuItem onClick={handleSignOut}>

@@ -8,7 +8,7 @@ export const useAuthNavigation = () => {
 
   const logout = async () => {
     await authLogout();
-    navigate('/login'); // تصحيح: استخدام /login بدلاً من /login
+    navigate('/login');
   };
 
   const redirectToDashboard = () => {
@@ -16,7 +16,7 @@ export const useAuthNavigation = () => {
   };
 
   const redirectToLogin = () => {
-    navigate('/login'); // تصحيح: استخدام /login
+    navigate('/login');
   };
 
   return {

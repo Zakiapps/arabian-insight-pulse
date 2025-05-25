@@ -9,42 +9,6 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
-      alert_subscriptions: {
-        Row: {
-          category: string
-          created_at: string | null
-          email: string
-          frequency: string
-          id: string
-          is_active: boolean | null
-          last_sent_at: string | null
-          updated_at: string | null
-          user_id: string
-        }
-        Insert: {
-          category: string
-          created_at?: string | null
-          email: string
-          frequency: string
-          id?: string
-          is_active?: boolean | null
-          last_sent_at?: string | null
-          updated_at?: string | null
-          user_id: string
-        }
-        Update: {
-          category?: string
-          created_at?: string | null
-          email?: string
-          frequency?: string
-          id?: string
-          is_active?: boolean | null
-          last_sent_at?: string | null
-          updated_at?: string | null
-          user_id?: string
-        }
-        Relationships: []
-      }
       analysis_settings: {
         Row: {
           accuracy_level: string | null
@@ -52,9 +16,7 @@ export type Database = {
           created_at: string
           dialect_detection_enabled: boolean | null
           email_notifications: boolean | null
-          enable_advanced_analytics: boolean | null
           id: string
-          language_preference: string | null
           sentiment_threshold: number | null
           updated_at: string
           user_id: string
@@ -65,9 +27,7 @@ export type Database = {
           created_at?: string
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
-          enable_advanced_analytics?: boolean | null
           id?: string
-          language_preference?: string | null
           sentiment_threshold?: number | null
           updated_at?: string
           user_id: string
@@ -78,9 +38,7 @@ export type Database = {
           created_at?: string
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
-          enable_advanced_analytics?: boolean | null
           id?: string
-          language_preference?: string | null
           sentiment_threshold?: number | null
           updated_at?: string
           user_id?: string
@@ -272,54 +230,6 @@ export type Database = {
         }
         Relationships: []
       }
-      pricing_plans: {
-        Row: {
-          advanced_analytics: boolean | null
-          created_at: string | null
-          description: string | null
-          features: Json
-          id: string
-          is_active: boolean | null
-          is_popular: boolean | null
-          max_posts_per_month: number | null
-          max_scraping_sources: number | null
-          name: string
-          price_monthly: number
-          price_yearly: number
-          priority_support: boolean | null
-        }
-        Insert: {
-          advanced_analytics?: boolean | null
-          created_at?: string | null
-          description?: string | null
-          features?: Json
-          id?: string
-          is_active?: boolean | null
-          is_popular?: boolean | null
-          max_posts_per_month?: number | null
-          max_scraping_sources?: number | null
-          name: string
-          price_monthly: number
-          price_yearly: number
-          priority_support?: boolean | null
-        }
-        Update: {
-          advanced_analytics?: boolean | null
-          created_at?: string | null
-          description?: string | null
-          features?: Json
-          id?: string
-          is_active?: boolean | null
-          is_popular?: boolean | null
-          max_posts_per_month?: number | null
-          max_scraping_sources?: number | null
-          name?: string
-          price_monthly?: number
-          price_yearly?: number
-          priority_support?: boolean | null
-        }
-        Relationships: []
-      }
       profiles: {
         Row: {
           avatar_url: string | null
@@ -347,156 +257,6 @@ export type Database = {
           role?: string
           subscription_plan?: string | null
           updated_at?: string
-        }
-        Relationships: []
-      }
-      scraped_posts: {
-        Row: {
-          author_handle: string | null
-          author_name: string | null
-          category: string
-          comments_count: number | null
-          confidence: number | null
-          content: string
-          created_at: string | null
-          engagement_count: number | null
-          hashtags: string[] | null
-          id: string
-          is_jordanian_dialect: boolean | null
-          is_viral: boolean | null
-          likes_count: number | null
-          location: string | null
-          platform: string
-          post_id: string
-          post_url: string | null
-          raw_data: Json | null
-          scraped_at: string | null
-          sentiment: string | null
-          sentiment_score: number | null
-          shares_count: number | null
-        }
-        Insert: {
-          author_handle?: string | null
-          author_name?: string | null
-          category: string
-          comments_count?: number | null
-          confidence?: number | null
-          content: string
-          created_at?: string | null
-          engagement_count?: number | null
-          hashtags?: string[] | null
-          id?: string
-          is_jordanian_dialect?: boolean | null
-          is_viral?: boolean | null
-          likes_count?: number | null
-          location?: string | null
-          platform: string
-          post_id: string
-          post_url?: string | null
-          raw_data?: Json | null
-          scraped_at?: string | null
-          sentiment?: string | null
-          sentiment_score?: number | null
-          shares_count?: number | null
-        }
-        Update: {
-          author_handle?: string | null
-          author_name?: string | null
-          category?: string
-          comments_count?: number | null
-          confidence?: number | null
-          content?: string
-          created_at?: string | null
-          engagement_count?: number | null
-          hashtags?: string[] | null
-          id?: string
-          is_jordanian_dialect?: boolean | null
-          is_viral?: boolean | null
-          likes_count?: number | null
-          location?: string | null
-          platform?: string
-          post_id?: string
-          post_url?: string | null
-          raw_data?: Json | null
-          scraped_at?: string | null
-          sentiment?: string | null
-          sentiment_score?: number | null
-          shares_count?: number | null
-        }
-        Relationships: []
-      }
-      scraping_configs: {
-        Row: {
-          created_at: string | null
-          hashtags: string[] | null
-          id: string
-          is_active: boolean | null
-          last_scrape_at: string | null
-          location_filters: string[] | null
-          platform: string
-          search_terms: string[]
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform: string
-          search_terms: string[]
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform?: string
-          search_terms?: string[]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
-      scraping_settings: {
-        Row: {
-          created_at: string | null
-          hashtags: string[] | null
-          id: string
-          is_active: boolean | null
-          last_scrape_at: string | null
-          location_filters: string[] | null
-          platform: string
-          scraping_interval: number | null
-          search_terms: string[]
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform: string
-          scraping_interval?: number | null
-          search_terms: string[]
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform?: string
-          scraping_interval?: number | null
-          search_terms?: string[]
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -530,90 +290,6 @@ export type Database = {
           id?: string
           updated_at?: string
           user_id?: string
-        }
-        Relationships: []
-      }
-      social_media_posts: {
-        Row: {
-          author_handle: string | null
-          author_name: string | null
-          category: string | null
-          comments_count: number | null
-          confidence: number | null
-          content: string
-          created_at: string | null
-          engagement_count: number | null
-          hashtags: string[] | null
-          id: string
-          is_duplicate: boolean | null
-          is_jordanian_dialect: boolean | null
-          is_spam: boolean | null
-          is_viral: boolean | null
-          likes_count: number | null
-          location: string | null
-          platform: string
-          post_id: string
-          post_url: string | null
-          raw_data: Json | null
-          scraped_at: string | null
-          sentiment: string | null
-          sentiment_score: number | null
-          shares_count: number | null
-          updated_at: string | null
-        }
-        Insert: {
-          author_handle?: string | null
-          author_name?: string | null
-          category?: string | null
-          comments_count?: number | null
-          confidence?: number | null
-          content: string
-          created_at?: string | null
-          engagement_count?: number | null
-          hashtags?: string[] | null
-          id?: string
-          is_duplicate?: boolean | null
-          is_jordanian_dialect?: boolean | null
-          is_spam?: boolean | null
-          is_viral?: boolean | null
-          likes_count?: number | null
-          location?: string | null
-          platform: string
-          post_id: string
-          post_url?: string | null
-          raw_data?: Json | null
-          scraped_at?: string | null
-          sentiment?: string | null
-          sentiment_score?: number | null
-          shares_count?: number | null
-          updated_at?: string | null
-        }
-        Update: {
-          author_handle?: string | null
-          author_name?: string | null
-          category?: string | null
-          comments_count?: number | null
-          confidence?: number | null
-          content?: string
-          created_at?: string | null
-          engagement_count?: number | null
-          hashtags?: string[] | null
-          id?: string
-          is_duplicate?: boolean | null
-          is_jordanian_dialect?: boolean | null
-          is_spam?: boolean | null
-          is_viral?: boolean | null
-          likes_count?: number | null
-          location?: string | null
-          platform?: string
-          post_id?: string
-          post_url?: string | null
-          raw_data?: Json | null
-          scraped_at?: string | null
-          sentiment?: string | null
-          sentiment_score?: number | null
-          shares_count?: number | null
-          updated_at?: string | null
         }
         Relationships: []
       }
@@ -696,30 +372,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      system_settings: {
-        Row: {
-          created_at: string | null
-          id: string
-          setting_key: string
-          setting_value: Json
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          setting_key: string
-          setting_value: Json
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          setting_key?: string
-          setting_value?: Json
-          updated_at?: string | null
-        }
-        Relationships: []
       }
       task_history: {
         Row: {
@@ -806,36 +458,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
-      }
-      usage_stats: {
-        Row: {
-          created_at: string | null
-          id: string
-          last_reset_date: string | null
-          posts_analyzed_this_month: number | null
-          scraping_sources_used: number | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          id?: string
-          last_reset_date?: string | null
-          posts_analyzed_this_month?: number | null
-          scraping_sources_used?: number | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          id?: string
-          last_reset_date?: string | null
-          posts_analyzed_this_month?: number | null
-          scraping_sources_used?: number | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
       }
       user_alerts: {
         Row: {
@@ -978,53 +600,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_subscriptions: {
-        Row: {
-          created_at: string | null
-          current_period_end: string | null
-          current_period_start: string | null
-          id: string
-          plan_id: string | null
-          status: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id?: string | null
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id?: string | null
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_subscriptions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "pricing_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -1046,14 +621,6 @@ export type Database = {
       admin_update_user_role: {
         Args: { user_id_param: string; new_role: string }
         Returns: undefined
-      }
-      categorize_jordanian_post: {
-        Args: { content: string }
-        Returns: string
-      }
-      categorize_post: {
-        Args: { content: string }
-        Returns: string
       }
       cleanup_old_notifications: {
         Args: Record<PropertyKey, never>
@@ -1080,10 +647,6 @@ export type Database = {
           action_url_param?: string
         }
         Returns: string
-      }
-      detect_jordanian_dialect_enhanced: {
-        Args: { content: string }
-        Returns: boolean
       }
       get_active_subscription_count: {
         Args: Record<PropertyKey, never>
@@ -1126,16 +689,8 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
-      is_post_viral: {
-        Args: { engagement_count: number; platform: string }
-        Returns: boolean
-      }
       mark_notification_read: {
         Args: { notification_id_param: string }
-        Returns: undefined
-      }
-      update_monthly_usage: {
-        Args: { user_id_param: string }
         Returns: undefined
       }
       update_user_session_status: {

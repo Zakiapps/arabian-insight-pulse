@@ -1,334 +1,420 @@
 
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Button } from "@/components/ui/button";
+import { ButtonRTL } from "@/components/ui/button-rtl";
+import { Badge } from "@/components/ui/badge";
+import { Separator } from "@/components/ui/separator";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Slider } from "@/components/ui/slider";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
+import { useLanguage } from "@/contexts/LanguageContext";
+import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useTaskHistory } from "@/hooks/useTaskHistory";
+import { useNotifications } from "@/hooks/useNotifications";
 import { toast } from "sonner";
-import { Settings, BarChart3, Globe, Bell, Zap } from 'lucide-react';
-import { useAuth } from '@/contexts/AuthContext';
-import { analysisSettingsService } from '@/services/analysisSettingsService';
+import {
+  Settings,
+  Brain,
+  Globe,
+  Tag,
+  Eye,
+  Save,
+  RotateCcw,
+  Zap,
+  Shield,
+  Target,
+  Bell
+} from "lucide-react";
 
 const AnalysisSettings = () => {
-  const { user } = useAuth();
+  const { isRTL } = useLanguage();
+  const { profile } = useAuth();
+  const { startTask, completeTask } = useTaskHistory();
+  const { createNotification } = useNotifications();
   const [loading, setLoading] = useState(false);
   const [settings, setSettings] = useState({
-    sentiment_threshold: 0.7,
-    dialect_detection_enabled: true,
+    accuracy_level: "advanced",
+    dialect_detection: true,
     auto_categorization: true,
-    email_notifications: false,
-    accuracy_level: 'advanced',
-    language_preference: 'ar',
-    enable_advanced_analytics: false
+    sentiment_threshold: 0.7,
+    email_notifications: false
   });
 
   useEffect(() => {
-    if (user) {
-      loadSettings();
-    }
-  }, [user]);
+    fetchSettings();
+  }, []);
 
-  const loadSettings = async () => {
-    if (!user) return;
-    
+  const fetchSettings = async () => {
     try {
-      setLoading(true);
-      const userSettings = await analysisSettingsService.getUserSettings(user.id);
-      
-      if (userSettings) {
-        setSettings(userSettings);
+      const { data, error } = await supabase
+        .from('analysis_settings')
+        .select('*')
+        .eq('user_id', profile?.id)
+        .single();
+
+      if (error && error.code !== 'PGRST116') {
+        throw error;
       }
-    } catch (error: any) {
-      console.error('Error loading settings:', error);
-      if (error.message && !error.message.includes('PGRST116')) {
-        toast.error('خطأ في تحميل الإعدادات');
+
+      if (data) {
+        setSettings({
+          accuracy_level: data.accuracy_level || "advanced",
+          dialect_detection: data.dialect_detection_enabled || true,
+          auto_categorization: data.auto_categorization || true,
+          sentiment_threshold: data.sentiment_threshold || 0.7,
+          email_notifications: data.email_notifications || false
+        });
       }
-    } finally {
-      setLoading(false);
+    } catch (error) {
+      console.error('Error fetching settings:', error);
     }
   };
 
   const saveSettings = async () => {
-    if (!user) return;
+    if (!profile?.id) return;
 
+    setLoading(true);
+    const taskId = await startTask('settings', 'حفظ إعدادات التحليل', settings);
+    
     try {
-      setLoading(true);
-      await analysisSettingsService.createOrUpdateSettings(user.id, settings);
-      toast.success('تم حفظ الإعدادات بنجاح');
-    } catch (error: any) {
+      const { error } = await supabase
+        .from('analysis_settings')
+        .upsert({
+          user_id: profile.id,
+          accuracy_level: settings.accuracy_level,
+          dialect_detection_enabled: settings.dialect_detection,
+          auto_categorization: settings.auto_categorization,
+          sentiment_threshold: settings.sentiment_threshold,
+          email_notifications: settings.email_notifications
+        });
+
+      if (error) throw error;
+      
+      await completeTask(taskId, { settings_saved: true });
+      toast.success("تم حفظ الإعدادات بنجاح");
+    } catch (error) {
       console.error('Error saving settings:', error);
-      toast.error('خطأ في حفظ الإعدادات');
+      await completeTask(taskId, null, 'فشل في حفظ الإعدادات');
+      toast.error("حدث خطأ أثناء حفظ الإعدادات");
     } finally {
       setLoading(false);
     }
   };
 
-  const getAccuracyLabel = (level: string) => {
-    switch (level) {
-      case 'basic': return 'أساسي';
-      case 'advanced': return 'متقدم';
-      case 'expert': return 'خبير';
-      default: return level;
-    }
-  };
-
-  const getAccuracyDescription = (level: string) => {
-    switch (level) {
-      case 'basic': return 'تحليل سريع مع دقة جيدة';
-      case 'advanced': return 'تحليل متوازن بين السرعة والدقة';
-      case 'expert': return 'تحليل عميق عالي الدقة';
-      default: return '';
+  const resetToDefaults = async () => {
+    const taskId = await startTask('settings', 'إعادة تعيين الإعدادات الافتراضية');
+    
+    try {
+      setSettings({
+        accuracy_level: "advanced",
+        dialect_detection: true,
+        auto_categorization: true,
+        sentiment_threshold: 0.7,
+        email_notifications: false
+      });
+      
+      await completeTask(taskId, { settings_reset: true });
+      await createNotification(
+        'إعادة تعيين الإعدادات',
+        'تم إعادة تعيين إعدادات التحليل إلى القيم الافتراضية',
+        'info'
+      );
+      toast.info("تم إعادة تعيين الإعدادات الافتراضية");
+    } catch (error) {
+      await completeTask(taskId, null, 'فشل في إعادة تعيين الإعدادات');
     }
   };
 
   return (
-    <div className="space-y-6">
-      <div>
-        <h1 className="text-3xl font-bold tracking-tight">إعدادات التحليل</h1>
+    <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
+      <div className="flex flex-col space-y-2">
+        <h1 className="text-3xl font-bold tracking-tight flex items-center gap-2">
+          <Settings className="h-8 w-8" />
+          إعدادات التحليل المتقدمة
+        </h1>
         <p className="text-muted-foreground">
-          تخصيص إعدادات تحليل المشاعر واللهجات
+          تخصيص خوارزميات التحليل وخيارات معالجة البيانات
         </p>
       </div>
 
-      <div className="grid gap-6 md:grid-cols-2">
-        {/* Sentiment Analysis Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <BarChart3 className="h-5 w-5" />
-              تحليل المشاعر
-            </CardTitle>
-            <CardDescription>
-              تكوين إعدادات تحليل المشاعر والدقة
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <Label htmlFor="sentiment-threshold">
-                عتبة الثقة في تحليل المشاعر: {Math.round(settings.sentiment_threshold * 100)}%
-              </Label>
-              <Slider
-                id="sentiment-threshold"
-                min={0.5}
-                max={0.95}
-                step={0.05}
-                value={[settings.sentiment_threshold]}
-                onValueChange={(value) => setSettings({ ...settings, sentiment_threshold: value[0] })}
-                className="w-full"
-              />
-              <p className="text-xs text-muted-foreground">
-                كلما زادت القيمة، زادت دقة التحليل وقلت حساسيته
-              </p>
-            </div>
-
-            <div className="space-y-3">
-              <Label htmlFor="accuracy-level">مستوى الدقة</Label>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Settings Panel */}
+        <div className="lg:col-span-2 space-y-6">
+          {/* Analysis Accuracy */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Brain className="h-5 w-5 text-primary" />
+                دقة التحليل
+              </CardTitle>
+              <CardDescription>
+                اختر مستوى دقة خوارزميات التحليل
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
               <Select 
                 value={settings.accuracy_level} 
-                onValueChange={(value) => setSettings({ ...settings, accuracy_level: value })}
+                onValueChange={(value) => setSettings({...settings, accuracy_level: value})}
               >
                 <SelectTrigger>
-                  <SelectValue />
+                  <SelectValue placeholder="اختر مستوى الدقة" />
                 </SelectTrigger>
                 <SelectContent>
-                  <SelectItem value="basic">
-                    <div className="flex flex-col items-start">
-                      <span>{getAccuracyLabel('basic')}</span>
-                      <span className="text-xs text-muted-foreground">{getAccuracyDescription('basic')}</span>
+                  <SelectItem value="normal">
+                    <div className="flex items-center gap-2">
+                      <Zap className="h-4 w-4" />
+                      عادي - سريع ومناسب للاستخدام العام
                     </div>
                   </SelectItem>
                   <SelectItem value="advanced">
-                    <div className="flex flex-col items-start">
-                      <span>{getAccuracyLabel('advanced')}</span>
-                      <span className="text-xs text-muted-foreground">{getAccuracyDescription('advanced')}</span>
+                    <div className="flex items-center gap-2">
+                      <Target className="h-4 w-4" />
+                      متقدم - توازن بين السرعة والدقة
                     </div>
                   </SelectItem>
-                  <SelectItem value="expert">
-                    <div className="flex flex-col items-start">
-                      <span>{getAccuracyLabel('expert')}</span>
-                      <span className="text-xs text-muted-foreground">{getAccuracyDescription('expert')}</span>
+                  <SelectItem value="precise">
+                    <div className="flex items-center gap-2">
+                      <Shield className="h-4 w-4" />
+                      دقيق - أعلى دقة للتحليل المتخصص
                     </div>
                   </SelectItem>
                 </SelectContent>
               </Select>
-            </div>
-
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="auto-categorization">التصنيف التلقائي</Label>
-                <p className="text-xs text-muted-foreground">
-                  تصنيف تلقائي للنصوص حسب الموضوع
-                </p>
+              
+              <div className="grid grid-cols-3 gap-4 text-sm">
+                <div className="p-3 rounded-lg bg-green-50 border border-green-200">
+                  <div className="font-medium text-green-800">عادي</div>
+                  <div className="text-green-600">سرعة عالية</div>
+                </div>
+                <div className="p-3 rounded-lg bg-blue-50 border border-blue-200">
+                  <div className="font-medium text-blue-800">متقدم</div>
+                  <div className="text-blue-600">مُوصى به</div>
+                </div>
+                <div className="p-3 rounded-lg bg-purple-50 border border-purple-200">
+                  <div className="font-medium text-purple-800">دقيق</div>
+                  <div className="text-purple-600">دقة قصوى</div>
+                </div>
               </div>
-              <Switch
-                id="auto-categorization"
-                checked={settings.auto_categorization}
-                onCheckedChange={(checked) => setSettings({ ...settings, auto_categorization: checked })}
-              />
-            </div>
-          </CardContent>
-        </Card>
+            </CardContent>
+          </Card>
 
-        {/* Dialect Detection Settings */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Globe className="h-5 w-5" />
-              كشف اللهجات
-            </CardTitle>
-            <CardDescription>
-              إعدادات كشف اللهجات العربية المختلفة
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="dialect-detection">تمكين كشف اللهجات</Label>
-                <p className="text-xs text-muted-foreground">
-                  كشف اللهجات العربية المختلفة في النصوص
-                </p>
-              </div>
-              <Switch
-                id="dialect-detection"
-                checked={settings.dialect_detection_enabled}
-                onCheckedChange={(checked) => setSettings({ ...settings, dialect_detection_enabled: checked })}
-              />
-            </div>
-
-            {settings.dialect_detection_enabled && (
-              <>
-                <div className="space-y-3">
-                  <Label>اللهجات المتاحة</Label>
-                  <div className="flex flex-wrap gap-2">
-                    <Badge variant="secondary">الأردنية</Badge>
-                    <Badge variant="outline">المصرية</Badge>
-                    <Badge variant="outline">الخليجية</Badge>
-                    <Badge variant="outline">الشامية</Badge>
-                    <Badge variant="outline">المغاربية</Badge>
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    حالياً: التركيز الأساسي على اللهجة الأردنية مع إمكانية توسيع التغطية
+          {/* Language & Dialect Settings */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Globe className="h-5 w-5 text-primary" />
+                إعدادات اللغة واللهجة
+              </CardTitle>
+              <CardDescription>
+                تخصيص خيارات كشف وتحليل اللهجة الأردنية
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="dialect-detection">كشف اللهجة الأردنية</Label>
+                  <p className="text-sm text-muted-foreground">
+                    تمكين خوارزمية كشف اللهجة الأردنية المتخصصة
                   </p>
                 </div>
-
-                <div className="flex items-center justify-between">
-                  <div className="space-y-0.5">
-                    <Label htmlFor="advanced-analytics">التحليل المتقدم للهجات</Label>
-                    <p className="text-xs text-muted-foreground">
-                      تحليل أعمق لخصائص اللهجة والنبرة
-                    </p>
+                <Switch
+                  id="dialect-detection"
+                  checked={settings.dialect_detection}
+                  onCheckedChange={(checked) => 
+                    setSettings({...settings, dialect_detection: checked})
+                  }
+                />
+              </div>
+              
+              {settings.dialect_detection && (
+                <div className="p-4 bg-blue-50 border border-blue-200 rounded-lg">
+                  <div className="flex items-center gap-2 mb-2">
+                    <Badge variant="default">مُفعّل</Badge>
+                    <span className="text-sm font-medium">خوارزمية اللهجة الأردنية نشطة</span>
                   </div>
-                  <Switch
-                    id="advanced-analytics"
-                    checked={settings.enable_advanced_analytics}
-                    onCheckedChange={(checked) => setSettings({ ...settings, enable_advanced_analytics: checked })}
-                  />
+                  <p className="text-sm text-blue-700">
+                    سيتم تحليل النصوص للتعرف على اللهجة الأردنية بدقة عالية
+                  </p>
                 </div>
-              </>
-            )}
-          </CardContent>
-        </Card>
+              )}
+            </CardContent>
+          </Card>
 
-        {/* Language and Notifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Settings className="h-5 w-5" />
-              الإعدادات العامة
-            </CardTitle>
-            <CardDescription>
-              إعدادات اللغة والواجهة
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="space-y-3">
-              <Label htmlFor="language-preference">لغة التحليل المفضلة</Label>
-              <Select 
-                value={settings.language_preference} 
-                onValueChange={(value) => setSettings({ ...settings, language_preference: value })}
-              >
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="ar">العربية</SelectItem>
-                  <SelectItem value="en">الإنجليزية</SelectItem>
-                  <SelectItem value="auto">اكتشاف تلقائي</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-          </CardContent>
-        </Card>
-
-        {/* Notifications */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Bell className="h-5 w-5" />
-              التنبيهات
-            </CardTitle>
-            <CardDescription>
-              إعدادات التنبيهات والإشعارات
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-6">
-            <div className="flex items-center justify-between">
-              <div className="space-y-0.5">
-                <Label htmlFor="email-notifications">تنبيهات البريد الإلكتروني</Label>
-                <p className="text-xs text-muted-foreground">
-                  إرسال تنبيهات عبر البريد الإلكتروني
-                </p>
+          {/* Auto Categorization */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Tag className="h-5 w-5 text-primary" />
+                التصنيف التلقائي
+              </CardTitle>
+              <CardDescription>
+                إعدادات تصنيف المحتوى والمواضيع تلقائياً
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="auto-categorization">تصنيف تلقائي للمواضيع</Label>
+                  <p className="text-sm text-muted-foreground">
+                    تصنيف المحتوى إلى فئات (سياسة، اقتصاد، رياضة، إلخ)
+                  </p>
+                </div>
+                <Switch
+                  id="auto-categorization"
+                  checked={settings.auto_categorization}
+                  onCheckedChange={(checked) => 
+                    setSettings({...settings, auto_categorization: checked})
+                  }
+                />
               </div>
-              <Switch
-                id="email-notifications"
-                checked={settings.email_notifications}
-                onCheckedChange={(checked) => setSettings({ ...settings, email_notifications: checked })}
-              />
-            </div>
 
-            <div className="space-y-3">
-              <Label>أنواع التنبيهات</Label>
-              <div className="space-y-2 text-sm text-muted-foreground">
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                  <span>اكتمال تحليل النصوص</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
-                  <span>تجاوز عتبات المشاعر</span>
-                </div>
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 bg-purple-500 rounded-full"></div>
-                  <span>كشف لهجات جديدة</span>
+              <div className="space-y-4">
+                <Label>عتبة دقة المشاعر: {Math.round(settings.sentiment_threshold * 100)}%</Label>
+                <Slider
+                  value={[settings.sentiment_threshold]}
+                  onValueChange={(value) => 
+                    setSettings({...settings, sentiment_threshold: value[0]})
+                  }
+                  max={1}
+                  min={0.1}
+                  step={0.1}
+                  className="w-full"
+                />
+                <div className="flex justify-between text-xs text-muted-foreground">
+                  <span>أقل دقة (10%)</span>
+                  <span>أعلى دقة (100%)</span>
                 </div>
               </div>
-            </div>
-          </CardContent>
-        </Card>
-      </div>
+            </CardContent>
+          </Card>
 
-      {/* Save Button */}
-      <div className="flex justify-end">
-        <Button 
-          onClick={saveSettings} 
-          disabled={loading}
-          className="flex items-center gap-2"
-        >
-          {loading ? (
-            <>
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
-              جاري الحفظ...
-            </>
-          ) : (
-            <>
-              <Zap className="h-4 w-4" />
-              حفظ الإعدادات
-            </>
-          )}
-        </Button>
+          {/* Notifications */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Bell className="h-5 w-5 text-primary" />
+                إعدادات التنبيهات
+              </CardTitle>
+              <CardDescription>
+                تخصيص تنبيهات البريد الإلكتروني والنظام
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="flex items-center justify-between">
+                <div className="space-y-1">
+                  <Label htmlFor="email-notifications">تنبيهات البريد الإلكتروني</Label>
+                  <p className="text-sm text-muted-foreground">
+                    استقبال تنبيهات عبر البريد الإلكتروني عند اكتمال التحليل
+                  </p>
+                </div>
+                <Switch
+                  id="email-notifications"
+                  checked={settings.email_notifications}
+                  onCheckedChange={(checked) => 
+                    setSettings({...settings, email_notifications: checked})
+                  }
+                />
+              </div>
+            </CardContent>
+          </Card>
+        </div>
+
+        {/* Preview Panel */}
+        <div className="space-y-6">
+          <Card>
+            <CardHeader>
+              <CardTitle className="flex items-center gap-2">
+                <Eye className="h-5 w-5" />
+                معاينة مباشرة
+              </CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-3">
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">دقة التحليل:</span>
+                  <Badge variant={settings.accuracy_level === 'precise' ? 'default' : 'secondary'}>
+                    {settings.accuracy_level === 'normal' ? 'عادي' : 
+                     settings.accuracy_level === 'advanced' ? 'متقدم' : 'دقيق'}
+                  </Badge>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">كشف اللهجة:</span>
+                  <Badge variant={settings.dialect_detection ? 'default' : 'secondary'}>
+                    {settings.dialect_detection ? 'مُفعّل' : 'معطل'}
+                  </Badge>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">التصنيف التلقائي:</span>
+                  <Badge variant={settings.auto_categorization ? 'default' : 'secondary'}>
+                    {settings.auto_categorization ? 'مُفعّل' : 'معطل'}
+                  </Badge>
+                </div>
+                
+                <div className="flex justify-between items-center">
+                  <span className="text-sm">عتبة المشاعر:</span>
+                  <Badge variant="outline">
+                    {Math.round(settings.sentiment_threshold * 100)}%
+                  </Badge>
+                </div>
+              </div>
+              
+              <Separator />
+              
+              <div className="p-3 bg-muted/30 rounded-lg">
+                <p className="text-xs text-muted-foreground mb-2">مثال على النتيجة:</p>
+                <div className="space-y-2">
+                  <div className="flex items-center gap-2">
+                    <Badge variant="default" className="text-xs">إيجابي</Badge>
+                    <span className="text-xs">المشاعر مكتشفة</span>
+                  </div>
+                  {settings.dialect_detection && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="secondary" className="text-xs">أردني</Badge>
+                      <span className="text-xs">اللهجة محددة</span>
+                    </div>
+                  )}
+                  {settings.auto_categorization && (
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className="text-xs">سياسة</Badge>
+                      <span className="text-xs">مصنف تلقائياً</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+            </CardContent>
+          </Card>
+
+          {/* Action Buttons */}
+          <div className="space-y-3">
+            <ButtonRTL 
+              onClick={saveSettings} 
+              disabled={loading}
+              className="w-full"
+            >
+              <Save className="h-4 w-4 mr-2" />
+              {loading ? "جاري الحفظ..." : "حفظ الإعدادات"}
+            </ButtonRTL>
+            
+            <ButtonRTL 
+              variant="outline" 
+              onClick={resetToDefaults}
+              className="w-full"
+            >
+              <RotateCcw className="h-4 w-4 mr-2" />
+              إعادة تعيين افتراضي
+            </ButtonRTL>
+          </div>
+        </div>
       </div>
     </div>
   );
