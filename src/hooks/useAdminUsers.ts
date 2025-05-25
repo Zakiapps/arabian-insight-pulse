@@ -61,7 +61,9 @@ export const useAdminUsers = () => {
       });
 
       const combinedUsers: User[] = validProfiles.map((profile: ProfileData) => {
-        const authUser = authData.users.find(u => u.id === profile.id);
+        // Ensure authData.users is typed properly
+        const authUsers = authData.users as Array<{ id: string; email?: string; last_sign_in_at?: string }>;
+        const authUser = authUsers.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
         return {
