@@ -146,16 +146,10 @@ async function scrapeFacebook(searchTerms: string[], hashtags: string[], locatio
   return mockPosts;
 }
 
-// Detect Jordanian dialect
-function detectJordanianDialect(text: string): boolean {
-  const jordanianWords = ['شو', 'كيفك', 'هيك', 'هادا', 'هاي', 'وين', 'ليش', 'منيح'];
-  return jordanianWords.some(word => text.includes(word));
-}
-
 // Check for duplicates
 async function isDuplicate(postId: string, platform: string): Promise<boolean> {
   const { data } = await supabase
-    .from('social_media_posts')
+    .from('scraped_posts')
     .select('id')
     .eq('post_id', postId)
     .eq('platform', platform)
@@ -167,10 +161,10 @@ async function isDuplicate(postId: string, platform: string): Promise<boolean> {
 // Save post to database
 async function savePost(post: SocialMediaPost, sentimentResult: any, category: string) {
   const isViral = post.engagement_count > (post.platform === 'twitter' ? 1000 : 500);
-  const isJordanianDialect = detectJordanianDialect(post.content);
+  const isJordanianDialect = await detectJordanianDialect(post.content);
 
   const { error } = await supabase
-    .from('social_media_posts')
+    .from('scraped_posts')
     .insert({
       platform: post.platform,
       post_id: post.post_id,
@@ -190,14 +184,24 @@ async function savePost(post: SocialMediaPost, sentimentResult: any, category: s
       shares_count: post.shares_count || 0,
       comments_count: post.comments_count || 0,
       is_viral: isViral,
-      is_duplicate: false,
-      is_spam: false,
       raw_data: post.raw_data
     });
 
   if (error) {
     console.error('Error saving post:', error);
   }
+}
+
+async function detectJordanianDialect(content: string): Promise<boolean> {
+  const { data, error } = await supabase
+    .rpc('detect_jordanian_dialect_enhanced', { content });
+  
+  if (error) {
+    console.error('Error detecting dialect:', error);
+    return false;
+  }
+  
+  return data || false;
 }
 
 const handler = async (req: Request): Promise<Response> => {
@@ -210,7 +214,7 @@ const handler = async (req: Request): Promise<Response> => {
 
     // Get scraping configurations
     const { data: configs, error: configError } = await supabase
-      .from('scraping_configs')
+      .from('scraping_settings')
       .select('*')
       .eq('is_active', true);
 
@@ -244,9 +248,9 @@ const handler = async (req: Request): Promise<Response> => {
         
         // Categorize post
         const { data: categoryData } = await supabase
-          .rpc('categorize_post', { content: post.content });
+          .rpc('categorize_jordanian_post', { content: post.content });
         
-        const category = categoryData || 'other';
+        const category = categoryData || 'general';
 
         // Save to database
         await savePost(post, sentimentResult, category);
@@ -257,7 +261,7 @@ const handler = async (req: Request): Promise<Response> => {
 
       // Update last scrape time
       await supabase
-        .from('scraping_configs')
+        .from('scraping_settings')
         .update({ last_scrape_at: new Date().toISOString() })
         .eq('id', config.id);
     }

@@ -1,7 +1,7 @@
 
-import { supabase } from '@/integrations/supabase/client';
+import { supabase } from "@/integrations/supabase/client";
 
-export interface SocialMediaPost {
+export interface ScrapedPost {
   id: string;
   platform: string;
   post_id: string;
@@ -12,7 +12,7 @@ export interface SocialMediaPost {
   location?: string;
   hashtags?: string[];
   category: string;
-  sentiment: string;
+  sentiment?: string;
   sentiment_score?: number;
   confidence?: number;
   is_jordanian_dialect?: boolean;
@@ -21,202 +21,200 @@ export interface SocialMediaPost {
   shares_count?: number;
   comments_count?: number;
   is_viral?: boolean;
-  scraped_at: string;
-  created_at: string;
+  scraped_at?: string;
+  created_at?: string;
+  raw_data?: any;
 }
 
-export interface AlertSubscription {
+export interface ScrapingConfig {
   id: string;
-  user_id: string;
-  category: string;
-  frequency: 'daily' | 'weekly' | 'urgent';
-  email: string;
+  platform: string;
+  search_terms: string[];
+  hashtags?: string[];
+  location_filters?: string[];
   is_active: boolean;
-  last_sent_at?: string;
+  scraping_interval?: number;
+  last_scrape_at?: string;
+  created_at?: string;
+  updated_at?: string;
 }
 
-export const socialMediaService = {
-  // Get social media posts with filters
+class SocialMediaService {
   async getPosts(filters?: {
     platform?: string;
     category?: string;
     sentiment?: string;
-    dateFrom?: string;
-    dateTo?: string;
+    is_jordanian_dialect?: boolean;
     limit?: number;
-  }): Promise<SocialMediaPost[]> {
+    offset?: number;
+  }): Promise<ScrapedPost[]> {
     let query = supabase
-      .from('social_media_posts')
+      .from('scraped_posts')
       .select('*')
       .order('scraped_at', { ascending: false });
 
     if (filters?.platform) {
       query = query.eq('platform', filters.platform);
     }
+    
     if (filters?.category) {
       query = query.eq('category', filters.category);
     }
+    
     if (filters?.sentiment) {
       query = query.eq('sentiment', filters.sentiment);
     }
-    if (filters?.dateFrom) {
-      query = query.gte('scraped_at', filters.dateFrom);
+    
+    if (filters?.is_jordanian_dialect !== undefined) {
+      query = query.eq('is_jordanian_dialect', filters.is_jordanian_dialect);
     }
-    if (filters?.dateTo) {
-      query = query.lte('scraped_at', filters.dateTo);
-    }
+    
     if (filters?.limit) {
       query = query.limit(filters.limit);
     }
+    
+    if (filters?.offset) {
+      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
+    }
 
     const { data, error } = await query;
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching posts:', error);
+      throw error;
+    }
+    
     return data || [];
-  },
+  }
 
-  // Get trending posts
-  async getTrendingPosts(timeframe: 'day' | 'week' = 'day'): Promise<SocialMediaPost[]> {
-    const hours = timeframe === 'day' ? 24 : 168;
-    const dateFrom = new Date(Date.now() - hours * 60 * 60 * 1000).toISOString();
-
+  async getPostStats() {
     const { data, error } = await supabase
-      .from('social_media_posts')
-      .select('*')
-      .eq('is_viral', true)
-      .gte('scraped_at', dateFrom)
-      .order('engagement_count', { ascending: false })
-      .limit(10);
-
-    if (error) throw error;
-    return data || [];
-  },
-
-  // Get sentiment statistics
-  async getSentimentStats(filters?: {
-    platform?: string;
-    category?: string;
-    dateFrom?: string;
-    dateTo?: string;
-  }) {
-    let query = supabase
-      .from('social_media_posts')
-      .select('sentiment, category, platform');
-
-    if (filters?.platform) {
-      query = query.eq('platform', filters.platform);
-    }
-    if (filters?.category) {
-      query = query.eq('category', filters.category);
-    }
-    if (filters?.dateFrom) {
-      query = query.gte('scraped_at', filters.dateFrom);
-    }
-    if (filters?.dateTo) {
-      query = query.lte('scraped_at', filters.dateTo);
-    }
-
-    const { data, error } = await query;
+      .from('scraped_posts')
+      .select('platform, category, sentiment, is_jordanian_dialect, is_viral');
     
-    if (error) throw error;
+    if (error) {
+      console.error('Error fetching post stats:', error);
+      throw error;
+    }
 
-    // Calculate statistics
     const stats = {
       total: data?.length || 0,
-      positive: data?.filter(post => post.sentiment === 'positive').length || 0,
-      negative: data?.filter(post => post.sentiment === 'negative').length || 0,
-      neutral: data?.filter(post => post.sentiment === 'neutral').length || 0,
-      byCategory: {} as Record<string, any>,
-      byPlatform: {} as Record<string, any>
+      byPlatform: {} as Record<string, number>,
+      byCategory: {} as Record<string, number>,
+      bySentiment: {} as Record<string, number>,
+      jordanianDialect: data?.filter(p => p.is_jordanian_dialect).length || 0,
+      viral: data?.filter(p => p.is_viral).length || 0
     };
 
-    // Group by category
-    const categories = ['economics', 'politics', 'sports', 'education', 'other'];
-    categories.forEach(category => {
-      const categoryPosts = data?.filter(post => post.category === category) || [];
-      stats.byCategory[category] = {
-        total: categoryPosts.length,
-        positive: categoryPosts.filter(post => post.sentiment === 'positive').length,
-        negative: categoryPosts.filter(post => post.sentiment === 'negative').length,
-        neutral: categoryPosts.filter(post => post.sentiment === 'neutral').length
-      };
-    });
-
-    // Group by platform
-    const platforms = ['twitter', 'facebook'];
-    platforms.forEach(platform => {
-      const platformPosts = data?.filter(post => post.platform === platform) || [];
-      stats.byPlatform[platform] = {
-        total: platformPosts.length,
-        positive: platformPosts.filter(post => post.sentiment === 'positive').length,
-        negative: platformPosts.filter(post => post.sentiment === 'negative').length,
-        neutral: platformPosts.filter(post => post.sentiment === 'neutral').length
-      };
+    data?.forEach(post => {
+      // Platform stats
+      stats.byPlatform[post.platform] = (stats.byPlatform[post.platform] || 0) + 1;
+      
+      // Category stats
+      stats.byCategory[post.category] = (stats.byCategory[post.category] || 0) + 1;
+      
+      // Sentiment stats
+      if (post.sentiment) {
+        stats.bySentiment[post.sentiment] = (stats.bySentiment[post.sentiment] || 0) + 1;
+      }
     });
 
     return stats;
-  },
+  }
 
-  // Manage alert subscriptions
-  async getAlertSubscriptions(userId: string): Promise<AlertSubscription[]> {
-    const { data, error } = await supabase
-      .from('alert_subscriptions')
-      .select('*')
-      .eq('user_id', userId)
-      .order('created_at', { ascending: false });
-
-    if (error) throw error;
-    
-    // Type cast the data to ensure frequency is properly typed
-    return (data || []).map(subscription => ({
-      ...subscription,
-      frequency: subscription.frequency as 'daily' | 'weekly' | 'urgent'
-    }));
-  },
-
-  async createAlertSubscription(subscription: Omit<AlertSubscription, 'id'>): Promise<void> {
-    const { error } = await supabase
-      .from('alert_subscriptions')
-      .insert(subscription);
-
-    if (error) throw error;
-  },
-
-  async updateAlertSubscription(id: string, updates: Partial<AlertSubscription>): Promise<void> {
-    const { error } = await supabase
-      .from('alert_subscriptions')
-      .update(updates)
-      .eq('id', id);
-
-    if (error) throw error;
-  },
-
-  async deleteAlertSubscription(id: string): Promise<void> {
-    const { error } = await supabase
-      .from('alert_subscriptions')
-      .delete()
-      .eq('id', id);
-
-    if (error) throw error;
-  },
-
-  // Trigger scraping
-  async triggerScraping(): Promise<{ processed: number }> {
+  async triggerScraping() {
     const { data, error } = await supabase.functions.invoke('scrape-social-media', {
       body: {}
     });
 
-    if (error) throw error;
-    return data;
-  },
+    if (error) {
+      console.error('Error triggering scraping:', error);
+      throw error;
+    }
 
-  // Send alerts
-  async sendAlerts(type: 'daily' | 'weekly' | 'urgent'): Promise<{ alerts_sent: number }> {
-    const { data, error } = await supabase.functions.invoke('send-alerts', {
-      body: { type }
-    });
-
-    if (error) throw error;
     return data;
   }
-};
+
+  async getScrapingConfigs(): Promise<ScrapingConfig[]> {
+    const { data, error } = await supabase
+      .from('scraping_settings')
+      .select('*')
+      .order('created_at', { ascending: false });
+
+    if (error) {
+      console.error('Error fetching scraping configs:', error);
+      throw error;
+    }
+
+    return data || [];
+  }
+
+  async createScrapingConfig(config: Omit<ScrapingConfig, 'id' | 'created_at' | 'updated_at'>) {
+    const { data, error } = await supabase
+      .from('scraping_settings')
+      .insert(config)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error creating scraping config:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async updateScrapingConfig(id: string, updates: Partial<ScrapingConfig>) {
+    const { data, error } = await supabase
+      .from('scraping_settings')
+      .update({ ...updates, updated_at: new Date().toISOString() })
+      .eq('id', id)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating scraping config:', error);
+      throw error;
+    }
+
+    return data;
+  }
+
+  async deleteScrapingConfig(id: string) {
+    const { error } = await supabase
+      .from('scraping_settings')
+      .delete()
+      .eq('id', id);
+
+    if (error) {
+      console.error('Error deleting scraping config:', error);
+      throw error;
+    }
+  }
+
+  async deletePosts(postIds: string[]) {
+    const { error } = await supabase
+      .from('scraped_posts')
+      .delete()
+      .in('id', postIds);
+
+    if (error) {
+      console.error('Error deleting posts:', error);
+      throw error;
+    }
+  }
+
+  async deleteAllPosts() {
+    const { error } = await supabase
+      .from('scraped_posts')
+      .delete()
+      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+
+    if (error) {
+      console.error('Error deleting all posts:', error);
+      throw error;
+    }
+  }
+}
+
+export const socialMediaService = new SocialMediaService();

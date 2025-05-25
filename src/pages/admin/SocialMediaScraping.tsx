@@ -9,43 +9,18 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { supabase } from "@/integrations/supabase/client";
+import { socialMediaService, type ScrapingConfig } from "@/services/socialMediaService";
 import { Play, Pause, Settings, Clock, TrendingUp, AlertTriangle, Activity, Plus, Edit, Trash2 } from "lucide-react";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { socialMediaService } from "@/services/socialMediaService";
-
-interface ScrapingConfig {
-  id: string;
-  platform: string;
-  search_terms: string[];
-  hashtags: string[];
-  location_filters: string[];
-  is_active: boolean;
-  last_scrape_at: string | null;
-  created_at: string;
-}
-
-interface AlertSubscription {
-  id: string;
-  user_id: string;
-  category: string;
-  frequency: 'daily' | 'weekly' | 'urgent';
-  email: string;
-  is_active: boolean;
-  last_sent_at: string | null;
-}
 
 const SocialMediaScraping = () => {
   const [configs, setConfigs] = useState<ScrapingConfig[]>([]);
-  const [posts, setPosts] = useState([]);
-  const [alerts, setAlerts] = useState<AlertSubscription[]>([]);
   const [loading, setLoading] = useState(false);
   const [scrapingActive, setScrapingActive] = useState(false);
   const [autoScraping, setAutoScraping] = useState(false);
   const [scrapingInterval, setScrapingInterval] = useState<NodeJS.Timeout | null>(null);
   const [isConfigDialogOpen, setIsConfigDialogOpen] = useState(false);
-  const [isAlertDialogOpen, setIsAlertDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<ScrapingConfig | null>(null);
   const [newConfig, setNewConfig] = useState({
     platform: 'twitter',
@@ -54,73 +29,36 @@ const SocialMediaScraping = () => {
     location_filters: '',
     is_active: true
   });
-  const [newAlert, setNewAlert] = useState({
-    category: 'economics',
-    frequency: 'daily' as 'daily' | 'weekly' | 'urgent',
-    email: ''
-  });
   const [stats, setStats] = useState({
     total: 0,
-    today: 0,
-    viral: 0,
-    positive: 0,
-    negative: 0,
-    neutral: 0
+    byPlatform: {} as Record<string, number>,
+    byCategory: {} as Record<string, number>,
+    bySentiment: {} as Record<string, number>,
+    jordanianDialect: 0,
+    viral: 0
   });
 
   useEffect(() => {
     fetchConfigs();
-    fetchPosts();
-    fetchAlerts();
+    fetchStats();
   }, []);
 
   const fetchConfigs = async () => {
     try {
-      const { data, error } = await supabase
-        .from('scraping_configs')
-        .select('*')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setConfigs(data || []);
+      const data = await socialMediaService.getScrapingConfigs();
+      setConfigs(data);
     } catch (error: any) {
       console.error('Error fetching configs:', error);
       toast.error('خطأ في جلب إعدادات الاستخراج');
     }
   };
 
-  const fetchPosts = async () => {
+  const fetchStats = async () => {
     try {
-      const postsData = await socialMediaService.getPosts({ limit: 50 });
-      setPosts(postsData);
-
-      // Calculate stats
-      const today = new Date().toISOString().split('T')[0];
-      const todayPosts = postsData.filter(post => 
-        post.scraped_at.startsWith(today)
-      );
-
-      setStats({
-        total: postsData.length,
-        today: todayPosts.length,
-        viral: postsData.filter(post => post.is_viral).length,
-        positive: postsData.filter(post => post.sentiment === 'positive').length,
-        negative: postsData.filter(post => post.sentiment === 'negative').length,
-        neutral: postsData.filter(post => post.sentiment === 'neutral').length
-      });
+      const statsData = await socialMediaService.getPostStats();
+      setStats(statsData);
     } catch (error: any) {
-      console.error('Error fetching posts:', error);
-      toast.error('خطأ في جلب المنشورات');
-    }
-  };
-
-  const fetchAlerts = async () => {
-    try {
-      // This would need to be implemented based on current user
-      // For now, we'll use a placeholder
-      setAlerts([]);
-    } catch (error: any) {
-      console.error('Error fetching alerts:', error);
+      console.error('Error fetching stats:', error);
     }
   };
 
@@ -129,7 +67,7 @@ const SocialMediaScraping = () => {
     try {
       const result = await socialMediaService.triggerScraping();
       toast.success(`تم معالجة ${result.processed} منشور بنجاح`);
-      fetchPosts();
+      fetchStats();
     } catch (error: any) {
       console.error('Error starting scraping:', error);
       toast.error('خطأ في بدء عملية الاستخراج');
@@ -167,17 +105,10 @@ const SocialMediaScraping = () => {
       };
 
       if (editingConfig) {
-        const { error } = await supabase
-          .from('scraping_configs')
-          .update(configData)
-          .eq('id', editingConfig.id);
-        if (error) throw error;
+        await socialMediaService.updateScrapingConfig(editingConfig.id, configData);
         toast.success('تم تحديث الإعدادات بنجاح');
       } else {
-        const { error } = await supabase
-          .from('scraping_configs')
-          .insert(configData);
-        if (error) throw error;
+        await socialMediaService.createScrapingConfig(configData);
         toast.success('تم إضافة الإعدادات بنجاح');
       }
 
@@ -199,11 +130,7 @@ const SocialMediaScraping = () => {
 
   const deleteConfig = async (id: string) => {
     try {
-      const { error } = await supabase
-        .from('scraping_configs')
-        .delete()
-        .eq('id', id);
-      if (error) throw error;
+      await socialMediaService.deleteScrapingConfig(id);
       toast.success('تم حذف الإعدادات بنجاح');
       fetchConfigs();
     } catch (error: any) {
@@ -212,13 +139,11 @@ const SocialMediaScraping = () => {
     }
   };
 
-  const toggleConfigStatus = async (id: string, currentStatus: boolean) => {
+  const toggleConfigStatus = async (config: ScrapingConfig) => {
     try {
-      const { error } = await supabase
-        .from('scraping_configs')
-        .update({ is_active: !currentStatus })
-        .eq('id', id);
-      if (error) throw error;
+      await socialMediaService.updateScrapingConfig(config.id, { 
+        is_active: !config.is_active 
+      });
       toast.success('تم تحديث حالة الإعدادات');
       fetchConfigs();
     } catch (error: any) {
@@ -227,32 +152,10 @@ const SocialMediaScraping = () => {
     }
   };
 
-  const sendTestAlert = async (type: 'daily' | 'weekly' | 'urgent') => {
-    try {
-      const result = await socialMediaService.sendAlerts(type);
-      toast.success(`تم إرسال ${result.alerts_sent} تنبيه`);
-    } catch (error: any) {
-      console.error('Error sending alerts:', error);
-      toast.error('خطأ في إرسال التنبيهات');
-    }
-  };
-
-  const getCategoryName = (category: string) => {
-    const categories: Record<string, string> = {
-      'economics': 'اقتصاد',
-      'politics': 'سياسة',
-      'sports': 'رياضة',
-      'education': 'تعليم',
-      'other': 'أخرى',
-      'all': 'جميع الفئات'
-    };
-    return categories[category] || category;
-  };
-
   return (
     <div className="space-y-6" dir="rtl">
       <div>
-        <h2 className="text-2xl font-bold">مراقبة وسائل التواصل الاجتماعي</h2>
+        <h2 className="text-2xl font-bold">إعدادات استخراج وسائل التواصل</h2>
         <p className="text-muted-foreground">إدارة استخراج المحتوى وتحليل المشاعر من المنصات الاجتماعية</p>
       </div>
 
@@ -270,11 +173,30 @@ const SocialMediaScraping = () => {
 
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">اليوم</CardTitle>
+            <CardTitle className="text-sm font-medium">تويتر</CardTitle>
             <Clock className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.today}</div>
+            <div className="text-2xl font-bold">{stats.byPlatform.twitter || 0}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">فيسبوك</CardTitle>
+            <Clock className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{stats.byPlatform.facebook || 0}</div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">لهجة أردنية</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-blue-600">{stats.jordanianDialect}</div>
           </CardContent>
         </Card>
 
@@ -284,7 +206,7 @@ const SocialMediaScraping = () => {
             <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{stats.viral}</div>
+            <div className="text-2xl font-bold text-red-600">{stats.viral}</div>
           </CardContent>
         </Card>
 
@@ -293,35 +215,16 @@ const SocialMediaScraping = () => {
             <CardTitle className="text-sm font-medium">إيجابي</CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-600">{stats.positive}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">سلبي</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-red-600">{stats.negative}</div>
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">محايد</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-gray-600">{stats.neutral}</div>
+            <div className="text-2xl font-bold text-green-600">{stats.bySentiment.positive || 0}</div>
           </CardContent>
         </Card>
       </div>
 
       <Tabs defaultValue="control" className="w-full">
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-3">
           <TabsTrigger value="control">لوحة التحكم</TabsTrigger>
           <TabsTrigger value="configs">إعدادات الاستخراج</TabsTrigger>
-          <TabsTrigger value="alerts">التنبيهات</TabsTrigger>
-          <TabsTrigger value="posts">المنشورات</TabsTrigger>
+          <TabsTrigger value="monitoring">المراقبة</TabsTrigger>
         </TabsList>
 
         <TabsContent value="control" className="space-y-4">
@@ -356,33 +259,6 @@ const SocialMediaScraping = () => {
                   {scrapingActive ? <Pause className="h-4 w-4" /> : <Play className="h-4 w-4" />}
                   {scrapingActive ? 'جاري الاستخراج...' : 'بدء الاستخراج'}
                 </Button>
-              </div>
-
-              <div className="border-t pt-4">
-                <h4 className="font-medium mb-2">إرسال تنبيهات تجريبية:</h4>
-                <div className="flex gap-2">
-                  <Button 
-                    variant="outline" 
-                    onClick={() => sendTestAlert('daily')}
-                    size="sm"
-                  >
-                    تنبيه يومي
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => sendTestAlert('weekly')}
-                    size="sm"
-                  >
-                    تنبيه أسبوعي
-                  </Button>
-                  <Button 
-                    variant="outline" 
-                    onClick={() => sendTestAlert('urgent')}
-                    size="sm"
-                  >
-                    تنبيه عاجل
-                  </Button>
-                </div>
               </div>
             </CardContent>
           </Card>
@@ -494,14 +370,14 @@ const SocialMediaScraping = () => {
                       </TableCell>
                       <TableCell>
                         <div className="max-w-xs truncate">
-                          {config.hashtags.join(', ') || 'لا يوجد'}
+                          {config.hashtags?.join(', ') || 'لا يوجد'}
                         </div>
                       </TableCell>
                       <TableCell>
                         <div className="flex items-center gap-2">
                           <Switch
                             checked={config.is_active}
-                            onCheckedChange={() => toggleConfigStatus(config.id, config.is_active)}
+                            onCheckedChange={() => toggleConfigStatus(config)}
                           />
                           <span className="text-sm">
                             {config.is_active ? 'نشط' : 'معطل'}
@@ -524,8 +400,8 @@ const SocialMediaScraping = () => {
                               setNewConfig({
                                 platform: config.platform,
                                 search_terms: config.search_terms.join(', '),
-                                hashtags: config.hashtags.join(', '),
-                                location_filters: config.location_filters.join(', '),
+                                hashtags: config.hashtags?.join(', ') || '',
+                                location_filters: config.location_filters?.join(', ') || '',
                                 is_active: config.is_active
                               });
                               setIsConfigDialogOpen(true);
@@ -550,31 +426,16 @@ const SocialMediaScraping = () => {
           </Card>
         </TabsContent>
 
-        <TabsContent value="alerts" className="space-y-4">
+        <TabsContent value="monitoring" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>إدارة التنبيهات</CardTitle>
-              <CardDescription>إعداد التنبيهات للمحتوى المهم</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="text-center py-8 text-muted-foreground">
-                <AlertTriangle className="h-12 w-12 mx-auto mb-4" />
-                <p>سيتم تطوير إدارة التنبيهات قريباً</p>
-              </div>
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="posts" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>المنشورات المستخرجة</CardTitle>
-              <CardDescription>عرض آخر المنشورات التي تم استخراجها وتحليلها</CardDescription>
+              <CardTitle>مراقبة المنشورات</CardTitle>
+              <CardDescription>عرض المنشورات المستخرجة وحذفها</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="text-center py-8 text-muted-foreground">
                 <Activity className="h-12 w-12 mx-auto mb-4" />
-                <p>انتقل إلى صفحة مراقبة وسائل التواصل لعرض المنشورات</p>
+                <p>انتقل إلى صفحة المراقبة لعرض وإدارة المنشورات</p>
                 <Button variant="outline" className="mt-4" onClick={() => window.location.href = '/admin'}>
                   عرض المنشورات
                 </Button>
