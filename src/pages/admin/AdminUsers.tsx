@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -22,6 +21,15 @@ interface User {
   last_sign_in_at?: string;
   is_online: boolean;
   payment_methods_count: number;
+}
+
+interface ProfileData {
+  id: string;
+  full_name: string | null;
+  role: string;
+  subscription_plan: string | null;
+  avatar_url: string | null;
+  created_at: string;
 }
 
 const AdminUsers = () => {
@@ -71,7 +79,7 @@ const AdminUsers = () => {
         .eq('is_online', true);
 
       // Combine the data with proper typing
-      const combinedUsers: User[] = (profilesData || []).map(profile => {
+      const combinedUsers: User[] = (profilesData as ProfileData[] || []).map((profile: ProfileData) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
@@ -81,7 +89,7 @@ const AdminUsers = () => {
           full_name: profile.full_name || '',
           role: profile.role,
           subscription_plan: profile.subscription_plan || 'free',
-          avatar_url: profile.avatar_url,
+          avatar_url: profile.avatar_url || undefined,
           created_at: profile.created_at,
           last_sign_in_at: authUser?.last_sign_in_at,
           is_online: isOnline,
