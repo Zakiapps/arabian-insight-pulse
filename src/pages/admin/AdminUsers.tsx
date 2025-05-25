@@ -1,28 +1,24 @@
-
-import React, { useState, useEffect } from 'react';
+import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
-import { Search, UserPlus, Edit, Trash2, Eye, Crown, Users } from 'lucide-react';
-import { toast } from 'sonner';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
+import { Trash2, UserPlus, Edit, Crown } from 'lucide-react';
 
 interface User {
   id: string;
   email: string;
-  full_name: string | null;
+  full_name: string;
   role: string;
   subscription_plan: string;
-  avatar_url: string | null;
+  avatar_url?: string;
   created_at: string;
-  last_sign_in_at: string | null;
+  last_sign_in_at?: string;
   is_online: boolean;
   payment_methods_count: number;
 }
@@ -30,16 +26,15 @@ interface User {
 const AdminUsers = () => {
   const [users, setUsers] = useState<User[]>([]);
   const [loading, setLoading] = useState(true);
-  const [searchTerm, setSearchTerm] = useState('');
-  const [selectedUser, setSelectedUser] = useState<User | null>(null);
-  const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [newUser, setNewUser] = useState({
     email: '',
     password: '',
     full_name: '',
     role: 'user'
   });
+  const [createDialogOpen, setCreateDialogOpen] = useState(false);
+  const [editingUser, setEditingUser] = useState<User | null>(null);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
 
   useEffect(() => {
     fetchUsers();
@@ -48,20 +43,66 @@ const AdminUsers = () => {
   const fetchUsers = async () => {
     try {
       setLoading(true);
-      const { data, error } = await supabase.rpc('get_all_users_admin');
       
+      // Fixed query to avoid ambiguous column reference
+      const { data, error } = await supabase
+        .from('profiles')
+        .select(`
+          id,
+          full_name,
+          role,
+          subscription_plan,
+          avatar_url,
+          created_at
+        `);
+
       if (error) throw error;
+
+      // Get auth data separately to avoid join issues
+      const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       
-      setUsers(data || []);
+      if (authError) throw authError;
+
+      // Get online status separately
+      const { data: sessionsData } = await supabase
+        .from('user_sessions')
+        .select('user_id, is_online')
+        .eq('is_online', true);
+
+      // Combine the data
+      const combinedUsers: User[] = (data || []).map(profile => {
+        const authUser = authData.users.find(u => u.id === profile.id);
+        const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
+        
+        return {
+          id: profile.id,
+          email: authUser?.email || '',
+          full_name: profile.full_name || '',
+          role: profile.role,
+          subscription_plan: profile.subscription_plan || 'free',
+          avatar_url: profile.avatar_url,
+          created_at: profile.created_at,
+          last_sign_in_at: authUser?.last_sign_in_at,
+          is_online: isOnline,
+          payment_methods_count: 0 // Will be updated separately if needed
+        };
+      });
+
+      setUsers(combinedUsers);
     } catch (error: any) {
       console.error('Error fetching users:', error);
-      toast.error('خطأ في تحميل بيانات المستخدمين: ' + error.message);
+      toast.error('خطأ في تحميل بيانات المستخدمين');
     } finally {
       setLoading(false);
     }
   };
 
   const createUser = async () => {
+    if (!newUser.email || !newUser.password || !newUser.full_name) {
+      toast.error('يرجى ملء جميع الحقول المطلوبة');
+      return;
+    }
+
     try {
       const { data, error } = await supabase.rpc('admin_create_user', {
         email_param: newUser.email,
@@ -73,7 +114,7 @@ const AdminUsers = () => {
       if (error) throw error;
 
       toast.success('تم إنشاء المستخدم بنجاح');
-      setIsCreateDialogOpen(false);
+      setCreateDialogOpen(false);
       setNewUser({ email: '', password: '', full_name: '', role: 'user' });
       fetchUsers();
     } catch (error: any) {
@@ -92,15 +133,18 @@ const AdminUsers = () => {
       if (error) throw error;
 
       toast.success('تم تحديث دور المستخدم بنجاح');
-      setIsEditDialogOpen(false);
       fetchUsers();
     } catch (error: any) {
       console.error('Error updating user role:', error);
-      toast.error('خطأ في تحديث دور المستخدم: ' + error.message);
+      toast.error('خطأ في تحديث دور المستخدم');
     }
   };
 
   const deleteUser = async (userId: string) => {
+    if (!confirm('هل أنت متأكد من حذف هذا المستخدم؟')) {
+      return;
+    }
+
     try {
       const { error } = await supabase.rpc('admin_delete_user', {
         user_id_param: userId
@@ -112,69 +156,58 @@ const AdminUsers = () => {
       fetchUsers();
     } catch (error: any) {
       console.error('Error deleting user:', error);
-      toast.error('خطأ في حذف المستخدم: ' + error.message);
+      toast.error('خطأ في حذف المستخدم');
     }
   };
 
-  const filteredUsers = users.filter(user =>
-    user.email.toLowerCase().includes(searchTerm.toLowerCase()) ||
-    user.full_name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
-
-  const getRoleBadge = (role: string) => {
+  const getRoleBadgeVariant = (role: string) => {
     switch (role) {
       case 'admin':
-        return <Badge variant="destructive" className="flex items-center gap-1"><Crown className="h-3 w-3" />مشرف</Badge>;
-      case 'user':
-        return <Badge variant="secondary">مستخدم</Badge>;
+        return 'destructive';
+      case 'moderator':
+        return 'default';
       default:
-        return <Badge variant="outline">{role}</Badge>;
+        return 'secondary';
     }
   };
 
-  const getSubscriptionBadge = (plan: string) => {
+  const getSubscriptionBadgeVariant = (plan: string) => {
     switch (plan) {
-      case 'free':
-        return <Badge variant="outline">مجاني</Badge>;
-      case 'basic':
-        return <Badge variant="secondary">أساسي</Badge>;
+      case 'premium':
+        return 'default';
       case 'pro':
-        return <Badge variant="default">احترافي</Badge>;
-      case 'enterprise':
-        return <Badge className="bg-gradient-to-r from-purple-500 to-pink-500">مؤسسات</Badge>;
+        return 'secondary';
       default:
-        return <Badge variant="outline">{plan}</Badge>;
+        return 'outline';
     }
   };
 
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-[400px]">
-        <div className="text-center">
-          <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent mx-auto mb-4" />
-          <p>جاري تحميل بيانات المستخدمين...</p>
-        </div>
+      <div className="flex items-center justify-center h-64">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary"></div>
       </div>
     );
   }
 
   return (
     <div className="space-y-6">
-      <div className="flex justify-between items-center">
+      <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold">إدارة المستخدمين</h1>
-          <p className="text-muted-foreground">إدارة حسابات المستخدمين والصلاحيات</p>
+          <p className="text-muted-foreground">إدارة حسابات المستخدمين والأدوار</p>
         </div>
-        <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
+
+        <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="flex items-center gap-2">
-              <UserPlus className="h-4 w-4" />
-              إضافة مستخدم
+            <Button>
+              <UserPlus className="h-4 w-4 mr-2" />
+              إضافة مستخدم جديد
             </Button>
           </DialogTrigger>
           <DialogContent>
             <DialogHeader>
-              <DialogTitle>إضافة مستخدم جديد</DialogTitle>
+              <DialogTitle>إنشاء مستخدم جديد</DialogTitle>
               <DialogDescription>
                 أدخل بيانات المستخدم الجديد
               </DialogDescription>
@@ -186,8 +219,7 @@ const AdminUsers = () => {
                   id="email"
                   type="email"
                   value={newUser.email}
-                  onChange={(e) => setNewUser({ ...newUser, email: e.target.value })}
-                  placeholder="user@example.com"
+                  onChange={(e) => setNewUser(prev => ({ ...prev, email: e.target.value }))}
                 />
               </div>
               <div>
@@ -196,8 +228,7 @@ const AdminUsers = () => {
                   id="password"
                   type="password"
                   value={newUser.password}
-                  onChange={(e) => setNewUser({ ...newUser, password: e.target.value })}
-                  placeholder="كلمة مرور قوية"
+                  onChange={(e) => setNewUser(prev => ({ ...prev, password: e.target.value }))}
                 />
               </div>
               <div>
@@ -205,25 +236,25 @@ const AdminUsers = () => {
                 <Input
                   id="full_name"
                   value={newUser.full_name}
-                  onChange={(e) => setNewUser({ ...newUser, full_name: e.target.value })}
-                  placeholder="الاسم الكامل للمستخدم"
+                  onChange={(e) => setNewUser(prev => ({ ...prev, full_name: e.target.value }))}
                 />
               </div>
               <div>
                 <Label htmlFor="role">الدور</Label>
-                <Select value={newUser.role} onValueChange={(value) => setNewUser({ ...newUser, role: value })}>
+                <Select value={newUser.role} onValueChange={(value) => setNewUser(prev => ({ ...prev, role: value }))}>
                   <SelectTrigger>
                     <SelectValue />
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="user">مستخدم</SelectItem>
-                    <SelectItem value="admin">مشرف</SelectItem>
+                    <SelectItem value="moderator">مشرف</SelectItem>
+                    <SelectItem value="admin">مدير</SelectItem>
                   </SelectContent>
                 </Select>
               </div>
             </div>
             <DialogFooter>
-              <Button variant="outline" onClick={() => setIsCreateDialogOpen(false)}>
+              <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
                 إلغاء
               </Button>
               <Button onClick={createUser}>
@@ -236,148 +267,88 @@ const AdminUsers = () => {
 
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <Users className="h-5 w-5" />
-            قائمة المستخدمين ({filteredUsers.length})
-          </CardTitle>
+          <CardTitle>قائمة المستخدمين</CardTitle>
           <CardDescription>
-            إدارة وعرض جميع المستخدمين المسجلين في النظام
+            إجمالي المستخدمين: {users.length}
           </CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="flex items-center space-x-2 mb-6">
-            <div className="relative flex-1">
-              <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 h-4 w-4" />
-              <Input
-                placeholder="البحث عن المستخدمين..."
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                className="pl-10"
-              />
-            </div>
-          </div>
+          <div className="space-y-4">
+            {users.map((user) => (
+              <div key={user.id} className="flex items-center justify-between p-4 border rounded-lg">
+                <div className="flex items-center space-x-4">
+                  <div className="space-y-1">
+                    <div className="flex items-center gap-2">
+                      <h3 className="font-medium">{user.full_name}</h3>
+                      {user.is_online && (
+                        <div className="h-2 w-2 bg-green-500 rounded-full" title="متصل الآن" />
+                      )}
+                      {user.role === 'admin' && (
+                        <Crown className="h-4 w-4 text-yellow-500" title="مدير" />
+                      )}
+                    </div>
+                    <p className="text-sm text-muted-foreground">{user.email}</p>
+                    <div className="flex gap-2">
+                      <Badge variant={getRoleBadgeVariant(user.role)}>
+                        {user.role === 'admin' ? 'مدير' : user.role === 'moderator' ? 'مشرف' : 'مستخدم'}
+                      </Badge>
+                      <Badge variant={getSubscriptionBadgeVariant(user.subscription_plan)}>
+                        {user.subscription_plan}
+                      </Badge>
+                    </div>
+                    <p className="text-xs text-muted-foreground">
+                      انضم في: {new Date(user.created_at).toLocaleDateString('ar-SA')}
+                    </p>
+                  </div>
+                </div>
 
-          <div className="border rounded-md">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>المستخدم</TableHead>
-                  <TableHead>الدور</TableHead>
-                  <TableHead>الاشتراك</TableHead>
-                  <TableHead>الحالة</TableHead>
-                  <TableHead>تاريخ الانضمام</TableHead>
-                  <TableHead>الإجراءات</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {filteredUsers.map((user) => (
-                  <TableRow key={user.id}>
-                    <TableCell>
-                      <div className="flex items-center gap-3">
-                        <Avatar className="h-8 w-8">
-                          <AvatarImage src={user.avatar_url || ''} />
-                          <AvatarFallback>
-                            {user.full_name ? user.full_name.charAt(0) : user.email.charAt(0)}
-                          </AvatarFallback>
-                        </Avatar>
+                <div className="flex gap-2">
+                  <Dialog>
+                    <DialogTrigger asChild>
+                      <Button variant="outline" size="sm">
+                        <Edit className="h-4 w-4" />
+                      </Button>
+                    </DialogTrigger>
+                    <DialogContent>
+                      <DialogHeader>
+                        <DialogTitle>تعديل دور المستخدم</DialogTitle>
+                        <DialogDescription>
+                          تعديل دور المستخدم: {user.full_name}
+                        </DialogDescription>
+                      </DialogHeader>
+                      <div className="space-y-4">
                         <div>
-                          <p className="font-medium">{user.full_name || 'غير محدد'}</p>
-                          <p className="text-sm text-muted-foreground">{user.email}</p>
+                          <Label>الدور الحالي</Label>
+                          <Select
+                            defaultValue={user.role}
+                            onValueChange={(value) => updateUserRole(user.id, value)}
+                          >
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="user">مستخدم</SelectItem>
+                              <SelectItem value="moderator">مشرف</SelectItem>
+                              <SelectItem value="admin">مدير</SelectItem>
+                            </SelectContent>
+                          </Select>
                         </div>
                       </div>
-                    </TableCell>
-                    <TableCell>{getRoleBadge(user.role)}</TableCell>
-                    <TableCell>{getSubscriptionBadge(user.subscription_plan)}</TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <div className={`w-2 h-2 rounded-full ${user.is_online ? 'bg-green-500' : 'bg-gray-400'}`} />
-                        <span className="text-sm">{user.is_online ? 'متصل' : 'غير متصل'}</span>
-                      </div>
-                    </TableCell>
-                    <TableCell>
-                      <span className="text-sm">
-                        {new Date(user.created_at).toLocaleDateString('ar-EG')}
-                      </span>
-                    </TableCell>
-                    <TableCell>
-                      <div className="flex items-center gap-2">
-                        <Dialog open={isEditDialogOpen && selectedUser?.id === user.id} onOpenChange={(open) => {
-                          setIsEditDialogOpen(open);
-                          if (open) setSelectedUser(user);
-                        }}>
-                          <DialogTrigger asChild>
-                            <Button variant="outline" size="sm" className="h-8 w-8 p-0">
-                              <Edit className="h-4 w-4" />
-                            </Button>
-                          </DialogTrigger>
-                          <DialogContent>
-                            <DialogHeader>
-                              <DialogTitle>تعديل المستخدم</DialogTitle>
-                              <DialogDescription>
-                                تعديل دور المستخدم: {user.email}
-                              </DialogDescription>
-                            </DialogHeader>
-                            <div className="space-y-4">
-                              <div>
-                                <Label htmlFor="edit-role">الدور الجديد</Label>
-                                <Select 
-                                  defaultValue={user.role} 
-                                  onValueChange={(value) => setSelectedUser({ ...user, role: value })}
-                                >
-                                  <SelectTrigger>
-                                    <SelectValue />
-                                  </SelectTrigger>
-                                  <SelectContent>
-                                    <SelectItem value="user">مستخدم</SelectItem>
-                                    <SelectItem value="admin">مشرف</SelectItem>
-                                  </SelectContent>
-                                </Select>
-                              </div>
-                            </div>
-                            <DialogFooter>
-                              <Button variant="outline" onClick={() => setIsEditDialogOpen(false)}>
-                                إلغاء
-                              </Button>
-                              <Button onClick={() => updateUserRole(user.id, selectedUser?.role || user.role)}>
-                                حفظ التغييرات
-                              </Button>
-                            </DialogFooter>
-                          </DialogContent>
-                        </Dialog>
+                    </DialogContent>
+                  </Dialog>
 
-                        {user.email !== 'admin@arabinsights.com' && (
-                          <AlertDialog>
-                            <AlertDialogTrigger asChild>
-                              <Button variant="outline" size="sm" className="h-8 w-8 p-0 text-destructive hover:text-destructive">
-                                <Trash2 className="h-4 w-4" />
-                              </Button>
-                            </AlertDialogTrigger>
-                            <AlertDialogContent>
-                              <AlertDialogHeader>
-                                <AlertDialogTitle>تأكيد الحذف</AlertDialogTitle>
-                                <AlertDialogDescription>
-                                  هل أنت متأكد من حذف المستخدم "{user.full_name || user.email}"؟ 
-                                  لا يمكن التراجع عن هذا الإجراء.
-                                </AlertDialogDescription>
-                              </AlertDialogHeader>
-                              <AlertDialogFooter>
-                                <AlertDialogCancel>إلغاء</AlertDialogCancel>
-                                <AlertDialogAction 
-                                  onClick={() => deleteUser(user.id)}
-                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                                >
-                                  حذف
-                                </AlertDialogAction>
-                              </AlertDialogFooter>
-                            </AlertDialogContent>
-                          </AlertDialog>
-                        )}
-                      </div>
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                  {user.email !== 'admin@arabinsights.com' && (
+                    <Button
+                      variant="destructive"
+                      size="sm"
+                      onClick={() => deleteUser(user.id)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+            ))}
           </div>
         </CardContent>
       </Card>

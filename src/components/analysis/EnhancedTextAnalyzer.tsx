@@ -1,4 +1,3 @@
-
 import React, { useState } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -43,21 +42,19 @@ const EnhancedTextAnalyzer = () => {
 
       if (error) throw error;
 
-      // استخدام Promise.all لمعالجة العمليات غير المتزامنة
-      const transformedResults: AnalysisResult[] = await Promise.all(
-        (data || []).map(async (item) => ({
-          id: item.id,
-          text: item.text,
-          sentiment: item.sentiment,
-          confidence: item.confidence,
-          positive_prob: item.positive_prob,
-          negative_prob: item.negative_prob,
-          dialect: item.dialect,
-          category: await getCategoryForText(item.text),
-          is_jordanian_dialect: await getJordanianDialectForText(item.text),
-          created_at: item.created_at
-        }))
-      );
+      // Transform data without async operations in map
+      const transformedResults: AnalysisResult[] = (data || []).map(item => ({
+        id: item.id,
+        text: item.text,
+        sentiment: item.sentiment,
+        confidence: item.confidence,
+        positive_prob: item.positive_prob,
+        negative_prob: item.negative_prob,
+        dialect: item.dialect,
+        category: 'general', // Default category
+        is_jordanian_dialect: item.dialect === 'Jordanian',
+        created_at: item.created_at
+      }));
 
       setResults(transformedResults);
     } catch (error: any) {
@@ -65,30 +62,6 @@ const EnhancedTextAnalyzer = () => {
       toast.error('خطأ في جلب النتائج السابقة');
     } finally {
       setLoading(false);
-    }
-  };
-
-  const getCategoryForText = async (text: string): Promise<string> => {
-    try {
-      const { data, error } = await supabase
-        .rpc('categorize_jordanian_post', { content: text });
-      
-      if (error) throw error;
-      return data || 'general';
-    } catch (error) {
-      return 'general';
-    }
-  };
-
-  const getJordanianDialectForText = async (text: string): Promise<boolean> => {
-    try {
-      const { data, error } = await supabase
-        .rpc('detect_jordanian_dialect_enhanced', { content: text });
-      
-      if (error) throw error;
-      return data || false;
-    } catch (error) {
-      return false;
     }
   };
 
@@ -106,7 +79,24 @@ const EnhancedTextAnalyzer = () => {
 
       if (error) throw error;
 
-      if (data?.success) {
+      if (data && !data.error) {
+        // Save the analysis result to predictions table
+        const { error: saveError } = await supabase
+          .from('predictions')
+          .insert({
+            text: text.trim(),
+            sentiment: data.sentiment,
+            confidence: data.confidence,
+            positive_prob: data.positive_prob,
+            negative_prob: data.negative_prob,
+            dialect: data.dialect,
+            model_source: data.modelSource || 'MARBERT_Custom_Endpoint'
+          });
+
+        if (saveError) {
+          console.error('Error saving prediction:', saveError);
+        }
+
         toast.success('تم تحليل النص بنجاح');
         setText('');
         fetchResults(); // Refresh results
@@ -115,7 +105,7 @@ const EnhancedTextAnalyzer = () => {
       }
     } catch (error: any) {
       console.error('Error analyzing text:', error);
-      toast.error('خطأ في تحليل النص: ' + error.message);
+      toast.error('خطأ في تحليل النص: ' + (error.message || 'حدث خطأ غير متوقع'));
     } finally {
       setAnalyzing(false);
     }
