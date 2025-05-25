@@ -62,30 +62,28 @@ const UserManagement = () => {
   const fetchUsers = async () => {
     setLoading(true);
     try {
-      // Get profiles with user data
-      const { data: profiles, error: profilesError } = await supabase
-        .from('profiles')
+      const { data: users, error: usersError } = await supabase
+        .from('auth.users')
         .select(`
           id,
-          full_name,
-          role,
-          created_at
+          email,
+          created_at,
+          profiles (
+            full_name,
+            role
+          )
         `);
 
-      if (profilesError) throw profilesError;
+      if (usersError) throw usersError;
 
-      // Transform profiles to user objects
-      const usersList: User[] = (profiles || []).map(profile => ({
-        id: profile.id,
-        email: profile.id, // We'll show the ID as email placeholder
-        created_at: profile.created_at,
-        profile: {
-          full_name: profile.full_name || '',
-          role: profile.role,
-        }
+      const formattedUsers: User[] = (users || []).map(user => ({
+        id: user.id,
+        email: user.email,
+        created_at: user.created_at,
+        profile: user.profiles?.[0] || null
       }));
 
-      setUsers(usersList);
+      setUsers(formattedUsers);
     } catch (error) {
       console.error('Error fetching users:', error);
       toast.error('خطأ في جلب بيانات المستخدمين');
@@ -100,31 +98,31 @@ const UserManagement = () => {
 
   const handleCreateUser = async (data: UserFormData) => {
     try {
-      // First check if a profile with this email already exists
-      const { data: existingProfile, error: profileCheckError } = await supabase
-        .from('profiles')
+      // First check if a user with this email already exists
+      const { data: existingUser, error: userCheckError } = await supabase
+        .from('auth.users')
         .select('id')
-        .eq('id', data.email)
+        .eq('email', data.email)
         .single();
 
-      if (profileCheckError && profileCheckError.code !== 'PGRST116') {
-        throw profileCheckError;
+      if (userCheckError && userCheckError.code !== 'PGRST116') {
+        throw userCheckError;
       }
 
-      if (existingProfile) {
+      if (existingUser) {
         toast.error('مستخدم بهذا البريد الإلكتروني موجود بالفعل');
         return;
       }
 
-      // Call the admin_create_user function if no existing profile found
-      const { data: result, error } = await supabase.rpc('admin_create_user', {
+      // Create the user using the admin_create_user function
+      const { data: newUser, error: createError } = await supabase.rpc('admin_create_user', {
         email_param: data.email,
         password_param: data.password || 'temp123456',
         full_name_param: data.full_name,
         role_param: data.role
       });
 
-      if (error) throw error;
+      if (createError) throw createError;
 
       toast.success('تم إنشاء المستخدم بنجاح');
       setIsDialogOpen(false);
@@ -363,7 +361,7 @@ const UserManagement = () => {
               <TableHeader>
                 <TableRow>
                   <TableHead>الاسم</TableHead>
-                  <TableHead>المعرف</TableHead>
+                  <TableHead>البريد الإلكتروني</TableHead>
                   <TableHead>الدور</TableHead>
                   <TableHead>الاشتراك</TableHead>
                   <TableHead>تاريخ الإنشاء</TableHead>
@@ -374,7 +372,7 @@ const UserManagement = () => {
                 {filteredUsers.map((user) => (
                   <TableRow key={user.id}>
                     <TableCell>{user.profile?.full_name || 'غير محدد'}</TableCell>
-                    <TableCell className="font-mono text-xs">{user.id.slice(0, 8)}...</TableCell>
+                    <TableCell>{user.email}</TableCell>
                     <TableCell>
                       <Badge variant={user.profile?.role === 'admin' ? 'destructive' : 'secondary'}>
                         {user.profile?.role === 'admin' ? 'مشرف' : 'مستخدم'}
@@ -401,7 +399,7 @@ const UserManagement = () => {
                         >
                           <Edit className="h-4 w-4" />
                         </Button>
-                        {user.id !== 'admin@arabinsights.com' && (
+                        {user.email !== 'admin@arabinsights.com' && (
                           <Button
                             variant="outline"
                             size="sm"
