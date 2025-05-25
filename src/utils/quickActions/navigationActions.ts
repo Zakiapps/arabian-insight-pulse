@@ -24,8 +24,8 @@ export const createNavigationAction = (navigate: ReturnType<typeof useNavigate>,
     
     try {
       const taskId = await startTask('navigation', 'الانتقال إلى إعدادات التحليل');
-      navigate(dashboardRoutes.settings);
-      await completeTask(taskId, { page: 'settings' });
+      navigate(dashboardRoutes.analysisSettings);
+      await completeTask(taskId, { page: 'analysis-settings' });
       toast.success('تم الانتقال إلى إعدادات التحليل');
     } catch (error) {
       console.error('Error navigating to analysis settings:', error);
@@ -47,7 +47,7 @@ export const createNavigationAction = (navigate: ReturnType<typeof useNavigate>,
     }
   },
 
-  // New navigation actions for analysis tools
+  // Navigation actions for analysis tools (تصحيح الروابط)
   sentimentAnalysis: async () => {
     try {
       const taskId = await startTask('navigation', 'الانتقال إلى تحليل المشاعر');

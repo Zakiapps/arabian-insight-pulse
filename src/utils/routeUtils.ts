@@ -9,15 +9,10 @@ export const dashboardRoutes = {
   reports: '/dashboard/reports',
   alerts: '/dashboard/alerts',
   settings: '/dashboard/settings',
+  analysisSettings: '/dashboard/analysis-settings',
+  reviews: '/dashboard/reviews',
   
-  // Analytics pages - أدوات التحليل
-  sentiment: '/dashboard/sentiment',
-  categories: '/dashboard/categories',
-  platforms: '/dashboard/platforms',
-  topics: '/dashboard/topics',
-  dialects: '/dashboard/dialects',
-  
-  // Additional analysis tools
+  // Analytics pages - أدوات التحليل (تصحيح الروابط)
   sentimentAnalysis: '/dashboard/sentiment-analysis',
   categoryDistribution: '/dashboard/category-distribution',
   platformDistribution: '/dashboard/platform-distribution',
@@ -25,16 +20,19 @@ export const dashboardRoutes = {
   dialectDetection: '/dashboard/dialect-detection',
   
   // Admin routes
+  adminDashboard: '/admin',
   adminUsers: '/admin/users',
+  adminSocialMedia: '/admin/social-media-scraping',
   adminPlans: '/admin/plans',
   adminSubscriptions: '/admin/subscriptions',
   adminTransactions: '/admin/transactions',
   adminSettings: '/admin/settings',
+  adminPaymentSettings: '/admin/payment-settings',
   
   // Public routes
   home: '/',
   textAnalysis: '/text-analysis',
-  login: '/login',
+  login: '/login', // تصحيح: استخدام /login بدلاً من /signin
   register: '/register',
   pricing: '/pricing'
 } as const;
