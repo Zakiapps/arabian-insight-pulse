@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -44,8 +45,8 @@ const AdminUsers = () => {
     try {
       setLoading(true);
       
-      // Fixed query to avoid ambiguous column reference
-      const { data, error } = await supabase
+      // Get profiles data
+      const { data: profilesData, error: profilesError } = await supabase
         .from('profiles')
         .select(`
           id,
@@ -56,9 +57,9 @@ const AdminUsers = () => {
           created_at
         `);
 
-      if (error) throw error;
+      if (profilesError) throw profilesError;
 
-      // Get auth data separately to avoid join issues
+      // Get auth data separately
       const { data: authData, error: authError } = await supabase.auth.admin.listUsers();
       
       if (authError) throw authError;
@@ -69,8 +70,8 @@ const AdminUsers = () => {
         .select('user_id, is_online')
         .eq('is_online', true);
 
-      // Combine the data
-      const combinedUsers: User[] = (data || []).map(profile => {
+      // Combine the data with proper typing
+      const combinedUsers: User[] = (profilesData || []).map(profile => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
@@ -281,10 +282,10 @@ const AdminUsers = () => {
                     <div className="flex items-center gap-2">
                       <h3 className="font-medium">{user.full_name}</h3>
                       {user.is_online && (
-                        <div className="h-2 w-2 bg-green-500 rounded-full" title="متصل الآن" />
+                        <div className="h-2 w-2 bg-green-500 rounded-full"></div>
                       )}
                       {user.role === 'admin' && (
-                        <Crown className="h-4 w-4 text-yellow-500" title="مدير" />
+                        <Crown className="h-4 w-4 text-yellow-500" />
                       )}
                     </div>
                     <p className="text-sm text-muted-foreground">{user.email}</p>
