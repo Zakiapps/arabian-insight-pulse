@@ -79,10 +79,10 @@ const ModernAdminDashboard = () => {
           <div className="flex flex-wrap gap-4 justify-end" dir="rtl">
             <ModernButton
               onClick={() => navigate('/admin/control-panel')}
-              className="bg-primary hover:bg-primary/90"
+              className="bg-primary hover:bg-primary/90 shadow-lg transform hover:scale-105 transition-all"
             >
               <Settings className="h-5 w-5 ml-2" />
-              فتح لوحة التحكم
+              لوحة التحكم الرئيسية
             </ModernButton>
             <ModernButton
               onClick={() => navigate('/admin/users')}
@@ -106,19 +106,19 @@ const ModernAdminDashboard = () => {
           {dashboardCards.map((card, index) => (
             <Card 
               key={index}
-              className="group cursor-pointer transition-all duration-300 hover:shadow-lg hover:-translate-y-1 border-0 bg-white"
+              className="group cursor-pointer transition-all duration-300 hover:shadow-xl hover:-translate-y-2 border-0 bg-white shadow-lg"
               onClick={() => navigate(card.route)}
             >
               <CardHeader className="pb-4">
                 <div className="flex items-center justify-between" dir="rtl">
-                  <div className={`p-3 rounded-lg ${card.color} text-white`}>
-                    <card.icon className="h-6 w-6" />
+                  <div className={`p-4 rounded-xl ${card.color} text-white shadow-lg`}>
+                    <card.icon className="h-7 w-7" />
                   </div>
                   <div className="text-right">
-                    <CardTitle className="text-lg font-bold text-gray-900 group-hover:text-primary transition-colors">
+                    <CardTitle className="text-xl font-bold text-gray-900 group-hover:text-primary transition-colors">
                       {card.title}
                     </CardTitle>
-                    <p className="text-sm text-gray-600 mt-1">
+                    <p className="text-sm text-gray-600 mt-2">
                       {card.description}
                     </p>
                   </div>
@@ -126,10 +126,10 @@ const ModernAdminDashboard = () => {
               </CardHeader>
               <CardContent>
                 <div className="flex justify-between items-center" dir="rtl">
-                  <span className="text-2xl font-bold text-gray-900">
+                  <span className="text-3xl font-bold text-gray-900">
                     {card.stats}
                   </span>
-                  <span className="text-sm text-gray-500">
+                  <span className="text-sm text-gray-500 bg-gray-50 px-3 py-1 rounded-full">
                     انقر للوصول
                   </span>
                 </div>
