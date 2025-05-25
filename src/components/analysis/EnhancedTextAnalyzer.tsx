@@ -43,18 +43,21 @@ const EnhancedTextAnalyzer = () => {
 
       if (error) throw error;
 
-      const transformedResults: AnalysisResult[] = (data || []).map(item => ({
-        id: item.id,
-        text: item.text,
-        sentiment: item.sentiment,
-        confidence: item.confidence,
-        positive_prob: item.positive_prob,
-        negative_prob: item.negative_prob,
-        dialect: item.dialect,
-        category: await getCategoryForText(item.text),
-        is_jordanian_dialect: await getJordanianDialectForText(item.text),
-        created_at: item.created_at
-      }));
+      // استخدام Promise.all لمعالجة العمليات غير المتزامنة
+      const transformedResults: AnalysisResult[] = await Promise.all(
+        (data || []).map(async (item) => ({
+          id: item.id,
+          text: item.text,
+          sentiment: item.sentiment,
+          confidence: item.confidence,
+          positive_prob: item.positive_prob,
+          negative_prob: item.negative_prob,
+          dialect: item.dialect,
+          category: await getCategoryForText(item.text),
+          is_jordanian_dialect: await getJordanianDialectForText(item.text),
+          created_at: item.created_at
+        }))
+      );
 
       setResults(transformedResults);
     } catch (error: any) {
