@@ -43,11 +43,6 @@ const AdminSidebar = () => {
       icon: LayoutDashboard,
     },
     {
-      title: "لوحة التحكم الرئيسية",
-      url: "/admin/control-panel",
-      icon: Settings,
-    },
-    {
       title: "إدارة المستخدمين",
       url: "/admin/users",
       icon: Users2,

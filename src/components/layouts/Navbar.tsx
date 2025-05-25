@@ -18,19 +18,14 @@ import { LogOut, Settings, User } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 
 const Navbar = () => {
-  const { profile, logout, isAuthenticated } = useAuth();
+  const { profile, logout } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-
-  // Don't show navbar if not authenticated
-  if (!isAuthenticated) {
-    return null;
-  }
 
   const handleSignOut = async () => {
     try {
       await logout();
-      navigate('/login');
+      navigate('/login'); // تصحيح: استخدام /login بدلاً من /
     } catch (error) {
       console.error('Error signing out:', error);
     }
@@ -72,13 +67,13 @@ const Navbar = () => {
               </div>
             </DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => navigate('/dashboard/profile')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
               <User className="mr-2 h-4 w-4" />
               الملف الشخصي
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => navigate('/dashboard/settings')}>
+            <DropdownMenuItem onClick={() => navigate('/dashboard/analysis-settings')}>
               <Settings className="mr-2 h-4 w-4" />
-              الإعدادات
+              إعدادات التحليل
             </DropdownMenuItem>
             <DropdownMenuItem onClick={() => navigate('/pricing')}>
               <Settings className="mr-2 h-4 w-4" />

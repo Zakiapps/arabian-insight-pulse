@@ -137,7 +137,7 @@ class SocialMediaService {
 
   async getScrapingConfigs(): Promise<ScrapingConfig[]> {
     const { data, error } = await supabase
-      .from('scraping_configs')
+      .from('scraping_settings')
       .select('*')
       .order('created_at', { ascending: false });
 
@@ -151,7 +151,7 @@ class SocialMediaService {
 
   async createScrapingConfig(config: Omit<ScrapingConfig, 'id' | 'created_at' | 'updated_at'>) {
     const { data, error } = await supabase
-      .from('scraping_configs')
+      .from('scraping_settings')
       .insert(config)
       .select()
       .single();
@@ -166,7 +166,7 @@ class SocialMediaService {
 
   async updateScrapingConfig(id: string, updates: Partial<ScrapingConfig>) {
     const { data, error } = await supabase
-      .from('scraping_configs')
+      .from('scraping_settings')
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq('id', id)
       .select()
@@ -182,7 +182,7 @@ class SocialMediaService {
 
   async deleteScrapingConfig(id: string) {
     const { error } = await supabase
-      .from('scraping_configs')
+      .from('scraping_settings')
       .delete()
       .eq('id', id);
 
