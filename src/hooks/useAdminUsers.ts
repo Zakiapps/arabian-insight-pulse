@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { toast } from "sonner";
 import { supabase } from '@/integrations/supabase/client';
@@ -37,8 +36,9 @@ export const useAdminUsers = () => {
         .select('user_id, is_online')
         .eq('is_online', true);
 
-      // Combine the data with proper typing - ensure profilesData is not null
-      const combinedUsers: User[] = (profilesData || []).map((profile) => {
+      // Type the profilesData explicitly and combine the data
+      const typedProfilesData = profilesData as ProfileData[];
+      const combinedUsers: User[] = (typedProfilesData || []).map((profile) => {
         const authUser = authData.users.find(u => u.id === profile.id);
         const isOnline = sessionsData?.some(s => s.user_id === profile.id) || false;
         
