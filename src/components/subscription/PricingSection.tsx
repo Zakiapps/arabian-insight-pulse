@@ -41,10 +41,22 @@ const PricingSection = () => {
 
       if (error) throw error;
 
-      // تحويل features من Json إلى string[]
+      // Transform the data to match our PricingPlan interface
       const transformedPlans: PricingPlan[] = (data || []).map(plan => ({
-        ...plan,
-        features: Array.isArray(plan.features) ? plan.features : []
+        id: plan.id,
+        name: plan.name,
+        description: plan.description || '',
+        price_monthly: plan.price_monthly,
+        price_yearly: plan.price_yearly,
+        features: Array.isArray(plan.features) 
+          ? plan.features.map(feature => String(feature)) 
+          : [],
+        max_posts_per_month: plan.max_posts_per_month || 0,
+        max_scraping_sources: plan.max_scraping_sources || 0,
+        advanced_analytics: plan.advanced_analytics || false,
+        priority_support: plan.priority_support || false,
+        is_popular: plan.is_popular || false,
+        is_active: plan.is_active || true
       }));
 
       setPlans(transformedPlans);
