@@ -14,13 +14,33 @@ import {
 } from "@/components/ui/sidebar";
 import { useAuth } from "@/contexts/AuthContext";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { BarChart3, Home, MessageSquare, Users, Settings, FileText, TrendingUp, Shield, Database, Activity } from "lucide-react";
+import { 
+  BarChart3, 
+  Home, 
+  MessageSquare, 
+  Users, 
+  Settings, 
+  FileText, 
+  TrendingUp, 
+  Shield, 
+  Database, 
+  Activity,
+  Upload,
+  PieChart,
+  Globe,
+  Hash
+} from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
 const AppSidebar = () => {
-  const { isAdmin } = useAuth();
+  const { isAdmin, isAuthenticated } = useAuth();
   const { isRTL } = useLanguage();
   const location = useLocation();
+
+  // Don't show sidebar if not authenticated
+  if (!isAuthenticated) {
+    return null;
+  }
 
   const userMenuItems = [
     {
@@ -29,23 +49,38 @@ const AppSidebar = () => {
       icon: Home,
     },
     {
-      title: "تحليل النصوص",
-      url: "/text-analysis",
+      title: "رفع الملفات",
+      url: "/dashboard/upload",
+      icon: Upload,
+    },
+    {
+      title: "المنشورات",
+      url: "/dashboard/posts",
       icon: MessageSquare,
     },
     {
-      title: "تحليل وسائل التواصل",
-      url: "/social-media-analysis",
+      title: "تحليل المشاعر",
+      url: "/dashboard/sentiment-analysis",
       icon: TrendingUp,
     },
     {
+      title: "تحليل وسائل التواصل",
+      url: "/dashboard/social-media-analysis",
+      icon: Activity,
+    },
+    {
       title: "التقارير",
-      url: "/reports",
+      url: "/dashboard/reports",
       icon: FileText,
     },
     {
+      title: "الملف الشخصي",
+      url: "/dashboard/profile",
+      icon: Users,
+    },
+    {
       title: "الإعدادات",
-      url: "/settings",
+      url: "/dashboard/settings",
       icon: Settings,
     },
   ];

@@ -10,6 +10,8 @@ import { useAuth } from '@/contexts/AuthContext';
 // Layouts
 import MainLayout from '@/components/layouts/MainLayout';
 import AuthLayout from '@/components/layouts/AuthLayout';
+import DashboardLayout from '@/components/layouts/DashboardLayout';
+import AdminLayout from '@/components/layouts/AdminLayout';
 
 // Auth Pages
 import Login from '@/pages/auth/Login';
@@ -24,6 +26,10 @@ import Profile from '@/pages/Profile';
 import Settings from '@/pages/Settings';
 import Pricing from '@/pages/Pricing';
 import NotFound from '@/pages/NotFound';
+import Posts from '@/pages/Posts';
+import Upload from '@/pages/Upload';
+import Reports from '@/pages/Reports';
+import SentimentAnalysis from '@/pages/SentimentAnalysis';
 
 // Admin Pages
 import ModernAdminDashboard from '@/pages/admin/ModernAdminDashboard';
@@ -35,7 +41,6 @@ import SocialMediaScraping from '@/pages/admin/SocialMediaScraping';
 // Feature Pages
 import TextAnalysis from '@/pages/features/TextAnalysis';
 import SocialMediaAnalysis from '@/pages/features/SocialMediaAnalysis';
-import Reports from '@/pages/features/Reports';
 
 // Protected Route Component
 const ProtectedRoute = ({ children }: { children: React.ReactNode }) => {
@@ -114,6 +119,7 @@ function App() {
               }>
                 <Route index element={<Home />} />
                 <Route path="pricing" element={<Pricing />} />
+                <Route path="text-analysis" element={<TextAnalysis />} />
               </Route>
 
               {/* Auth Routes - redirect to dashboard if authenticated */}
@@ -128,24 +134,26 @@ function App() {
                 <Route path="reset-password" element={<ResetPassword />} />
               </Route>
 
-              {/* Protected Routes */}
-              <Route path="/" element={
+              {/* Protected Dashboard Routes */}
+              <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <MainLayout />
+                  <DashboardLayout />
                 </ProtectedRoute>
               }>
-                <Route path="dashboard" element={<Dashboard />} />
-                <Route path="profile" element={<Profile />} />
-                <Route path="settings" element={<Settings />} />
-                <Route path="text-analysis" element={<TextAnalysis />} />
-                <Route path="social-media-analysis" element={<SocialMediaAnalysis />} />
+                <Route index element={<Dashboard />} />
+                <Route path="posts" element={<Posts />} />
+                <Route path="upload" element={<Upload />} />
                 <Route path="reports" element={<Reports />} />
+                <Route path="settings" element={<Settings />} />
+                <Route path="profile" element={<Profile />} />
+                <Route path="sentiment-analysis" element={<SentimentAnalysis />} />
+                <Route path="social-media-analysis" element={<SocialMediaAnalysis />} />
               </Route>
 
               {/* Admin Routes */}
               <Route path="/admin" element={
                 <AdminRoute>
-                  <MainLayout />
+                  <AdminLayout />
                 </AdminRoute>
               }>
                 <Route index element={<ModernAdminDashboard />} />
