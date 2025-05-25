@@ -7,7 +7,7 @@ import { AuthProvider } from "@/contexts/AuthContext";
 import { LanguageProvider } from "@/contexts/LanguageContext";
 import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
 import { ThemeProvider } from "next-themes";
-import Index from "./pages/Index";
+import Home from "./pages/Home";
 import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
@@ -52,7 +52,8 @@ function App() {
                 <BrowserRouter>
                   <Routes>
                     {/* Public routes */}
-                    <Route path="/" element={<Index />} />
+                    <Route path="/" element={<Home />} />
+                    <Route path="/text-analysis" element={<TextAnalysis />} />
                     <Route path="/login" element={<Login />} />
                     <Route path="/register" element={<Register />} />
                     <Route path="/pricing" element={<Pricing />} />
@@ -67,7 +68,6 @@ function App() {
                       }
                     >
                       <Route index element={<Dashboard />} />
-                      <Route path="text-analysis" element={<TextAnalysis />} />
                       <Route path="posts" element={<Posts />} />
                       <Route path="sentiment-analysis" element={<SentimentAnalysis />} />
                       <Route path="category-distribution" element={<CategoryDistribution />} />
