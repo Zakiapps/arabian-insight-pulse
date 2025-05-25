@@ -311,30 +311,6 @@ const ImprovedTextAnalyzer = () => {
       )}
     </div>
   );
-
-  function getSentimentColor(sentiment: string) {
-    switch (sentiment) {
-      case 'positive': return 'text-green-600 bg-green-50 border-green-200';
-      case 'negative': return 'text-red-600 bg-red-50 border-red-200';
-      default: return 'text-gray-600 bg-gray-50 border-gray-200';
-    }
-  }
-
-  function getSentimentEmoji(sentiment: string) {
-    switch (sentiment) {
-      case 'positive': return '😊';
-      case 'negative': return '😞';
-      default: return '😐';
-    }
-  }
-
-  function getSentimentText(sentiment: string) {
-    switch (sentiment) {
-      case 'positive': return 'إيجابي';
-      case 'negative': return 'سلبي';
-      default: return 'محايد';
-    }
-  }
 };
 
 export default ImprovedTextAnalyzer;
