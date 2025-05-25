@@ -461,45 +461,6 @@ export type Database = {
         }
         Relationships: []
       }
-      scraping_settings: {
-        Row: {
-          created_at: string | null
-          hashtags: string[] | null
-          id: string
-          is_active: boolean | null
-          last_scrape_at: string | null
-          location_filters: string[] | null
-          platform: string
-          scraping_interval: number | null
-          search_terms: string[]
-          updated_at: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform: string
-          scraping_interval?: number | null
-          search_terms: string[]
-          updated_at?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          hashtags?: string[] | null
-          id?: string
-          is_active?: boolean | null
-          last_scrape_at?: string | null
-          location_filters?: string[] | null
-          platform?: string
-          scraping_interval?: number | null
-          search_terms?: string[]
-          updated_at?: string | null
-        }
-        Relationships: []
-      }
       sendgrid_settings: {
         Row: {
           api_key: string | null
@@ -978,53 +939,6 @@ export type Database = {
         }
         Relationships: []
       }
-      user_subscriptions: {
-        Row: {
-          created_at: string | null
-          current_period_end: string | null
-          current_period_start: string | null
-          id: string
-          plan_id: string | null
-          status: string
-          stripe_customer_id: string | null
-          stripe_subscription_id: string | null
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          created_at?: string | null
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id?: string | null
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          created_at?: string | null
-          current_period_end?: string | null
-          current_period_start?: string | null
-          id?: string
-          plan_id?: string | null
-          status?: string
-          stripe_customer_id?: string | null
-          stripe_subscription_id?: string | null
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "user_subscriptions_plan_id_fkey"
-            columns: ["plan_id"]
-            isOneToOne: false
-            referencedRelation: "pricing_plans"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
     }
     Views: {
       [_ in never]: never
@@ -1123,6 +1037,10 @@ export type Database = {
         Returns: number
       }
       is_admin: {
+        Args: Record<PropertyKey, never>
+        Returns: boolean
+      }
+      is_admin_user: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }

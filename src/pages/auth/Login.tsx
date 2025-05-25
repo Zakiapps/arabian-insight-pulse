@@ -34,7 +34,7 @@ const formSchema = z.object({
 type FormValues = z.infer<typeof formSchema>;
 
 const Login = () => {
-  const { login, isAuthenticated } = useAuth();
+  const { login, isAuthenticated, isAdmin } = useAuth();
   const navigate = useNavigate();
   const location = useLocation();
   const [isLoading, setIsLoading] = useState(false);
@@ -59,11 +59,13 @@ const Login = () => {
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated) {
-      navigate('/dashboard');
+      if (isAdmin) {
+        navigate('/admin');
+      } else {
+        navigate('/dashboard');
+      }
     }
-  }, [isAuthenticated, navigate]);
-
-  const from = (location.state as any)?.from?.pathname || "/dashboard";
+  }, [isAuthenticated, isAdmin, navigate]);
 
   const onSubmit = async (values: FormValues) => {
     setIsLoading(true);
@@ -79,10 +81,17 @@ const Login = () => {
         return;
       }
       
+      // If login is successful, show success message
       if (data) {
         toast.success("تم تسجيل الدخول بنجاح");
+        
+        // Navigate based on user role
         setTimeout(() => {
-          navigate(from, { replace: true });
+          if (values.email === 'admin@arabinsights.com') {
+            navigate('/admin', { replace: true });
+          } else {
+            navigate('/dashboard', { replace: true });
+          }
         }, 500);
       }
     } catch (error: any) {
@@ -171,7 +180,7 @@ const Login = () => {
                 </Button>
                 <div className="text-center text-sm">
                   <p className="text-muted-foreground">
-                    للتجربة: استخدم admin@example.com / password
+                    للتجربة: استخدم admin@arabinsights.com / password
                   </p>
                 </div>
               </form>
