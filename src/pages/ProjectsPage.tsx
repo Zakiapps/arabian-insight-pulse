@@ -36,6 +36,8 @@ interface Project {
   name: string;
   description: string | null;
   is_active: boolean;
+  upload_count: number;
+  analysis_count: number;
   created_at: string;
   updated_at: string;
 }
@@ -50,36 +52,29 @@ const ProjectsPage = () => {
   const [newProjectDescription, setNewProjectDescription] = useState('');
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Fetch projects
+  // Fetch projects using RPC function
   const { data: projects, isLoading } = useQuery({
     queryKey: ['projects'],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .order('created_at', { ascending: false });
+      const { data, error } = await supabase.rpc('get_user_projects');
       
       if (error) throw error;
       return data as Project[];
     }
   });
   
-  // Create project mutation
+  // Create project mutation using RPC function
   const createProjectMutation = useMutation({
     mutationFn: async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .insert({
-          name: newProjectName,
-          description: newProjectDescription || null
-        })
-        .select()
-        .single();
+      const { data, error } = await supabase.rpc('create_project', {
+        name_param: newProjectName,
+        description_param: newProjectDescription || null
+      });
       
       if (error) throw error;
-      return data as Project;
+      return data;
     },
-    onSuccess: (newProject) => {
+    onSuccess: (projectId) => {
       toast({
         title: isRTL ? "تم إنشاء المشروع بنجاح" : "Project created successfully",
       });
@@ -93,7 +88,9 @@ const ProjectsPage = () => {
       queryClient.invalidateQueries({ queryKey: ['projects'] });
       
       // Navigate to the new project
-      navigate(`/projects/${newProject.id}`);
+      if (projectId) {
+        navigate(`/projects/${projectId}`);
+      }
     },
     onError: (error) => {
       toast({
@@ -104,23 +101,31 @@ const ProjectsPage = () => {
     }
   });
   
-  // Delete project mutation
+  // Delete project mutation using RPC function
   const deleteProjectMutation = useMutation({
     mutationFn: async (projectId: string) => {
-      const { error } = await supabase
-        .from('projects')
-        .delete()
-        .eq('id', projectId);
-      
-      if (error) throw error;
-    },
-    onSuccess: () => {
-      toast({
-        title: isRTL ? "تم حذف المشروع بنجاح" : "Project deleted successfully",
+      const { data, error } = await supabase.rpc('delete_project', {
+        project_id_param: projectId
       });
       
-      // Refetch projects
-      queryClient.invalidateQueries({ queryKey: ['projects'] });
+      if (error) throw error;
+      return data;
+    },
+    onSuccess: (success) => {
+      if (success) {
+        toast({
+          title: isRTL ? "تم حذف المشروع بنجاح" : "Project deleted successfully",
+        });
+        
+        // Refetch projects
+        queryClient.invalidateQueries({ queryKey: ['projects'] });
+      } else {
+        toast({
+          title: isRTL ? "فشل في حذف المشروع" : "Failed to delete project",
+          description: isRTL ? "المشروع غير موجود أو ليس لديك صلاحية لحذفه" : "Project not found or you do not have permission to delete it",
+          variant: "destructive",
+        });
+      }
     },
     onError: (error) => {
       toast({
@@ -298,24 +303,38 @@ const ProjectsPage = () => {
                       </CardDescription>
                     )}
                   </div>
-                  {!project.is_active && (
-                    <Badge variant="secondary">
-                      {isRTL ? 'غير نشط' : 'Inactive'}
-                    </Badge>
-                  )}
+                  <div className="flex flex-col gap-1">
+                    {!project.is_active && (
+                      <Badge variant="secondary">
+                        {isRTL ? 'غير نشط' : 'Inactive'}
+                      </Badge>
+                    )}
+                    {project.upload_count > 0 && (
+                      <Badge variant="outline" className="text-xs">
+                        {project.upload_count} {isRTL ? 'رفع' : 'uploads'}
+                      </Badge>
+                    )}
+                  </div>
                 </div>
               </CardHeader>
               <CardContent className="pb-3">
-                <div className="flex items-center text-sm text-muted-foreground">
+                <div className="flex items-center text-sm text-muted-foreground mb-2">
                   <Calendar className="mr-2 h-4 w-4" />
                   {isRTL ? 'تم الإنشاء في' : 'Created on'} {new Date(project.created_at).toLocaleDateString()}
                 </div>
+                {project.analysis_count > 0 && (
+                  <div className="flex items-center text-sm text-muted-foreground">
+                    <BarChart3 className="mr-2 h-4 w-4" />
+                    {project.analysis_count} {isRTL ? 'تحليل' : 'analyses'}
+                  </div>
+                )}
               </CardContent>
               <CardFooter className="flex justify-between">
                 <Button 
                   variant="ghost" 
                   size="sm"
                   onClick={() => handleDeleteProject(project.id)}
+                  disabled={deleteProjectMutation.isPending}
                 >
                   <Trash2 className="mr-2 h-4 w-4 text-destructive" />
                   {isRTL ? 'حذف' : 'Delete'}
