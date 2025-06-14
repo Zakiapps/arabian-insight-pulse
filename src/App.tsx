@@ -1,4 +1,3 @@
-
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -11,6 +10,7 @@ import ProtectedRoute from "@/components/auth/ProtectedRoute";
 
 // Import pages
 import LandingPage from "@/pages/LandingPage";
+import BilingualLanding from "@/pages/BilingualLanding";
 import TextAnalysis from "@/pages/TextAnalysis";
 import SignIn from "@/pages/SignIn";
 import SignUp from "@/pages/SignUp";
@@ -29,6 +29,10 @@ import PlatformDistribution from "@/pages/PlatformDistribution";
 import TopTopics from "@/pages/TopTopics";
 import DialectDetection from "@/pages/DialectDetection";
 import Settings from "@/pages/Settings";
+
+// Project pages
+import ProjectsPage from "@/pages/ProjectsPage";
+import ProjectPage from "@/pages/ProjectPage";
 
 // Admin pages
 import AdminDashboard from "@/pages/admin/AdminDashboard";
@@ -53,8 +57,8 @@ function App() {
                   <Toaster />
                   <Routes>
                     {/* Public routes - Landing page as home */}
-                    <Route path="/" element={<LandingPage />} />
-                    <Route path="/home" element={<LandingPage />} />
+                    <Route path="/" element={<BilingualLanding />} />
+                    <Route path="/home" element={<BilingualLanding />} />
                     <Route path="/landing" element={<LandingPage />} />
                     <Route path="/text-analysis" element={<TextAnalysis />} />
                     <Route path="/signin" element={<SignIn />} />
@@ -78,6 +82,16 @@ function App() {
                       <Route path="topics" element={<TopTopics />} />
                       <Route path="dialects" element={<DialectDetection />} />
                       <Route path="settings" element={<Settings />} />
+                    </Route>
+                    
+                    {/* Projects routes */}
+                    <Route path="/projects" element={
+                      <ProtectedRoute>
+                        <DashboardLayout />
+                      </ProtectedRoute>
+                    }>
+                      <Route index element={<ProjectsPage />} />
+                      <Route path=":projectId" element={<ProjectPage />} />
                     </Route>
 
                     {/* Protected Admin routes */}

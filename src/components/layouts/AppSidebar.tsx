@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -21,6 +20,7 @@ import {
     Bell,
     CreditCard,
     FileText,
+    FolderKanban,
     Globe,
     Languages,
     LayoutDashboard,
@@ -44,27 +44,32 @@ const AppSidebar = () => {
 
   const mainMenuItems = [
     {
-      title: "لوحة التحكم",
+      title: isRTL ? "لوحة التحكم" : "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
     },
     {
-      title: "المنشورات",
+      title: isRTL ? "المشاريع" : "Projects",
+      url: "/projects",
+      icon: FolderKanban,
+    },
+    {
+      title: isRTL ? "المنشورات" : "Posts",
       url: "/dashboard/posts",
       icon: MessageSquare,
     },
     {
-      title: "رفع البيانات",
+      title: isRTL ? "رفع البيانات" : "Upload",
       url: "/dashboard/upload",
       icon: Upload,
     },
     {
-      title: "التنبيهات",
+      title: isRTL ? "التنبيهات" : "Alerts",
       url: "/dashboard/alerts",
       icon: Bell,
     },
     {
-      title: "التقارير",
+      title: isRTL ? "التقارير" : "Reports",
       url: "/dashboard/reports",
       icon: FileText,
     },
@@ -72,27 +77,27 @@ const AppSidebar = () => {
 
   const analysisMenuItems = [
     {
-      title: "تحليل المشاعر",
+      title: isRTL ? "تحليل المشاعر" : "Sentiment Analysis",
       url: "/dashboard/sentiment",
       icon: BarChart3,
     },
     {
-      title: "توزيع الفئات",
+      title: isRTL ? "توزيع الفئات" : "Categories",
       url: "/dashboard/categories",
       icon: PieChart,
     },
     {
-      title: "توزيع المنصات",
+      title: isRTL ? "توزيع المنصات" : "Platforms",
       url: "/dashboard/platforms",
       icon: Globe,
     },
     {
-      title: "المواضيع الشائعة",
+      title: isRTL ? "المواضيع الشائعة" : "Topics",
       url: "/dashboard/topics",
       icon: TrendingUp,
     },
     {
-      title: "كشف اللهجات",
+      title: isRTL ? "كشف اللهجات" : "Dialects",
       url: "/dashboard/dialects",
       icon: Languages,
     },
@@ -100,27 +105,27 @@ const AppSidebar = () => {
 
   const adminMenuItems = [
     {
-      title: "إدارة المستخدمين",
+      title: isRTL ? "إدارة المستخدمين" : "Users",
       url: "/admin/users",
       icon: Users2,
     },
     {
-      title: "خطط الاشتراك",
+      title: isRTL ? "خطط الاشتراك" : "Plans",
       url: "/admin/plans",
       icon: BadgePercent,
     },
     {
-      title: "الاشتراكات",
+      title: isRTL ? "الاشتراكات" : "Subscriptions",
       url: "/admin/subscriptions",
       icon: CreditCard,
     },
     {
-      title: "المعاملات",
+      title: isRTL ? "المعاملات" : "Transactions",
       url: "/admin/transactions",
       icon: Receipt,
     },
     {
-      title: "إعدادات النظام",
+      title: isRTL ? "إعدادات النظام" : "Settings",
       url: "/admin/settings",
       icon: Settings,
     },
@@ -134,8 +139,12 @@ const AppSidebar = () => {
             <BarChart3 className="h-5 w-5" />
           </div>
           <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
-            <h2 className="font-bold text-lg">افاق الابتكار للاستشارات و التدريب</h2>
-            <p className="text-xs text-muted-foreground">تحليل البيانات الاجتماعية</p>
+            <h2 className="font-bold text-lg">
+              {isRTL ? "رؤى عربية" : "Arab Insights"}
+            </h2>
+            <p className="text-xs text-muted-foreground">
+              {isRTL ? "تحليل البيانات الاجتماعية" : "Social Data Analysis"}
+            </p>
           </div>
         </div>
       </SidebarHeader>
@@ -143,7 +152,7 @@ const AppSidebar = () => {
       <SidebarContent className="px-2 py-4">
         <SidebarGroup>
           <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
-            الميزات الرئيسية
+            {isRTL ? "الميزات الرئيسية" : "Main Features"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -163,7 +172,7 @@ const AppSidebar = () => {
 
         <SidebarGroup>
           <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
-            أدوات التحليل
+            {isRTL ? "أدوات التحليل" : "Analysis Tools"}
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
@@ -185,8 +194,12 @@ const AppSidebar = () => {
           <SidebarGroup>
             <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 flex items-center gap-2 px-2">
               <Shield className="h-4 w-4 shrink-0" />
-              <span className="group-data-[collapsible=icon]:hidden">إدارة النظام</span>
-              <Badge variant="destructive" className="text-xs group-data-[collapsible=icon]:hidden">مشرف</Badge>
+              <span className="group-data-[collapsible=icon]:hidden">
+                {isRTL ? "إدارة النظام" : "Admin"}
+              </span>
+              <Badge variant="destructive" className="text-xs group-data-[collapsible=icon]:hidden">
+                {isRTL ? "مشرف" : "Admin"}
+              </Badge>
             </SidebarGroupLabel>
             <SidebarGroupContent>
               <SidebarMenu>
@@ -209,10 +222,12 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton asChild isActive={isActive('/dashboard/settings')} tooltip="الإعدادات">
+                <SidebarMenuButton asChild isActive={isActive('/dashboard/settings')} tooltip={isRTL ? "الإعدادات" : "Settings"}>
                   <Link to="/dashboard/settings" className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
                     <Settings className="h-4 w-4 shrink-0" />
-                    <span className="group-data-[collapsible=icon]:hidden">الإعدادات</span>
+                    <span className="group-data-[collapsible=icon]:hidden">
+                      {isRTL ? "الإعدادات" : "Settings"}
+                    </span>
                   </Link>
                 </SidebarMenuButton>
               </SidebarMenuItem>
@@ -231,13 +246,17 @@ const AppSidebar = () => {
           </Avatar>
           <div className="flex-1 min-w-0 group-data-[collapsible=icon]:hidden">
             <p className="text-sm font-medium truncate">
-              {profile?.full_name || 'مستخدم'}
+              {profile?.full_name || 'User'}
             </p>
             <div className="flex items-center gap-2">
               <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse"></div>
-              <p className="text-xs text-muted-foreground">متصل</p>
+              <p className="text-xs text-muted-foreground">
+                {isRTL ? "متصل" : "Online"}
+              </p>
               {isAdmin && (
-                <Badge variant="destructive" className="text-xs">مشرف</Badge>
+                <Badge variant="destructive" className="text-xs">
+                  {isRTL ? "مشرف" : "Admin"}
+                </Badge>
               )}
             </div>
           </div>

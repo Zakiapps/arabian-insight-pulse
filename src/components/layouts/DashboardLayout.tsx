@@ -1,4 +1,3 @@
-
 import { Outlet } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { useMediaQuery } from "@/hooks/use-media-query";
