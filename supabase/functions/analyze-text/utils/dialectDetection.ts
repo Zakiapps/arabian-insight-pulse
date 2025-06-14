@@ -1,43 +1,43 @@
-
-// Enhanced Jordanian dialect detection using comprehensive terms and patterns
+// Enhanced Jordanian dialect detection
 export function detectJordanianDialect(text: string): string {
-  // قائمة موسعة بالمفردات والتعابير الأردنية
   const jordanianTerms = [
     "زلمة", "يا زلمة", "خرفنة", "تسليك", "احشش", "انكب", "راعي", "هسا", "شو", "كيفك",
-    "إربد", "عمان", "مطربين الأردن", "منتخب", "واللهي", "عال", "بدك", "مش عارف",
-    "تمام", "فش", "عالسريع", "يا رجال الأمن", "يلا", "خلص", "دبس", "بسطة",
+    "إربد", "عمان", "الزرقاء", "العقبة", "منتخب", "واللهي", "عال", "بدك", "مش عارف",
+    "تمام", "فش", "عالسريع", "يا رجال", "يلا", "خلص", "دبس", "بسطة",
     "جاي", "روح", "حياتي", "عن جد", "بكفي", "ما بدي", "طيب", "قديش", "وينك",
-    "عالطول", "شايف", "هسه", "بتعرف", "بس", "يعني", "كتير", "شوي", "حبتين"
+    "عالطول", "شايف", "هسه", "بتعرف", "بس", "يعني", "كتير", "شوي", "حبتين",
+    "منيح", "بدأيش", "بطل", "خبرني", "ولك", "يا عمي", "مفكر", "بفكر"
   ];
 
-  // تحليل الأنماط اللغوية الأردنية
   const jordanianPatterns = [
-    /\b(شو|كيف|وين|بدك|مش|هسا|هسه)\b/gi,  // كلمات أردنية شائعة
-    /\b(يا\s*(زلمة|رجال|حياتي))\b/gi  // تعابير مثل "يا زلمة"
+    /\b(شو|كيف|وين|بدك|مش|هسا|هسه|منيح)\b/gi,
+    /\b(يا\s*(زلمة|رجال|حياتي|عمي))\b/gi,
+    /\b(عال|فش|كتير|شوي)\b/gi,
+    /\b(بدأيش|بطل|خبرني)\b/gi
   ];
 
   const textLower = text.toLowerCase();
-  
-  // التحقق من وجود المصطلحات الأردنية
-  const hasTerms = jordanianTerms.some(term => textLower.includes(term.toLowerCase()));
-  
-  // التحقق من وجود الأنماط الأردنية
-  const hasPatterns = jordanianPatterns.some(pattern => pattern.test(text));
-  
-  return (hasTerms || hasPatterns) ? 'Jordanian' : 'Non-Jordanian';
-}
+  let score = 0;
+  let totalChecks = jordanianTerms.length + jordanianPatterns.length;
 
-// دالة للتحقق من جودة النص العربي
-export function validateArabicText(text: string): { isValid: boolean; errorMessage: string } {
-  if (!text || text.trim().length < 3) {
-    return { isValid: false, errorMessage: 'النص فارغ أو قصير جدًا' };
-  }
+  // Check for Jordanian terms
+  jordanianTerms.forEach(term => {
+    if (textLower.includes(term.toLowerCase())) {
+      score += 1;
+    }
+  });
+
+  // Check for Jordanian patterns
+  jordanianPatterns.forEach(pattern => {
+    const matches = text.match(pattern);
+    if (matches) {
+      score += matches.length;
+    }
+  });
+
+  // Calculate confidence score (0-1)
+  const confidence = score / Math.max(totalChecks, 1);
   
-  // التحقق من وجود حروف عربية
-  const hasArabicChars = /[\u0600-\u06FF]/.test(text);
-  if (!hasArabicChars) {
-    return { isValid: false, errorMessage: 'النص لا يحتوي على حروف عربية' };
-  }
-  
-  return { isValid: true, errorMessage: '' };
+  // Determine if text is Jordanian dialect
+  return confidence > 0.15 ? 'Jordanian' : 'Non-Jordanian';
 }
