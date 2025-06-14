@@ -106,30 +106,30 @@ const AppSidebar = () => {
     },
   ];
   
-  const modelsMenuItems = [
+  const modelsServicesItems = [
     {
       title: isRTL ? "تحليل المشاعر" : "Sentiment Analysis",
-      url: "/projects",
+      url: "/models/sentiment",
       icon: Brain,
     },
     {
       title: isRTL ? "تلخيص النصوص" : "Text Summarization",
-      url: "/projects",
+      url: "/models/summarization",
       icon: FileText,
     },
     {
       title: isRTL ? "BrightData" : "BrightData",
-      url: "/projects",
+      url: "/models/brightdata",
       icon: Globe,
     },
     {
       title: isRTL ? "NewsAPI" : "NewsAPI",
-      url: "/projects",
+      url: "/models/newsapi",
       icon: Newspaper,
     },
     {
       title: isRTL ? "التنبؤ" : "Forecasting",
-      url: "/projects",
+      url: "/models/forecasting",
       icon: Zap,
     },
   ];
@@ -227,7 +227,7 @@ const AppSidebar = () => {
           </SidebarGroupLabel>
           <SidebarGroupContent>
             <SidebarMenu>
-              {modelsMenuItems.map((item) => (
+              {modelsServicesItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
