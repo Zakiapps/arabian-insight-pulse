@@ -18,6 +18,7 @@ import {
     BadgePercent,
     BarChart3,
     Bell,
+    Brain,
     CreditCard,
     FileText,
     FolderKanban,
@@ -25,13 +26,15 @@ import {
     Languages,
     LayoutDashboard,
     MessageSquare,
+    Newspaper,
     PieChart,
     Receipt,
     Settings,
     Shield,
     TrendingUp,
     Upload,
-    Users2
+    Users2,
+    Zap
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -100,6 +103,34 @@ const AppSidebar = () => {
       title: isRTL ? "كشف اللهجات" : "Dialects",
       url: "/dashboard/dialects",
       icon: Languages,
+    },
+  ];
+  
+  const modelsMenuItems = [
+    {
+      title: isRTL ? "تحليل المشاعر" : "Sentiment Analysis",
+      url: "/projects",
+      icon: Brain,
+    },
+    {
+      title: isRTL ? "تلخيص النصوص" : "Text Summarization",
+      url: "/projects",
+      icon: FileText,
+    },
+    {
+      title: isRTL ? "BrightData" : "BrightData",
+      url: "/projects",
+      icon: Globe,
+    },
+    {
+      title: isRTL ? "NewsAPI" : "NewsAPI",
+      url: "/projects",
+      icon: Newspaper,
+    },
+    {
+      title: isRTL ? "التنبؤ" : "Forecasting",
+      url: "/projects",
+      icon: Zap,
     },
   ];
 
@@ -177,6 +208,26 @@ const AppSidebar = () => {
           <SidebarGroupContent>
             <SidebarMenu>
               {analysisMenuItems.map((item) => (
+                <SidebarMenuItem key={item.title}>
+                  <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
+                    <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
+                      <item.icon className="h-4 w-4 shrink-0" />
+                      <span className="group-data-[collapsible=icon]:hidden">{item.title}</span>
+                    </Link>
+                  </SidebarMenuButton>
+                </SidebarMenuItem>
+              ))}
+            </SidebarMenu>
+          </SidebarGroupContent>
+        </SidebarGroup>
+        
+        <SidebarGroup>
+          <SidebarGroupLabel className="text-sm font-medium text-foreground/70 mb-2 px-2">
+            {isRTL ? "النماذج والخدمات" : "Models & Services"}
+          </SidebarGroupLabel>
+          <SidebarGroupContent>
+            <SidebarMenu>
+              {modelsMenuItems.map((item) => (
                 <SidebarMenuItem key={item.title}>
                   <SidebarMenuButton asChild isActive={isActive(item.url)} tooltip={item.title}>
                     <Link to={item.url} className="flex items-center gap-3 px-3 py-2 rounded-lg transition-colors">
