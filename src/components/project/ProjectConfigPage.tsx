@@ -1,15 +1,10 @@
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
-import ProjectDashboard from '@/components/project/ProjectDashboard';
-import BrightDataConfig from '@/components/project/BrightDataConfig';
-import NewsApiConfig from '@/components/project/NewsApiConfig';
-import TextSummarizer from '@/components/project/TextSummarizer';
-import { ArrowLeft, Settings, Globe, Newspaper, FileText } from 'lucide-react';
+import ConfigTabs from './ConfigTabs';
+import { ArrowLeft, Settings } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -18,12 +13,10 @@ interface Project {
   created_at: string;
 }
 
-const ProjectPage = () => {
+const ProjectConfigPage = () => {
   const { projectId } = useParams<{ projectId: string }>();
-  const { toast } = useToast();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   
   // Fetch project details
   const { data: project, isLoading, error } = useQuery({
@@ -82,51 +75,22 @@ const ProjectPage = () => {
           <Button 
             variant="outline" 
             size="icon"
-            onClick={() => navigate('/projects')}
+            onClick={() => navigate(`/projects/${projectId}`)}
           >
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <h1 className="text-2xl font-bold">{project.name}</h1>
+          <div>
+            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <p className="text-muted-foreground">
+              {isRTL ? 'إعدادات المشروع' : 'Project Settings'}
+            </p>
+          </div>
         </div>
       </div>
       
-      <Tabs defaultValue="dashboard">
-        <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="dashboard">
-            {isRTL ? 'لوحة التحكم' : 'Dashboard'}
-          </TabsTrigger>
-          <TabsTrigger value="brightdata">
-            <Globe className="mr-2 h-4 w-4" />
-            BrightData
-          </TabsTrigger>
-          <TabsTrigger value="newsapi">
-            <Newspaper className="mr-2 h-4 w-4" />
-            NewsAPI
-          </TabsTrigger>
-          <TabsTrigger value="summarizer">
-            <FileText className="mr-2 h-4 w-4" />
-            {isRTL ? 'الملخص' : 'Summarizer'}
-          </TabsTrigger>
-        </TabsList>
-        
-        <TabsContent value="dashboard">
-          <ProjectDashboard projectId={projectId} />
-        </TabsContent>
-        
-        <TabsContent value="brightdata">
-          <BrightDataConfig projectId={projectId} />
-        </TabsContent>
-        
-        <TabsContent value="newsapi">
-          <NewsApiConfig projectId={projectId} />
-        </TabsContent>
-        
-        <TabsContent value="summarizer">
-          <TextSummarizer />
-        </TabsContent>
-      </Tabs>
+      <ConfigTabs projectId={projectId} />
     </div>
   );
 };
 
-export default ProjectPage;
+export default ProjectConfigPage;
