@@ -53,11 +53,6 @@ const AppSidebar = () => {
       icon: LayoutDashboard,
     },
     {
-      title: isRTL ? "موحد الذكاء الاصطناعي" : "Unified Scraper",
-      url: "/dashboard/unified-scraper",
-      icon: WandSparkles,
-    },
-    {
       title: isRTL ? "المشاريع" : "Projects",
       url: "/projects",
       icon: FolderKanban,
