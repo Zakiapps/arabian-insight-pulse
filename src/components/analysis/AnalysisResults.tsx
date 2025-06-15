@@ -157,7 +157,11 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
               </div>
             </div>
             
-            <SentimentChart analysis={analysis} />
+            <SentimentChart 
+              sentiment={analysis.sentiment} 
+              sentiment_score={analysis.sentimentScore || 0} 
+              model_response={analysis.modelResponse || {}} 
+            />
             
             <div className="text-sm text-muted-foreground text-center">
               <p>
@@ -270,7 +274,11 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
           <TabsContent value="forecast" className="space-y-4">
             {forecast ? (
               <>
-                <ForecastChart forecast={forecast} />
+                <ForecastChart 
+                  analysis_id={analysis.id}
+                  forecast_json={{}}
+                  created_at={new Date().toISOString()}
+                />
                 
                 <div className="text-xs text-muted-foreground text-center">
                   <p>

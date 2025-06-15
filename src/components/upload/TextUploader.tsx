@@ -1,3 +1,4 @@
+
 import React, { useState } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,10 +32,9 @@ type FormValues = z.infer<typeof formSchema>;
 
 const TextUploader: React.FC = () => {
   const { currentProject } = useProject();
-  const { uploadText, processUpload } = useUpload();
+  const { uploadText } = useUpload();
   const { isRTL } = useLanguage();
   const [isUploading, setIsUploading] = useState(false);
-  const [isProcessing, setIsProcessing] = useState(false);
   
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -52,10 +52,11 @@ const TextUploader: React.FC = () => {
     setIsUploading(true);
     
     try {
-      // Prepare metadata
-      const metadata: Record<string, any> = {};
-      if (values.author) metadata.author = values.author;
-      if (values.location) metadata.location = values.location;
+      // Prepare metadata as a string (JSON stringified)
+      const metadata = JSON.stringify({
+        author: values.author || '',
+        location: values.location || '',
+      });
       
       // Upload the text
       const uploadId = await uploadText(
@@ -66,16 +67,11 @@ const TextUploader: React.FC = () => {
       );
       
       if (uploadId) {
-        // Process the upload
-        setIsProcessing(true);
-        await processUpload(uploadId);
-        
         // Reset the form
         form.reset();
       }
     } finally {
       setIsUploading(false);
-      setIsProcessing(false);
     }
   };
   
@@ -217,14 +213,12 @@ const TextUploader: React.FC = () => {
             <Button 
               type="submit" 
               className="w-full"
-              disabled={isUploading || isProcessing}
+              disabled={isUploading}
             >
-              {isUploading || isProcessing ? (
+              {isUploading ? (
                 <>
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                  {isUploading 
-                    ? (isRTL ? 'جاري التحميل...' : 'Uploading...') 
-                    : (isRTL ? 'جاري المعالجة...' : 'Processing...')}
+                  {isRTL ? 'جاري التحميل...' : 'Uploading...'}
                 </>
               ) : (
                 <>

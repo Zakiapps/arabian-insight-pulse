@@ -1,5 +1,6 @@
+
 import { useParams, useNavigate } from 'react-router-dom';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
@@ -23,7 +24,6 @@ const ProjectPage = () => {
   const { toast } = useToast();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
-  const queryClient = useQueryClient();
   
   // Fetch project details
   const { data: project, isLoading, error } = useQuery({
@@ -110,7 +110,7 @@ const ProjectPage = () => {
         </TabsList>
         
         <TabsContent value="dashboard">
-          <ProjectDashboard projectId={projectId} />
+          <ProjectDashboard />
         </TabsContent>
         
         <TabsContent value="brightdata">

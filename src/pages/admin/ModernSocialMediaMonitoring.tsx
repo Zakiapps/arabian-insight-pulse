@@ -11,17 +11,26 @@ import { Activity, Eye, RefreshCw, Settings, Trash2, TrendingUp } from "lucide-r
 import { useEffect, useState } from 'react';
 import { toast } from "sonner";
 
+interface LocalStats {
+  total: number;
+  byPlatform: Record<string, number>;
+  byCategory: Record<string, number>;
+  bySentiment: Record<string, number>;
+  jordanianDialect: number;
+  viral: number;
+}
+
 const ModernSocialMediaMonitoring = () => {
   const [posts, setPosts] = useState<ScrapedPost[]>([]);
   const [loading, setLoading] = useState(false);
   const [scrapingActive, setScrapingActive] = useState(false);
   const [selectedPosts, setSelectedPosts] = useState<string[]>([]);
   const [viewMode, setViewMode] = useState<'grid' | 'table'>('grid');
-  const [stats, setStats] = useState({
+  const [stats, setStats] = useState<LocalStats>({
     total: 0,
-    byPlatform: {} as Record<string, number>,
-    byCategory: {} as Record<string, number>,
-    bySentiment: {} as Record<string, number>,
+    byPlatform: {},
+    byCategory: {},
+    bySentiment: {},
     jordanianDialect: 0,
     viral: 0
   });
@@ -29,11 +38,29 @@ const ModernSocialMediaMonitoring = () => {
   const fetchPosts = async () => {
     setLoading(true);
     try {
-      const postsData = await socialMediaService.getPosts({ limit: 50 });
+      const postsData = await socialMediaService.getScrapedPosts({ limit: 50 });
       setPosts(postsData);
 
-      const statsData = await socialMediaService.getPostStats();
-      setStats(statsData);
+      const statsData = await socialMediaService.getStats();
+      
+      // Map the stats to our local interface
+      setStats({
+        total: statsData.totalPosts,
+        byPlatform: statsData.platformDistribution.reduce((acc, item) => {
+          acc[item.platform] = item.count;
+          return acc;
+        }, {} as Record<string, number>),
+        byCategory: statsData.categoryDistribution.reduce((acc, item) => {
+          acc[item.category] = item.count;
+          return acc;
+        }, {} as Record<string, number>),
+        bySentiment: statsData.sentimentDistribution.reduce((acc, item) => {
+          acc[item.sentiment] = item.count;
+          return acc;
+        }, {} as Record<string, number>),
+        jordanianDialect: statsData.jordanianDialectPosts,
+        viral: statsData.viralPosts
+      });
     } catch (error: any) {
       console.error('Error fetching posts:', error);
       toast.error('خطأ في جلب المنشورات');
@@ -45,8 +72,8 @@ const ModernSocialMediaMonitoring = () => {
   const startScraping = async () => {
     setScrapingActive(true);
     try {
-      const result = await socialMediaService.triggerScraping();
-      toast.success(`تم معالجة ${result.processed} منشور بنجاح`);
+      await socialMediaService.scrapePlatform('twitter', ['jordan', 'عمان']);
+      toast.success('تم بدء عملية الاستخراج بنجاح');
       fetchPosts();
     } catch (error: any) {
       console.error('Error starting scraping:', error);
@@ -318,7 +345,7 @@ const ModernSocialMediaMonitoring = () => {
                       <TableCell>{getSentimentBadge(post.sentiment || 'neutral')}</TableCell>
                       <TableCell>{post.engagement_count}</TableCell>
                       <TableCell>
-                        {post.scraped_at ? new Date(post.scraped_at).toLocaleDateString('ar-SA') : ''}
+                        {post.created_at ? new Date(post.created_at).toLocaleDateString('ar-SA') : ''}
                       </TableCell>
                     </TableRow>
                   ))}

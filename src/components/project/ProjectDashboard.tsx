@@ -60,7 +60,7 @@ const ProjectDashboard = () => {
       });
       
       if (error) throw error;
-      return data as unknown as ProjectStats;
+      return data as ProjectStats;
     },
     enabled: !!projectId,
   });
@@ -80,6 +80,28 @@ const ProjectDashboard = () => {
     enabled: !!projectId,
   });
 
+  const handleUpdateProject = async (updateData: { name: string; description: string }) => {
+    if (!projectId) return;
+    
+    const { error } = await supabase
+      .from('projects')
+      .update(updateData)
+      .eq('id', projectId);
+    
+    if (error) throw error;
+  };
+
+  const handleDeleteProject = async () => {
+    if (!projectId) return;
+    
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+    
+    if (error) throw error;
+  };
+
   if (projectLoading || !project) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -90,7 +112,11 @@ const ProjectDashboard = () => {
 
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      <ProjectHeader project={project} />
+      <ProjectHeader 
+        project={project} 
+        onUpdate={handleUpdateProject}
+        onDelete={handleDeleteProject}
+      />
       
       {/* Stats Cards */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
@@ -202,7 +228,7 @@ const ProjectDashboard = () => {
         </TabsContent>
 
         <TabsContent value="sentiment" className="space-y-4">
-          <SentimentChart />
+          <SentimentChart analyses={analyses || []} />
         </TabsContent>
 
         <TabsContent value="dialect" className="space-y-4">
