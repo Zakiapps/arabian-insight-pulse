@@ -147,7 +147,7 @@ function preprocessArabicText(text: string): { processed: string; emotionalConte
   };
 }
 
-// Enhanced emotion and sentiment analysis
+// Fixed emotion and sentiment analysis for single-score response
 function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
   sentiment: string;
   emotion: string;
@@ -165,6 +165,8 @@ function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
   let emotional_intensity = 0.5;
 
   try {
+    console.log('Raw HF result structure:', JSON.stringify(hfResult, null, 2));
+
     // Handle different HuggingFace response formats
     let scores: any[] = [];
     
@@ -174,13 +176,15 @@ function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
       scores = hfResult.scores;
     }
 
+    console.log('Extracted scores:', scores);
+
     if (!Array.isArray(scores) || scores.length === 0) {
       throw new Error("Invalid scores format");
     }
 
     // Enhanced emotion detection based on text content and model scores
     const emotionKeywords = {
-      'سعادة': ['سعيد', 'فرح', 'مبسوط', 'رائع', 'ممتاز', 'تمام', 'منيح'],
+      'سعادة': ['سعيد', 'فرح', 'مبسوط', 'رائع', 'ممتاز', 'تمام', 'منيح', 'روعة'],
       'غضب': ['غضبان', 'زعلان', 'زفت', 'بطل', 'مش طايق', 'فظيع'],
       'حزن': ['حزين', 'زعلان', 'مكسور', 'متضايق', 'مش منيح'],
       'خوف': ['خايف', 'قلقان', 'متوتر', 'خوف'],
@@ -210,34 +214,54 @@ function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
     
     emotional_intensity = Math.min((exclamationCount * 0.2 + questionCount * 0.1 + capsRatio + maxEmotionScore * 0.3), 1);
 
-    // Process sentiment scores
-    const positiveScore = scores.find(s => 
-      s.label && (
-        s.label.toLowerCase().includes('positive') || 
-        s.label.toLowerCase().includes('pos') ||
-        s.label === 'LABEL_1' ||
-        s.label === '1' ||
-        s.label === 'POSITIVE'
-      ) && typeof s.score === "number"
-    );
+    // Process sentiment scores - FIXED FOR SINGLE SCORE RESPONSE
+    if (scores.length === 1) {
+      // Single score response - assume LABEL_0 is negative, score represents negative probability
+      const score = scores[0];
+      console.log('Processing single score:', score);
+      
+      if (score.label === 'LABEL_0') {
+        // LABEL_0 typically represents negative class
+        negative_prob = score.score;
+        positive_prob = 1 - score.score;
+      } else if (score.label === 'LABEL_1') {
+        // LABEL_1 typically represents positive class
+        positive_prob = score.score;
+        negative_prob = 1 - score.score;
+      } else {
+        // Unknown label, use score as negative probability
+        negative_prob = score.score;
+        positive_prob = 1 - score.score;
+      }
+    } else {
+      // Multiple scores - use existing logic
+      const positiveScore = scores.find(s => 
+        s.label && (
+          s.label.toLowerCase().includes('positive') || 
+          s.label.toLowerCase().includes('pos') ||
+          s.label === 'LABEL_1' ||
+          s.label === '1' ||
+          s.label === 'POSITIVE'
+        ) && typeof s.score === "number"
+      );
 
-    const negativeScore = scores.find(s => 
-      s.label && (
-        s.label.toLowerCase().includes('negative') || 
-        s.label.toLowerCase().includes('neg') ||
-        s.label === 'LABEL_0' ||
-        s.label === '0' ||
-        s.label === 'NEGATIVE'
-      ) && typeof s.score === "number"
-    );
+      const negativeScore = scores.find(s => 
+        s.label && (
+          s.label.toLowerCase().includes('negative') || 
+          s.label.toLowerCase().includes('neg') ||
+          s.label === 'LABEL_0' ||
+          s.label === '0' ||
+          s.label === 'NEGATIVE'
+        ) && typeof s.score === "number"
+      );
 
-    // Assign probabilities
-    if (positiveScore && negativeScore) {
-      positive_prob = positiveScore.score;
-      negative_prob = negativeScore.score;
-    } else if (scores.length >= 2) {
-      negative_prob = scores[0].score || 0.5;
-      positive_prob = scores[1].score || 0.5;
+      if (positiveScore && negativeScore) {
+        positive_prob = positiveScore.score;
+        negative_prob = negativeScore.score;
+      } else if (scores.length >= 2) {
+        negative_prob = scores[0].score || 0.5;
+        positive_prob = scores[1].score || 0.5;
+      }
     }
 
     // Ensure probabilities are valid
@@ -248,26 +272,32 @@ function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
       negative_prob = 0.5;
     }
 
-    // Normalize probabilities
+    // Normalize probabilities to sum to 1
     const total = positive_prob + negative_prob;
     if (total > 0) {
       positive_prob = positive_prob / total;
       negative_prob = negative_prob / total;
     }
 
-    // Determine sentiment
-    if (positive_prob > negative_prob) {
-      sentiment = 'positive';
-      confidence = positive_prob;
-    } else if (negative_prob > positive_prob) {
-      sentiment = 'negative';
-      confidence = negative_prob;
-    } else {
+    console.log('Final probabilities:', { positive_prob, negative_prob });
+
+    // Determine sentiment based on probabilities
+    const diff = Math.abs(positive_prob - negative_prob);
+    if (diff < 0.1) {
+      // Very close probabilities - neutral
       sentiment = 'neutral';
       confidence = 0.5;
+    } else if (positive_prob > negative_prob) {
+      sentiment = 'positive';
+      confidence = positive_prob;
+    } else {
+      sentiment = 'negative';
+      confidence = negative_prob;
     }
 
     emotion = detectedEmotion;
+
+    console.log('Final analysis result:', { sentiment, confidence, positive_prob, negative_prob });
 
   } catch (e) {
     console.error("Error in emotion analysis:", e);
