@@ -1,8 +1,34 @@
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
 };
+
+async function logToSupabase(data: {
+  model?: string;
+  url: string;
+  ok: boolean;
+  message?: string;
+  status?: number;
+  error?: string;
+}) {
+  try {
+    // Use the anon key and REST endpoint for logging
+    const supabaseUrl = Deno.env.get("SUPABASE_URL");
+    const anonKey = Deno.env.get("SUPABASE_ANON_KEY");
+    if (!supabaseUrl || !anonKey) return;
+    await fetch(`${supabaseUrl}/rest/v1/huggingface_connection_logs`, {
+      method: "POST",
+      headers: {
+        apikey: anonKey,
+        Authorization: `Bearer ${anonKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify([{ ...data, created_at: new Date().toISOString() }])
+    });
+  } catch (err) {
+    // Can't log logging failures, so ignore
+  }
+}
 
 // Supported models and their custom endpoints/tokens (for demo—should come from config/db in prod)
 const modelConfigs: Record<string, { url: string; apiKey: string; realModel?: string }> = {
@@ -86,6 +112,13 @@ serve(async (req) => {
     }
 
     let response;
+    let logObj = {
+      model, url,
+      ok: false,
+      message: "",
+      status: undefined as undefined | number,
+      error: ""
+    };
     try {
       response = await fetch(testUrl, {
         method: "POST",
@@ -97,35 +130,41 @@ serve(async (req) => {
       });
     } catch (err) {
       log("Error connecting to Hugging Face:", err.message || err);
+      logObj.error = String(err?.message || err);
+      logObj.status = 0;
+      logObj.message = "Could not connect to the Hugging Face endpoint; check your URL.";
+      await logToSupabase({ ...logObj });
       return new Response(JSON.stringify({
         ok: false,
-        message: "Could not connect to the Hugging Face endpoint; check your URL."
+        message: logObj.message
       }), { headers: corsHeaders, status: 500 });
     }
-
-    log("Hugging Face endpoint status", response.status, response.statusText);
-
+    logObj.status = response.status;
     let hfResponseText = "";
     let hfResponseObj: any = {};
     if (!response.ok) {
       try {
         hfResponseText = await response.text();
         hfResponseObj = JSON.parse(hfResponseText);
+        logObj.error = hfResponseObj.error || hfResponseObj.message || hfResponseText;
       } catch (_) {
-        hfResponseObj = {};
+        logObj.error = hfResponseText || String(response.statusText);
       }
-      log("Hugging Face response not OK", response.status, response.statusText, { hfResponseObj, hfResponseText });
+      logObj.ok = false;
+      logObj.message = logObj.error || "Connection failed";
+      await logToSupabase({ ...logObj });
       return new Response(JSON.stringify({
         ok: false,
-        message: hfResponseObj.error || hfResponseObj.message || response.statusText || "Connection failed",
+        message: logObj.message,
         status: response.status,
         checkedModel: model,
         checkedUrl: testUrl,
         hfResponse: hfResponseText
       }), { headers: corsHeaders, status: 400 });
     }
-
-    log("Hugging Face response OK");
+    logObj.ok = true;
+    logObj.message = "Connection successful";
+    await logToSupabase({ ...logObj });
 
     return new Response(JSON.stringify({
       ok: true,
@@ -133,6 +172,13 @@ serve(async (req) => {
       checkedUrl: testUrl,
     }), { headers: corsHeaders });
   } catch (err) {
+    await logToSupabase({
+      model: undefined,
+      url: "",
+      ok: false,
+      message: err?.message || "Unexpected error",
+      error: err?.message || String(err)
+    });
     log("Unhandled error", err.message || err);
     return new Response(JSON.stringify({ ok: false, message: err.message || "Unexpected error" }), { headers: corsHeaders, status: 500 });
   }

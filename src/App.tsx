@@ -131,6 +131,7 @@ function App() {
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="payment-settings" element={<PaymentSettings />} />
                       <Route path="huggingface-config" element={<HuggingFaceConfigPage />} />
+                      <Route path="huggingface-logs" element={<import('./pages/admin/HuggingFaceLogs') />} />
                     </Route>
                     
                     {/* Unified Scraper route */}
