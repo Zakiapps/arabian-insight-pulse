@@ -34,7 +34,7 @@ serve(async (req) => {
       );
     }
 
-    // Get admin HuggingFace config from DB
+    // Get admin HuggingFace config from DB for the token
     const { data: huggingfaceData, error: configErr } = await supabase
       .from('huggingface_configs')
       .select('*')
@@ -53,18 +53,18 @@ serve(async (req) => {
       );
     }
 
-    // Pick the endpoint/token for arabert
-    const hfEndpoint = huggingfaceData.arabert_url;
+    // Use the specified endpoint for bert-ajgt-abv model
+    const hfEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
     const hfToken = huggingfaceData.arabert_token;
 
-    if (!hfToken || !hfEndpoint) {
+    if (!hfToken) {
       return new Response(
-        JSON.stringify({ error: 'AraBERT endpoint or token missing. Please configure it in admin settings.' }),
+        JSON.stringify({ error: 'Hugging Face token missing. Please configure it in admin settings.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    console.log('Using AraBERT endpoint:', hfEndpoint);
+    console.log('Using specified AraBERT endpoint:', hfEndpoint);
 
     // Enhanced validation with detailed error messages
     const validation = validateArabicTextDetailed(text);
@@ -95,7 +95,7 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'AraBERT_Custom_Endpoint'
+      modelSource: 'bert-ajgt-abv_Custom_Endpoint'
     };
     
     console.log('Analysis completed successfully with enhanced dialect detection');
