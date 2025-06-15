@@ -9,6 +9,7 @@ import {
     Award,
     BarChart3,
     Brain,
+    Cloud,
     Eye,
     Globe,
     Shield,
@@ -52,6 +53,15 @@ const LandingPage = () => {
       }
     }
   };
+
+  const aiFloatingIcons = [
+    { Icon: Brain, delay: 0, x: "10%", y: "20%" },
+    { Icon: Zap, delay: 0.5, x: "80%", y: "15%" },
+    { Icon: Star, delay: 1, x: "15%", y: "70%" },
+    { Icon: Cloud, delay: 1.5, x: "85%", y: "65%" },
+    { Icon: Eye, delay: 2, x: "50%", y: "10%" },
+    { Icon: Sparkles, delay: 2.5, x: "90%", y: "45%" }
+  ];
 
   const features = [
     {
@@ -99,52 +109,6 @@ const LandingPage = () => {
     { number: "99.9%", label: "دقة التحليل", icon: Target }
   ];
 
-  const pricingPlans = [
-    {
-      name: "المجاني",
-      price: "0",
-      period: "شهرياً",
-      features: [
-        "100 تحليل شهرياً",
-        "تحليل المشاعر الأساسي",
-        "كشف اللهجة الأردنية",
-        "تقارير أساسية"
-      ],
-      buttonText: "ابدأ مجاناً",
-      popular: false
-    },
-    {
-      name: "المحترف",
-      price: "99",
-      period: "شهرياً",
-      features: [
-        "10,000 تحليل شهرياً",
-        "تحليل متقدم للمشاعر",
-        "كشف جميع اللهجات العربية",
-        "تنبيهات ذكية",
-        "تقارير مفصلة",
-        "دعم فني متقدم"
-      ],
-      buttonText: "اشترك الآن",
-      popular: true
-    },
-    {
-      name: "المؤسسي",
-      price: "299",
-      period: "شهرياً",
-      features: [
-        "تحليل غير محدود",
-        "جميع الميزات المتقدمة",
-        "واجهة برمجة تطبيقات",
-        "تكامل مخصص",
-        "مدير حساب مخصص",
-        "دعم 24/7"
-      ],
-      buttonText: "تواصل معنا",
-      popular: false
-    }
-  ];
-
   const testimonials = [
     {
       name: "أحمد محمد",
@@ -170,9 +134,53 @@ const LandingPage = () => {
   ];
 
   return (
-    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col" dir="rtl">
+    <div className="min-h-screen bg-gradient-to-b from-slate-50 to-white flex flex-col relative overflow-hidden" dir="rtl">
       {/* Sound effects component */}
       <SoundEffects autoplay={false} />
+
+      {/* Floating AI Icons Background */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        {aiFloatingIcons.map((item, index) => (
+          <motion.div
+            key={index}
+            className="absolute"
+            style={{ left: item.x, top: item.y }}
+            initial={{ opacity: 0, scale: 0 }}
+            animate={{ 
+              opacity: [0.1, 0.3, 0.1], 
+              scale: [0.8, 1.2, 0.8],
+              y: [0, -20, 0],
+              rotate: [0, 360, 0]
+            }}
+            transition={{
+              delay: item.delay,
+              duration: 4,
+              repeat: Infinity,
+              repeatType: "mirror"
+            }}
+          >
+            <div className="p-4 bg-gradient-to-br from-primary/20 to-blue-600/20 rounded-full backdrop-blur-sm">
+              <item.Icon className="h-8 w-8 text-primary/60" />
+            </div>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Enhanced Neural Network Background Pattern */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <svg className="w-full h-full opacity-5" viewBox="0 0 1000 1000">
+          <defs>
+            <pattern id="neural-grid" width="100" height="100" patternUnits="userSpaceOnUse">
+              <circle cx="50" cy="50" r="2" fill="#3b82f6" opacity="0.3">
+                <animate attributeName="r" values="1;3;1" dur="3s" repeatCount="indefinite" />
+              </circle>
+              <line x1="0" y1="50" x2="100" y2="50" stroke="#3b82f6" strokeWidth="0.5" opacity="0.2" />
+              <line x1="50" y1="0" x2="50" y2="100" stroke="#3b82f6" strokeWidth="0.5" opacity="0.2" />
+            </pattern>
+          </defs>
+          <rect width="100%" height="100%" fill="url(#neural-grid)" />
+        </svg>
+      </div>
 
       {/* الهيدر المحسن */}
       <motion.header 
@@ -186,12 +194,20 @@ const LandingPage = () => {
             whileHover={{ scale: 1.05 }} 
             className="flex items-center gap-3"
           >
-            <div className="rounded-xl bg-gradient-to-br from-primary to-blue-600 p-2.5 shadow-lg">
+            <div className="rounded-xl bg-gradient-to-br from-primary to-blue-600 p-2.5 shadow-lg relative">
               <BarChart3 className="h-6 w-6 text-white" />
+              <motion.div
+                className="absolute inset-0 rounded-xl bg-gradient-to-br from-primary to-blue-600"
+                animate={{ opacity: [0.5, 0.8, 0.5] }}
+                transition={{ duration: 2, repeat: Infinity }}
+              />
             </div>
             <div>
               <span className="font-bold text-2xl bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">افاق الابتكار للاستشارات و التدريب</span>
-              <div className="text-xs text-muted-foreground">منصة تحليل المشاعر العربية</div>
+              <div className="text-xs text-muted-foreground flex items-center gap-1">
+                <Brain className="h-3 w-3" />
+                منصة تحليل المشاعر العربية بالذكاء الاصطناعي
+              </div>
             </div>
           </motion.div>
           
@@ -231,9 +247,8 @@ const LandingPage = () => {
         </div>
       </motion.header>
 
-      {/* القسم الرئيسي المحسن */}
+      {/* Hero Section with AI Enhancement */}
       <section className="py-32 md:py-40 bg-gradient-to-br from-slate-50 via-blue-50/30 to-indigo-50/50 relative overflow-hidden">
-        <div className="absolute inset-0 bg-[url('/api/placeholder/1920/1080')] opacity-5"></div>
         <div className="container px-4 md:px-6 relative z-10">
           <div className="grid gap-8 lg:grid-cols-2 lg:gap-16 xl:gap-20 items-center">
             <motion.div 
@@ -246,10 +261,21 @@ const LandingPage = () => {
                 initial={{ opacity: 0, scale: 0.8 }}
                 animate={{ opacity: 1, scale: 1 }}
                 transition={{ delay: 0.3 }}
-                className="inline-flex items-center gap-2 rounded-full bg-primary/10 px-4 py-2 text-sm font-medium text-primary"
+                className="inline-flex items-center gap-2 rounded-full bg-gradient-to-r from-primary/10 to-blue-600/10 px-4 py-2 text-sm font-medium text-primary border border-primary/20"
               >
-                <Sparkles className="h-4 w-4" />
+                <motion.div
+                  animate={{ rotate: 360 }}
+                  transition={{ duration: 2, repeat: Infinity, ease: "linear" }}
+                >
+                  <Sparkles className="h-4 w-4" />
+                </motion.div>
                 منصة الذكاء الاصطناعي الرائدة في تحليل المشاعر العربية
+                <motion.div
+                  animate={{ scale: [1, 1.2, 1] }}
+                  transition={{ duration: 1.5, repeat: Infinity }}
+                >
+                  <Brain className="h-4 w-4" />
+                </motion.div>
               </motion.div>
               
               <motion.h1 
@@ -259,11 +285,20 @@ const LandingPage = () => {
                 className="text-5xl font-bold tracking-tight sm:text-6xl md:text-7xl"
               >
                 <span className="bg-gradient-to-r from-gray-900 via-blue-800 to-indigo-800 bg-clip-text text-transparent">
-                  اكتشف قوة
+                  قوة الذكاء الاصطناعي
                 </span>
                 <br />
-                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent">
-                  تحليل المشاعر العربية
+                <span className="bg-gradient-to-r from-primary to-blue-600 bg-clip-text text-transparent flex items-center gap-4">
+                  لتحليل المشاعر العربية
+                  <motion.div
+                    animate={{ 
+                      rotate: [0, 10, -10, 0],
+                      scale: [1, 1.1, 1]
+                    }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                  >
+                    <Zap className="h-16 w-16 text-primary" />
+                  </motion.div>
                 </span>
               </motion.h1>
               
@@ -273,7 +308,7 @@ const LandingPage = () => {
                 transition={{ delay: 0.5, duration: 0.8 }}
                 className="text-xl text-muted-foreground leading-relaxed max-w-2xl"
               >
-                منصة افاق الابتكار للاستشارات و التدريب تستخدم أحدث تقنيات الذكاء الاصطناعي لتحليل المشاعر والآراء في النصوص العربية مع دقة استثنائية وكشف متطور للهجات العربية المختلفة.
+                منصة متطورة تستخدم نماذج AraBERT و mT5 لتحليل المشاعر والآراء في النصوص العربية مع دقة استثنائية وكشف متطور للهجات المختلفة باستخدام أحدث تقنيات الذكاء الاصطناعي.
               </motion.p>
               
               <motion.div 
@@ -285,25 +320,43 @@ const LandingPage = () => {
                 <motion.div variants={fadeIn}>
                   {isAuthenticated ? (
                     <Link to="/dashboard">
-                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl">
+                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl group">
                         الذهاب للوحة التحكم
-                        <ArrowLeft className="ml-2 h-5 w-5" />
+                        <motion.div
+                          className="ml-2"
+                          animate={{ x: [0, 5, 0] }}
+                          transition={{ duration: 1.5, repeat: Infinity }}
+                        >
+                          <ArrowLeft className="h-5 w-5" />
+                        </motion.div>
                       </Button>
                     </Link>
                   ) : (
                     <Link to="/signup">
-                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl">
-                        ابدأ التحليل مجاناً
-                        <Sparkles className="ml-2 h-5 w-5" />
+                      <Button size="lg" className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90 text-lg px-8 py-6 shadow-xl group">
+                        ابدأ التحليل بالذكاء الاصطناعي
+                        <motion.div
+                          className="ml-2"
+                          animate={{ rotate: [0, 360] }}
+                          transition={{ duration: 2, repeat: Infinity }}
+                        >
+                          <Sparkles className="h-5 w-5" />
+                        </motion.div>
                       </Button>
                     </Link>
                   )}
                 </motion.div>
                 <motion.div variants={fadeIn}>
                   <Link to="/text-analysis">
-                    <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-2 hover:bg-primary/5">
+                    <Button size="lg" variant="outline" className="text-lg px-8 py-6 border-2 hover:bg-primary/5 group">
                       جرب التحليل الآن
-                      <Eye className="ml-2 h-5 w-5" />
+                      <motion.div
+                        className="ml-2"
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <Eye className="h-5 w-5" />
+                      </motion.div>
                     </Button>
                   </Link>
                 </motion.div>
@@ -317,13 +370,26 @@ const LandingPage = () => {
               >
                 <div className="flex -space-x-2">
                   {[...Array(4)].map((_, i) => (
-                    <div key={i} className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 border-2 border-white"></div>
+                    <motion.div 
+                      key={i} 
+                      className="w-10 h-10 rounded-full bg-gradient-to-br from-primary to-blue-600 border-2 border-white flex items-center justify-center"
+                      animate={{ rotate: [0, 360] }}
+                      transition={{ duration: 3, delay: i * 0.2, repeat: Infinity }}
+                    >
+                      <Brain className="h-4 w-4 text-white" />
+                    </motion.div>
                   ))}
                 </div>
                 <div>
                   <div className="flex items-center gap-1">
                     {[...Array(5)].map((_, i) => (
-                      <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      <motion.div
+                        key={i}
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, delay: i * 0.1, repeat: Infinity }}
+                      >
+                        <Star key={i} className="w-4 h-4 fill-yellow-400 text-yellow-400" />
+                      </motion.div>
                     ))}
                   </div>
                   <p className="text-sm text-muted-foreground">أكثر من 500+ عميل راضي</p>
@@ -341,29 +407,63 @@ const LandingPage = () => {
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.8, delay: 0.4 }}
-                className="relative bg-white rounded-3xl shadow-2xl p-8 border"
+                className="relative bg-white/90 backdrop-blur-sm rounded-3xl shadow-2xl p-8 border"
               >
                 <div className="space-y-6">
                   <div className="flex items-center justify-between">
-                    <h3 className="text-2xl font-bold">تحليل نص تجريبي</h3>
-                    <Badge className="bg-green-100 text-green-700">جاهز للتحليل</Badge>
+                    <h3 className="text-2xl font-bold flex items-center gap-2">
+                      <motion.div
+                        animate={{ rotate: [0, 360] }}
+                        transition={{ duration: 3, repeat: Infinity }}
+                      >
+                        <Brain className="h-6 w-6 text-primary" />
+                      </motion.div>
+                      تحليل نص بالذكاء الاصطناعي
+                    </h3>
+                    <Badge className="bg-green-100 text-green-700 flex items-center gap-1">
+                      <motion.div
+                        animate={{ scale: [1, 1.2, 1] }}
+                        transition={{ duration: 1, repeat: Infinity }}
+                      >
+                        <Zap className="h-3 w-3" />
+                      </motion.div>
+                      جاهز للتحليل
+                    </Badge>
                   </div>
-                  <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-6">
+                  <div className="bg-gradient-to-br from-slate-50 to-blue-50 rounded-xl p-6 border">
                     <p className="text-lg leading-relaxed">"هذا المنتج روعة والله، أنصح الكل يجربوه. الجودة عالية والخدمة زَيّ الفل."</p>
                   </div>
                   <div className="grid grid-cols-3 gap-4">
-                    <div className="text-center p-4 bg-green-50 rounded-xl">
-                      <div className="text-2xl font-bold text-green-600">إيجابي</div>
+                    <motion.div 
+                      className="text-center p-4 bg-green-50 rounded-xl border border-green-200"
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <div className="text-2xl font-bold text-green-600 flex items-center justify-center gap-1">
+                        إيجابي
+                        <Star className="h-5 w-5" />
+                      </div>
                       <div className="text-sm text-green-600/70">المشاعر</div>
-                    </div>
-                    <div className="text-center p-4 bg-blue-50 rounded-xl">
-                      <div className="text-2xl font-bold text-blue-600">أردني</div>
+                    </motion.div>
+                    <motion.div 
+                      className="text-center p-4 bg-blue-50 rounded-xl border border-blue-200"
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <div className="text-2xl font-bold text-blue-600 flex items-center justify-center gap-1">
+                        أردني
+                        <Globe className="h-5 w-5" />
+                      </div>
                       <div className="text-sm text-blue-600/70">اللهجة</div>
-                    </div>
-                    <div className="text-center p-4 bg-purple-50 rounded-xl">
-                      <div className="text-2xl font-bold text-purple-600">98%</div>
+                    </motion.div>
+                    <motion.div 
+                      className="text-center p-4 bg-purple-50 rounded-xl border border-purple-200"
+                      whileHover={{ scale: 1.05 }}
+                    >
+                      <div className="text-2xl font-bold text-purple-600 flex items-center justify-center gap-1">
+                        98%
+                        <Target className="h-5 w-5" />
+                      </div>
                       <div className="text-sm text-purple-600/70">الدقة</div>
-                    </div>
+                    </motion.div>
                   </div>
                 </div>
               </motion.div>
@@ -388,9 +488,13 @@ const LandingPage = () => {
                 whileHover={{ scale: 1.05 }}
               >
                 <div className="flex justify-center mb-4">
-                  <div className="p-4 bg-white/10 rounded-2xl group-hover:bg-white/20 transition-colors">
+                  <motion.div 
+                    className="p-4 bg-white/10 rounded-2xl group-hover:bg-white/20 transition-colors"
+                    animate={{ rotate: [0, 360] }}
+                    transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                  >
                     <stat.icon className="h-8 w-8" />
-                  </div>
+                  </motion.div>
                 </div>
                 <div className="text-4xl md:text-5xl font-bold mb-2">{stat.number}</div>
                 <div className="text-lg opacity-90">{stat.label}</div>
@@ -438,9 +542,13 @@ const LandingPage = () => {
               >
                 <Card className="h-full border-0 shadow-lg hover:shadow-2xl transition-all duration-300 bg-white/80 backdrop-blur-sm">
                   <CardHeader className="pb-4">
-                    <div className={`w-16 h-16 rounded-2xl ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg`}>
+                    <motion.div 
+                      className={`w-16 h-16 rounded-2xl ${feature.color} flex items-center justify-center mb-6 group-hover:scale-110 transition-transform shadow-lg`}
+                      animate={{ rotate: [0, 5, -5, 0] }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                    >
                       <feature.icon className="h-8 w-8 text-white" />
-                    </div>
+                    </motion.div>
                     <CardTitle className="text-2xl mb-3">{feature.title}</CardTitle>
                   </CardHeader>
                   <CardContent>
@@ -521,7 +629,7 @@ const LandingPage = () => {
             className="text-center"
           >
             <h2 className="text-4xl md:text-5xl lg:text-6xl font-bold tracking-tight mb-6">
-              ابدأ رحلتك مع افاق الابتكار للاستشارات و التدريب
+              ابدأ رحلتك مع الذكاء الاصطناعي
             </h2>
             <p className="mx-auto max-w-3xl text-xl md:text-2xl mb-10 opacity-90 leading-relaxed">
               انضم إلى مئات الشركات والمؤسسات التي تستخدم منصتنا المتطورة لفهم الرأي العام العربي واتخاذ قرارات مدروسة ومبنية على البيانات
