@@ -1,5 +1,4 @@
 
-import React, { useState, useEffect } from "react";
 import HuggingFaceAdminConfigForm from "@/components/admin/HuggingFaceAdminConfigForm";
 
 const HuggingFaceConfigPage: React.FC = () => (

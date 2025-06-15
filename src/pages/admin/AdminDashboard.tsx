@@ -19,6 +19,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Link } from "react-router-dom";
 import { Shield } from "lucide-react";
+import { useHuggingFaceConfig } from "@/hooks/useHuggingFaceConfig";
 
 const data = [
   { name: 'يناير', revenue: 4000, users: 24 },
@@ -113,6 +114,7 @@ const AdminDashboard = () => {
   });
   const [loading, setLoading] = useState(true);
   const [hfStatus, setHfStatus] = useState<"loading" | "found" | "missing">("loading");
+  const { config: hfConfig, loading: hfLoading, error: hfError } = useHuggingFaceConfig();
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -373,7 +375,7 @@ const AdminDashboard = () => {
       </div>
 
       {/* Hugging Face Config Card */}
-      <Card className="border-l-4 border-purple-500 shadow flex flex-row items-center">
+      <Card className="border-l-4 border-purple-500 shadow flex flex-row items-center mt-6">
         <CardHeader className="flex flex-row items-center gap-3 py-6">
           <Shield className="h-8 w-8 text-purple-500" />
           <div>
@@ -386,9 +388,9 @@ const AdminDashboard = () => {
           </div>
         </CardHeader>
         <CardContent className="flex flex-col items-end justify-end flex-1">
-          {hfStatus === "loading" ? (
+          {hfLoading ? (
             <span className="text-muted-foreground text-sm">جار التحميل...</span>
-          ) : hfStatus === "found" ? (
+          ) : hfConfig ? (
             <span className="text-green-600 text-sm font-semibold">تم الإعداد</span>
           ) : (
             <span className="text-red-600 text-sm font-semibold">غير مفعل</span>

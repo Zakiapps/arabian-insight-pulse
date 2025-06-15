@@ -5,102 +5,47 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
-
-interface HuggingFaceConfig {
-  id?: string;
-  arabert_url?: string;
-  arabert_token?: string;
-  mt5_url?: string;
-  mt5_token?: string;
-}
-
-function isValidConfig(data: any): data is HuggingFaceConfig {
-  return (
-    typeof data === "object" &&
-    (data.arabert_url !== undefined ||
-      data.arabert_token !== undefined ||
-      data.mt5_url !== undefined ||
-      data.mt5_token !== undefined)
-  );
-}
+import { useHuggingFaceConfig } from "@/hooks/useHuggingFaceConfig";
 
 const HuggingFaceAdminConfigForm: React.FC = () => {
   const { isRTL } = useLanguage();
+  const { config, loading, error, upsertConfig } = useHuggingFaceConfig();
   const [arabertUrl, setArabertUrl] = useState("");
   const [arabertToken, setArabertToken] = useState("");
   const [mt5Url, setMt5Url] = useState("");
   const [mt5Token, setMt5Token] = useState("");
-  const [configId, setConfigId] = useState<string | null>(null);
-  const [loading, setLoading] = useState(false);
-  const [empty, setEmpty] = useState(false);
+  const [dirty, setDirty] = useState(false);
 
-  // Fetch existing config on mount
   useEffect(() => {
-    (async () => {
-      setLoading(true);
-      setEmpty(false);
-      try {
-        const { data, error } = await supabase
-          .from("huggingface_configs")
-          .select("*")
-          .order("created_at", { ascending: false })
-          .limit(1)
-          .maybeSingle();
+    setArabertUrl(config?.arabert_url || "");
+    setArabertToken(config?.arabert_token || "");
+    setMt5Url(config?.mt5_url || "");
+    setMt5Token(config?.mt5_token || "");
+    setDirty(false);
+  }, [config]);
 
-        if (error) {
-          setEmpty(true);
-          toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
-        } else if (isValidConfig(data) && data) {
-          setConfigId(data.id as string);
-          setArabertUrl(data.arabert_url || "");
-          setArabertToken(data.arabert_token || "");
-          setMt5Url(data.mt5_url || "");
-          setMt5Token(data.mt5_token || "");
-        } else {
-          setEmpty(true);
-        }
-      } catch {
-        setEmpty(true);
-        toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
-      } finally {
-        setLoading(false);
-      }
-    })();
-  }, [isRTL]);
+  useEffect(() => {
+    setDirty(
+      arabertUrl !== (config?.arabert_url || "") ||
+      arabertToken !== (config?.arabert_token || "") ||
+      mt5Url !== (config?.mt5_url || "") ||
+      mt5Token !== (config?.mt5_token || "")
+    );
+  }, [arabertUrl, arabertToken, mt5Url, mt5Token, config]);
 
-  const handleSave = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    setLoading(true);
-    const config: HuggingFaceConfig = {
-      arabert_url: arabertUrl,
-      arabert_token: arabertToken,
-      mt5_url: mt5Url,
-      mt5_token: mt5Token,
-    };
-    if (configId) {
-      // Update existing config
-      const { error } = await supabase
-        .from("huggingface_configs")
-        .update(config)
-        .eq("id", configId);
-      if (error) {
-        toast.error(isRTL ? "خطأ في حفظ الإعدادات" : "Error saving settings");
-      } else {
-        toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
-      }
-    } else {
-      // Insert new config
-      const { error, data } = await supabase.from("huggingface_configs").insert([config]).select().single();
-      if (error) {
-        toast.error(isRTL ? "خطأ في حفظ الإعدادات" : "Error saving settings");
-      } else {
-        setConfigId(data.id);
-        toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
-      }
+    try {
+      await upsertConfig({
+        arabert_url: arabertUrl,
+        arabert_token: arabertToken,
+        mt5_url: mt5Url,
+        mt5_token: mt5Token,
+      });
+      toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
+    } catch (err) {
+      toast.error(isRTL ? "حدث خطأ أثناء الحفظ." : "Error while saving.");
     }
-    setLoading(false);
-    setEmpty(false);
   };
 
   return (
@@ -111,7 +56,7 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
         </CardTitle>
       </CardHeader>
       <CardContent>
-        <form onSubmit={handleSave} className="space-y-5">
+        <form onSubmit={handleSubmit} className="space-y-5">
           <div>
             <label className="font-semibold">{isRTL ? "رابط Arabert" : "Arabert Endpoint URL"}</label>
             <Input
@@ -148,11 +93,12 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
               disabled={loading}
             />
           </div>
-          <Button type="submit" className="w-full py-3 font-semibold" disabled={loading}>
+          <Button type="submit" className="w-full py-3 font-semibold" disabled={loading || !dirty}>
             {loading ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ الإعدادات" : "Save Settings")}
           </Button>
         </form>
-        {empty && !loading && (
+        {error && <div className="text-center text-red-500 mt-6">{error}</div>}
+        {!config && !loading && !error && (
           <div className="text-center text-muted-foreground mt-6">
             {isRTL
               ? "لم يتم إعداد أي نقاط نهاية بعد. يرجى تعبئة الإعدادات وحفظها."
