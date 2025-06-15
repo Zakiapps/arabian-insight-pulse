@@ -4,12 +4,13 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Newspaper, Send, Sparkles } from "lucide-react";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { supabase } from "@/integrations/supabase/client";
 import { useToast } from "@/hooks/use-toast";
 
 interface ExtractedNewsListProps {
   projectId: string;
 }
+
+const QUERY_KEYWORD = "technology"; // Can be customized per-project in future
 
 const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
   const { toast } = useToast();
@@ -25,40 +26,43 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
 
   const fetchExtractedNews = async () => {
     setLoading(true);
-    // نجلب الأخبار المستخرجة فقط (من uploads - المصدر newsapi)
-    const { data, error } = await supabase
-      .from("uploads")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("source", "newsapi")
-      .order("created_at", { ascending: false })
-      .limit(10);
-
-    if (error) {
+    // Fetch news articles from Supabase Edge Function (proxy to newsdata.io)
+    try {
+      const response = await fetch(`/functions/v1/scrape-newsdata?project_id=${projectId}&query=${QUERY_KEYWORD}`);
+      const data = await response.json();
+      if (data.success && Array.isArray(data.articles)) {
+        setNews(data.articles.slice(0, 10));
+      } else {
+        toast({
+          title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
+          description: data.error || "",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
       toast({
         title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
-        description: error.message,
+        description: error?.message,
         variant: "destructive",
       });
-    } else {
-      setNews(data || []);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   // محاكاة الإرسال إلى تحليل المشاعر أو التلخيص
   const handleAction = (article: any, type: "sentiment" | "summary") => {
-    setActionLoading(article.id + "-" + type);
+    setActionLoading(article.article_id + "-" + type);
     setTimeout(() => {
       toast({
         title:
           type === "sentiment"
             ? isRTL
-              ? "تم إرسال النص" 
+              ? "تم إرسال النص"
               : "Sent to Sentiment Analysis"
             : isRTL
-              ? "تم إرسال النص للتلخيص" 
-              : "Sent for Summarization",
+            ? "تم إرسال النص للتلخيص"
+            : "Sent for Summarization",
         description: article.title,
       });
       setActionLoading(null);
@@ -97,21 +101,21 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
         <div className="space-y-4">
           {news.map((a) => (
             <div
-              key={a.id}
+              key={a.article_id}
               className="p-4 border rounded-lg bg-white flex flex-col gap-2 shadow-sm"
             >
               <div className="font-semibold">{a.title}</div>
               <div className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 max-w-prose">
-                {(a.raw_text || "").slice(0, 200)}...
+                {(a.description || a.content || "").slice(0, 200)}...
               </div>
               <div className="flex gap-2 py-1">
                 <Button
                   size="sm"
                   variant="secondary"
-                  disabled={actionLoading === a.id + "-sentiment"}
+                  disabled={actionLoading === a.article_id + "-sentiment"}
                   onClick={() => handleAction(a, "sentiment")}
                 >
-                  {actionLoading === a.id + "-sentiment"
+                  {actionLoading === a.article_id + "-sentiment"
                     ? isRTL
                       ? "جاري الإرسال ..."
                       : "Sending..."
@@ -123,10 +127,10 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
                 <Button
                   size="sm"
                   variant="outline"
-                  disabled={actionLoading === a.id + "-summary"}
+                  disabled={actionLoading === a.article_id + "-summary"}
                   onClick={() => handleAction(a, "summary")}
                 >
-                  {actionLoading === a.id + "-summary"
+                  {actionLoading === a.article_id + "-summary"
                     ? isRTL
                       ? "جاري التلخيص..."
                       : "Summarizing..."
@@ -135,9 +139,9 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
                     : "Summarize"}
                   <Sparkles className="ml-2 h-4 w-4" />
                 </Button>
-                {a.metadata?.url && (
+                {a.link && (
                   <a
-                    href={a.metadata.url}
+                    href={a.link}
                     target="_blank"
                     className="text-blue-600 underline text-xs ml-2"
                   >
@@ -147,11 +151,7 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
               </div>
               <div className="text-xs text-muted-foreground">
                 {isRTL ? "تاريخ:" : "Date:"}{" "}
-                {a.metadata?.publishedAt
-                  ? new Date(a.metadata.publishedAt).toLocaleString()
-                  : a.created_at
-                    ? new Date(a.created_at).toLocaleString()
-                    : "-"}
+                {a.pubDate ? new Date(a.pubDate).toLocaleString() : "-"}
               </div>
             </div>
           ))}

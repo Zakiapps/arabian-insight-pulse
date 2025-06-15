@@ -1,8 +1,9 @@
+
 import { useState } from 'react';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { useLanguage } from '@/contexts/LanguageContext';
 import BrightDataConfig from './BrightDataConfig';
-import NewsApiConfig from './NewsApiConfig';
+import NewsDataConfig from './NewsDataConfig';
 import TextSummarizer from './TextSummarizer';
 import { Globe, Newspaper, FileText } from 'lucide-react';
 
@@ -21,9 +22,9 @@ const ConfigTabs = ({ projectId }: ConfigTabsProps) => {
           <Globe className="h-4 w-4" />
           <span>BrightData</span>
         </TabsTrigger>
-        <TabsTrigger value="newsapi" className="flex items-center gap-2">
+        <TabsTrigger value="newsdata" className="flex items-center gap-2">
           <Newspaper className="h-4 w-4" />
-          <span>NewsAPI</span>
+          <span>NewsData.io</span>
         </TabsTrigger>
         <TabsTrigger value="summarizer" className="flex items-center gap-2">
           <FileText className="h-4 w-4" />
@@ -35,8 +36,8 @@ const ConfigTabs = ({ projectId }: ConfigTabsProps) => {
         <BrightDataConfig projectId={projectId} />
       </TabsContent>
       
-      <TabsContent value="newsapi">
-        <NewsApiConfig projectId={projectId} />
+      <TabsContent value="newsdata">
+        <NewsDataConfig projectId={projectId} />
       </TabsContent>
       
       <TabsContent value="summarizer">
