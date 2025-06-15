@@ -34,7 +34,8 @@ import {
     TrendingUp,
     Upload,
     Users2,
-    Zap
+    Zap,
+    WandSparkles
 } from "lucide-react";
 import { Link, useLocation } from "react-router-dom";
 
@@ -50,6 +51,11 @@ const AppSidebar = () => {
       title: isRTL ? "لوحة التحكم" : "Dashboard",
       url: "/dashboard",
       icon: LayoutDashboard,
+    },
+    {
+      title: isRTL ? "الموحد الذكي" : "Unified Scraper",
+      url: "/dashboard/unified-scraper",
+      icon: WandSparkles,
     },
     {
       title: isRTL ? "المشاريع" : "Projects",
