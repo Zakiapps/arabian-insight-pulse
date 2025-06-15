@@ -1,4 +1,3 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -232,34 +231,50 @@ const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
     setAnalyzingArticles(prev => ({ ...prev, [article.article_id]: true }));
 
     try {
-      // First save the article to the project
-      const { data: savedArticle, error: saveError } = await supabase
+      // أولاً: حفظ المقال بالمشروع إن لم يكن محفوظ بعد (تجنب تكرار إدخال نفس article_id)
+      const { data: existingArticles } = await supabase
         .from('scraped_news')
-        .insert({
-          project_id: projectId,
-          user_id: user.id,
-          article_id: article.article_id,
-          title: article.title,
-          description: article.description,
-          content: article.content,
-          source_name: article.source_name,
-          source_icon: article.source_icon,
-          image_url: article.image_url,
-          link: article.link,
-          pub_date: article.pubDate ? new Date(article.pubDate).toISOString() : null,
-          language: isArabicText(article.title || '') ? 'ar' : 'en',
-          category: article.category || [],
-          keywords: article.keywords || [],
-          is_analyzed: false,
-        })
-        .select()
-        .single();
+        .select('id')
+        .eq('article_id', article.article_id)
+        .eq('project_id', projectId)
+        .limit(1);
 
-      if (saveError) throw saveError;
+      let savedArticleId = null;
 
-      // Then analyze the article using AraBERT
+      if (existingArticles && existingArticles.length > 0) {
+        savedArticleId = existingArticles[0].id;
+      } else {
+        // حفظ المقالة جديدة
+        const { data: inserted, error: insertErr } = await supabase
+          .from('scraped_news')
+          .insert({
+            project_id: projectId,
+            user_id: user.id,
+            article_id: article.article_id,
+            title: article.title,
+            description: article.description,
+            content: article.content,
+            source_name: article.source_name,
+            source_icon: article.source_icon,
+            image_url: article.image_url,
+            link: article.link,
+            pub_date: article.pubDate ? new Date(article.pubDate).toISOString() : null,
+            language: isArabicText(article.title || '') ? 'ar' : 'en',
+            category: article.category || [],
+            keywords: article.keywords || [],
+            is_analyzed: false,
+          })
+          .select('id')
+          .single();
+        
+        if (insertErr) throw insertErr;
+        savedArticleId = inserted.id;
+      }
+
+      // تحليل المحتوى عن طريق AraBERT endpoint على edge function
       const textToAnalyze = article.content || article.description || article.title;
-      
+      // نفترض أن الـ edge function اسمه 'analyze-text' ويعيد sentiment/dialect/confidence
+
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-text', {
         body: {
           text: textToAnalyze,
@@ -269,8 +284,9 @@ const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
       });
 
       if (analysisError) throw analysisError;
+      if (!analysisData || !analysisData.sentiment) throw new Error(isRTL ? "لم ينجح التحليل" : "Analysis failed");
 
-      // Update the saved article with analysis results
+      // حفظ النتيجة في جدول scraped_news واحتساب analyzed=true وكتابة المشاعر واللهجة
       const { error: updateError } = await supabase
         .from('scraped_news')
         .update({ 
@@ -278,11 +294,12 @@ const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
           sentiment: analysisData.sentiment,
           updated_at: new Date().toISOString()
         })
-        .eq('id', savedArticle.id);
+        .eq('id', savedArticleId);
 
       if (updateError) throw updateError;
 
-      // Call the callback to refresh the news list in the dashboard
+      // إمكانية الربط مع جدول التحليلات إذا تطلب الأمر هنا (ضمن edge function مثلاً)
+
       if (onNewsSaved) {
         onNewsSaved();
       }
