@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,35 +64,43 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
     },
   });
   
-  // Temporarily disable the database operations until the table is created
+  // استرجاع التكوين من Supabase عند التحميل أو تغيير projectId
   useEffect(() => {
-    // fetchConfig();
+    fetchConfig();
+    // eslint-disable-next-line
   }, [projectId]);
 
   const fetchConfig = async () => {
     setLoading(true);
     try {
-      // Temporarily commented out until news_configs table is created
-      // const { data, error } = await supabase
-      //   .from('news_configs')
-      //   .select('*')
-      //   .eq('project_id', projectId)
-      //   .maybeSingle();
-      
-      // if (error && error.code !== 'PGRST116') {
-      //   throw error;
-      // }
-      
-      // if (data) {
-      //   setConfig(data);
-      //   form.reset({
-      //     api_key: data.api_key,
-      //     sources: data.sources || [],
-      //     keywords: data.keywords || [""],
-      //     language: data.language || 'ar',
-      //     is_active: data.is_active,
-      //   });
-      // }
+      const { data, error } = await supabase
+        .from('news_configs')
+        .select('*')
+        .eq('project_id', projectId)
+        .maybeSingle();
+      if (error && error.code !== 'PGRST116') {
+        throw error;
+      }
+      if (data) {
+        setConfig(data);
+        form.reset({
+          api_key: data.api_key ?? "",
+          sources: data.sources ?? [],
+          keywords: data.keywords && data.keywords.length ? data.keywords : [""],
+          language: data.language || 'ar',
+          is_active: data.is_active
+        });
+      } else {
+        // لا يوجد إعداد سابق: إعادة تعيين النموذج للقيم الافتراضية
+        form.reset({
+          api_key: "482cb9523dff462ebd58db6177d3af91",
+          sources: [],
+          keywords: [""],
+          language: "ar",
+          is_active: true
+        });
+        setConfig(null);
+      }
     } catch (error) {
       console.error('Error fetching NewsAPI config:', error);
       toast({
@@ -117,46 +124,36 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
         keywords: values.keywords.filter(k => k.trim() !== ''),
         language: values.language,
         is_active: values.is_active,
+        updated_at: new Date().toISOString(),
       };
-      
-      // Temporarily commented out until news_configs table is created
-      // if (config) {
-      //   // Update existing config
-      //   const { error } = await supabase
-      //     .from('news_configs')
-      //     .update(configData)
-      //     .eq('id', config.id);
-      
-      //   if (error) throw error;
-      // } else {
-      //   // Create new config
-      //   const { error } = await supabase
-      //     .from('news_configs')
-      //     .insert(configData);
-      
-      //   if (error) throw error;
-      // }
-      
+
+      let savedConfig = null;
+
+      if (config && config.id) {
+        // تحديث السجل الحالي
+        const { data, error } = await supabase
+          .from("news_configs")
+          .update(configData)
+          .eq("id", config.id)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+        savedConfig = data;
+      } else {
+        // إنشاء سجل جديد
+        const { data, error } = await supabase
+          .from("news_configs")
+          .insert(configData)
+          .select()
+          .maybeSingle();
+        if (error) throw error;
+        savedConfig = data;
+      }
+
+      setConfig(savedConfig);
       toast({
         title: isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully",
       });
-      
-      // Temporarily set config locally
-      setConfig({
-        id: 'temp-id',
-        ...configData,
-        updated_at: new Date().toISOString(),
-        last_run_at: null
-      });
-      
-      // Refresh config
-      // const { data } = await supabase
-      //   .from('news_configs')
-      //   .select('*')
-      //   .eq('project_id', projectId)
-      //   .single();
-      
-      // setConfig(data);
     } catch (error) {
       console.error('Error saving NewsAPI config:', error);
       toast({
@@ -181,31 +178,36 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
     
     setScrapingActive(true);
     try {
-      // Call the NewsAPI scraper function
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/scrape-newsapi`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ project_id: projectId })
-      });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to start scraping');
-      }
-      
+      // ملاحظة: يجب استخدام رابط الوظيفة edge كاملاً وليس متغيرات .env
+      const response = await fetch(
+        `https://hgsdcoqgvdjuxvcscqzn.supabase.co/functions/v1/scrape-newsapi`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imhnc2Rjb3FndmRqdXh2Y3NjcXpuIiwicm9sZSI6ImFub24iLCJpYXQiOjE3NDkxNTMxNDEsImV4cCI6MjA2NDcyOTE0MX0.pYigfNha5pge2DMj9sMOwQ1RUqwh2Cy_zQws3A5IwRo`,
+          },
+          body: JSON.stringify({ project_id: projectId, config_id: config.id }),
+        }
+      );
+
       const result = await response.json();
-      
+
+      if (!response.ok || !result.success) {
+        throw new Error(result.error || "Failed to start scraping");
+      }
+
       toast({
         title: isRTL ? "تم بدء عملية الاستخراج بنجاح" : "Scraping started successfully",
-        description: isRTL 
-          ? `تم استخراج ${result.articles_count} مقالة` 
-          : `Scraped ${result.articles_count} articles`,
+        description: isRTL
+          ? `تم استخراج ${result.articles?.length ?? 0} مقالة`
+          : `Scraped ${result.articles?.length ?? 0} articles`,
       });
+
+      // تحديث بيانات التكوين (لتجديد last_run_at)، ولو بعد فترة ليتزامن مع backend (اختياري)
+      fetchConfig();
     } catch (error) {
-      console.error('Error starting NewsAPI scraper:', error);
+      console.error("Error starting NewsAPI scraper:", error);
       toast({
         title: isRTL ? "خطأ في بدء عملية الاستخراج" : "Error starting scraping",
         description: (error as Error).message,
@@ -238,8 +240,8 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
           {isRTL ? 'إعدادات NewsAPI' : 'NewsAPI Settings'}
         </CardTitle>
         <CardDescription>
-          {isRTL 
-            ? 'تكوين استخراج البيانات من مصادر الأخبار باستخدام NewsAPI' 
+          {isRTL
+            ? 'تكوين استخراج البيانات من مصادر الأخبار باستخدام NewsAPI'
             : 'Configure news data scraping using NewsAPI'}
         </CardDescription>
       </CardHeader>
@@ -459,7 +461,7 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
             </div>
             <div className="text-xs text-muted-foreground">
               <p>
-                {isRTL ? 'آخر تحديث:' : 'Last updated:'} {new Date(config.updated_at).toLocaleString()}
+                {isRTL ? 'آخر تحديث:' : 'Last updated:'} {config.updated_at ? new Date(config.updated_at).toLocaleString() : "-"}
               </p>
               {config.last_run_at && (
                 <p>
@@ -499,13 +501,6 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
               </div>
             </div>
           </div>
-        </div>
-        
-        <div className="mt-6 p-4 bg-muted rounded-lg">
-          <p className="text-sm text-muted-foreground">
-            <strong>Note:</strong> NewsAPI configuration is temporarily disabled while the database schema is being updated. 
-            The configuration will be saved locally until the backend is ready.
-          </p>
         </div>
       </CardContent>
     </Card>
