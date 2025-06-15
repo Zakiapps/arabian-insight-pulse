@@ -53,23 +53,34 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
         .eq('project_id', projectId)
         .order('created_at', { ascending: false });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Error fetching saved news:', error);
+        throw error;
+      }
       return data as SavedNewsArticle[];
     },
     enabled: !!projectId && !!user
   });
 
-  const { analyzingArticles, analyzeArticle } = useNewsAnalysis(projectId, () => {
+  const handleAnalysisComplete = () => {
+    console.log('Analysis completed, refreshing data...');
     refetch();
     if (onAnalysisComplete) {
       onAnalysisComplete();
     }
-  });
+  };
+
+  const { analyzingArticles, analyzeArticle } = useNewsAnalysis(projectId, handleAnalysisComplete);
 
   const { deletingArticles, deleteArticle } = useNewsDeletion();
 
   const handleDeleteArticle = (articleId: string) => {
     deleteArticle(articleId, refetch);
+  };
+
+  const handleAnalyzeArticle = async (article: SavedNewsArticle) => {
+    console.log('Analyzing article:', article.id, article.title);
+    await analyzeArticle(article);
   };
 
   if (isLoading) {
@@ -106,7 +117,7 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
               <NewsArticleCard
                 key={article.id}
                 article={article}
-                onAnalyze={analyzeArticle}
+                onAnalyze={handleAnalyzeArticle}
                 onDelete={handleDeleteArticle}
                 isAnalyzing={analyzingArticles[article.id] || false}
                 isDeleting={deletingArticles[article.id] || false}
