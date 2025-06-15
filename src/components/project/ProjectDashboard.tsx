@@ -60,7 +60,7 @@ const ProjectDashboard = () => {
       });
       
       if (error) throw error;
-      return data as ProjectStats;
+      return data as unknown as ProjectStats;
     },
     enabled: !!projectId,
   });
