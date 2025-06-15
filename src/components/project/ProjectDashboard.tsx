@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { BarChart3, TrendingUp, FileText, Brain, Activity, Globe, Users, Target, MessageSquare } from 'lucide-react';
 import ProjectHeader from './ProjectHeader';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
-import EnhancedTextAnalysisForm from './EnhancedTextAnalysisForm';
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 
@@ -67,9 +66,9 @@ const ProjectDashboard = () => {
     enabled: !!projectId,
   });
 
-  // Fetch text analyses
-  const { data: textAnalyses } = useQuery({
-    queryKey: ['project-text-analyses', projectId],
+  // Fetch text analyses with real-time refresh
+  const { data: textAnalyses, refetch: refetchAnalyses } = useQuery({
+    queryKey: ['project-text-analyses', projectId, newsRefreshKey],
     queryFn: async () => {
       if (!projectId) throw new Error('Project ID is required');
       
@@ -137,6 +136,12 @@ const ProjectDashboard = () => {
       .eq('id', projectId);
     
     if (error) throw error;
+  };
+
+  // Function to trigger refresh of analyses when news is analyzed
+  const handleNewsAnalyzed = () => {
+    setNewsRefreshKey(prev => prev + 1);
+    refetchAnalyses();
   };
 
   if (projectLoading || !project) {
@@ -339,26 +344,12 @@ const ProjectDashboard = () => {
         </Card>
       </div>
 
-      {/* Enhanced Text Analysis Section */}
-      <Card className="shadow-xl border-0 bg-gradient-to-br from-blue-50 via-white to-purple-50">
-        <CardHeader className="text-center pb-6">
-          <CardTitle className="flex items-center justify-center gap-3 text-2xl">
-            <div className="p-3 bg-gradient-to-br from-primary to-blue-600 rounded-xl">
-              <Brain className="h-6 w-6 text-white" />
-            </div>
-            تحليل النصوص المطور بنموذج MARBERT
-          </CardTitle>
-          <CardDescription className="text-base">
-            تحليل متقدم للمشاعر والعواطف واللهجة الأردنية مع معالجة ذكية للنصوص العربية
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <EnhancedTextAnalysisForm projectId={project.id} />
-        </CardContent>
-      </Card>
-
       {/* Extracted News Section */}
-      <ExtractedNewsList projectId={project.id} key={newsRefreshKey} />
+      <ExtractedNewsList 
+        projectId={project.id} 
+        key={newsRefreshKey} 
+        onAnalysisComplete={handleNewsAnalyzed}
+      />
 
       {/* Recent Analyses */}
       <Card>

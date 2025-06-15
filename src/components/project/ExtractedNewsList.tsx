@@ -36,9 +36,10 @@ interface SavedNewsArticle {
 
 interface ExtractedNewsListProps {
   projectId: string;
+  onAnalysisComplete?: () => void;
 }
 
-const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
+const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListProps) => {
   const { isRTL } = useLanguage();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -76,6 +77,27 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
 
       if (error) throw error;
 
+      // Store the analysis in text_analyses table for the recent analyses section
+      const { error: insertError } = await supabase
+        .from('text_analyses')
+        .insert({
+          project_id: projectId,
+          input_text: textToAnalyze,
+          sentiment: data.sentiment,
+          sentiment_score: data.confidence,
+          emotion: data.emotion,
+          language: article.language || 'ar',
+          dialect: data.dialect === 'Jordanian' ? 'jordanian' : 'other',
+          dialect_confidence: data.dialect_confidence,
+          dialect_indicators: data.dialect_indicators || [],
+          emotional_markers: data.emotional_markers || [],
+          user_id: user.id
+        });
+
+      if (insertError) {
+        console.error('Error inserting analysis:', insertError);
+      }
+
       // Update the article with enhanced analysis results
       await supabase
         .from('scraped_news')
@@ -92,6 +114,11 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
         .eq('id', article.id);
 
       await refetch();
+      
+      // Trigger refresh of analyses in parent component
+      if (onAnalysisComplete) {
+        onAnalysisComplete();
+      }
 
       toast({
         title: isRTL ? "تم التحليل بنجاح" : "Analysis Complete",
