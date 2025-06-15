@@ -17,22 +17,9 @@ interface BrightDataConfig {
   lastRunAt?: string;
 }
 
-interface NewsApiConfig {
-  id?: string;
-  projectId: string;
-  apiKey: string;
-  keywords: string[];
-  sources: string[];
-  language: string;
-  isActive: boolean;
-  lastRunAt?: string;
-}
-
 interface ConfigContextType {
   brightDataConfig: BrightDataConfig | null;
-  newsApiConfig: NewsApiConfig | null;
   updateBrightDataConfig: (config: BrightDataConfig) => Promise<void>;
-  updateNewsApiConfig: (config: NewsApiConfig) => Promise<void>;
   loading: boolean;
 }
 
@@ -40,7 +27,6 @@ const ConfigContext = createContext<ConfigContextType | undefined>(undefined);
 
 export function ConfigProvider({ children }: { children: ReactNode }) {
   const [brightDataConfig, setBrightDataConfig] = useState<BrightDataConfig | null>(null);
-  const [newsApiConfig, setNewsApiConfig] = useState<NewsApiConfig | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
@@ -66,26 +52,6 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
             : { platforms: [], keywords: [], limit: 100 },
           isActive: brightDataData.is_active || false,
           lastRunAt: brightDataData.last_run_at || undefined,
-        });
-      }
-
-      // Load NewsApi config
-      const { data: newsApiData } = await supabase
-        .from('news_configs')
-        .select('*')
-        .limit(1)
-        .maybeSingle();
-
-      if (newsApiData) {
-        setNewsApiConfig({
-          id: newsApiData.id,
-          projectId: newsApiData.project_id,
-          apiKey: newsApiData.api_key,
-          keywords: newsApiData.keywords || [],
-          sources: newsApiData.sources || [],
-          language: newsApiData.language || 'ar',
-          isActive: newsApiData.is_active || false,
-          lastRunAt: newsApiData.last_run_at || undefined,
         });
       }
     } catch (error) {
@@ -122,40 +88,9 @@ export function ConfigProvider({ children }: { children: ReactNode }) {
     }
   };
 
-  const updateNewsApiConfig = async (config: NewsApiConfig) => {
-    try {
-      const configData = {
-        project_id: config.projectId,
-        api_key: config.apiKey,
-        keywords: config.keywords,
-        sources: config.sources,
-        language: config.language,
-        is_active: config.isActive,
-      };
-
-      if (config.id) {
-        await supabase
-          .from('news_configs')
-          .update(configData)
-          .eq('id', config.id);
-      } else {
-        await supabase
-          .from('news_configs')
-          .insert(configData);
-      }
-
-      setNewsApiConfig(config);
-    } catch (error) {
-      console.error('Error updating NewsApi config:', error);
-      throw error;
-    }
-  };
-
   const value = {
     brightDataConfig,
-    newsApiConfig,
     updateBrightDataConfig,
-    updateNewsApiConfig,
     loading,
   };
 
