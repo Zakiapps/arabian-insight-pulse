@@ -1,15 +1,15 @@
-
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { BarChart3, TrendingUp, FileText, Brain, Activity, Globe, Users, Target, MessageSquare } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Brain, Activity, Globe, Users, Target, MessageSquare, Newspaper, ArrowRight } from 'lucide-react';
 import ProjectHeader from './ProjectHeader';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
 import { useState } from 'react';
 import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
+import AnalysisInsightsCard from './AnalysisInsightsCard';
 
 interface Project {
   id: string;
@@ -62,6 +62,60 @@ const ProjectDashboard = () => {
       
       if (error) throw error;
       return data[0] as AnalysisStats;
+    },
+    enabled: !!projectId,
+  });
+
+  // Enhanced query to get recent analyses from both sources
+  const { data: recentAnalyses } = useQuery({
+    queryKey: ['recent-analyses', projectId, newsRefreshKey],
+    queryFn: async () => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      // Get recent text analyses
+      const { data: textAnalyses, error: textError } = await supabase
+        .from('text_analyses')
+        .select('id, input_text, sentiment, emotion, dialect, created_at')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (textError) throw textError;
+
+      // Get recent news analyses
+      const { data: newsAnalyses, error: newsError } = await supabase
+        .from('scraped_news')
+        .select('id, title, description, sentiment, emotion, dialect, created_at')
+        .eq('project_id', projectId)
+        .eq('is_analyzed', true)
+        .order('created_at', { ascending: false })
+        .limit(10);
+      
+      if (newsError) throw newsError;
+
+      // Combine and format
+      const combined = [
+        ...(textAnalyses || []).map(analysis => ({
+          id: analysis.id,
+          input_text: analysis.input_text,
+          sentiment: analysis.sentiment,
+          emotion: analysis.emotion,
+          dialect: analysis.dialect,
+          created_at: analysis.created_at,
+          type: 'text' as const
+        })),
+        ...(newsAnalyses || []).map(news => ({
+          id: news.id,
+          input_text: news.title + (news.description ? '. ' + news.description : ''),
+          sentiment: news.sentiment || 'neutral',
+          emotion: news.emotion,
+          dialect: news.dialect,
+          created_at: news.created_at,
+          type: 'news' as const
+        }))
+      ].sort((a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime());
+
+      return combined.slice(0, 15);
     },
     enabled: !!projectId,
   });
@@ -250,6 +304,13 @@ const ProjectDashboard = () => {
         </Card>
       </div>
 
+      {/* New Analysis Insights Card */}
+      <AnalysisInsightsCard 
+        projectId={project.id}
+        stats={analysisStats}
+        recentAnalyses={recentAnalyses}
+      />
+
       {/* Analytics Overview */}
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Timeline Chart */}
@@ -351,26 +412,45 @@ const ProjectDashboard = () => {
         onAnalysisComplete={handleNewsAnalyzed}
       />
 
-      {/* Recent Analyses */}
+      {/* Recent Analyses - Enhanced */}
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
             <Activity className="h-5 w-5" />
             التحليلات الأخيرة
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => window.location.href = `/projects/${project.id}/analyses`}
+              className="mr-auto"
+            >
+              عرض الكل
+              <ArrowRight className="h-4 w-4 mr-1" />
+            </Button>
           </CardTitle>
           <CardDescription>
-            عرض شامل لجميع تحليلات النص في المشروع
+            عرض شامل لجميع تحليلات النص والأخبار في المشروع
           </CardDescription>
         </CardHeader>
         <CardContent>
-          {textAnalyses && textAnalyses.length > 0 ? (
+          {recentAnalyses && recentAnalyses.length > 0 ? (
             <div className="space-y-4">
-              {textAnalyses.slice(0, 10).map((analysis: any) => (
+              {recentAnalyses.slice(0, 8).map((analysis: any) => (
                 <div key={analysis.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                   <div className="flex justify-between items-start mb-2">
-                    <span className="font-medium">
-                      تحليل #{analysis.id.slice(0, 8)}
-                    </span>
+                    <div className="flex items-center gap-2">
+                      {analysis.type === 'news' ? (
+                        <Newspaper className="h-4 w-4 text-blue-600" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 text-purple-600" />
+                      )}
+                      <span className="font-medium">
+                        تحليل #{analysis.id.slice(0, 8)}
+                      </span>
+                      <Badge variant="outline" className="text-xs">
+                        {analysis.type === 'news' ? 'أخبار' : 'نص مباشر'}
+                      </Badge>
+                    </div>
                     <div className="flex gap-2">
                       <Badge variant={
                         analysis.sentiment === 'positive' ? 'default' : 
@@ -379,16 +459,14 @@ const ProjectDashboard = () => {
                         {analysis.sentiment === 'positive' ? 'إيجابي' :
                          analysis.sentiment === 'negative' ? 'سلبي' : 'محايد'}
                       </Badge>
-                      {analysis.sentiment_score && (
-                        <Badge variant="outline">
-                          {Math.round(analysis.sentiment_score * 100)}%
+                      {analysis.emotion && (
+                        <Badge variant="outline" className="text-xs">
+                          {analysis.emotion}
                         </Badge>
                       )}
-                      {analysis.dialect && (
-                        <Badge variant="outline" className="text-xs">
-                          {analysis.dialect === 'jordanian' ? 'أردني' :
-                           analysis.dialect === 'egyptian' ? 'مصري' :
-                           analysis.dialect === 'saudi' ? 'سعودي' : 'فصيح'}
+                      {analysis.dialect === 'jordanian' && (
+                        <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                          🇯🇴 أردني
                         </Badge>
                       )}
                     </div>
@@ -398,7 +476,7 @@ const ProjectDashboard = () => {
                   </p>
                   <div className="flex items-center justify-between text-xs text-muted-foreground">
                     <span>
-                      اللغة: {analysis.language || 'عربي'}
+                      نوع التحليل: {analysis.type === 'news' ? 'تحليل أخبار' : 'تحليل نص مباشر'}
                     </span>
                     <span>
                       {new Date(analysis.created_at).toLocaleDateString('ar-SA')}
@@ -406,11 +484,14 @@ const ProjectDashboard = () => {
                   </div>
                 </div>
               ))}
-              {textAnalyses.length > 10 && (
+              {recentAnalyses.length > 8 && (
                 <div className="text-center">
-                  <Badge variant="outline">
-                    عرض المزيد ({textAnalyses.length - 10} تحليل إضافي)
-                  </Badge>
+                  <Button 
+                    variant="outline" 
+                    onClick={() => window.location.href = `/projects/${project.id}/analyses`}
+                  >
+                    عرض المزيد ({recentAnalyses.length - 8} تحليل إضافي)
+                  </Button>
                 </div>
               )}
             </div>

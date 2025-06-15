@@ -1,14 +1,13 @@
-
-
-import { Toaster } from "@/components/ui/sonner";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
-import { BrowserRouter, Routes, Route } from "react-router-dom";
-import { AuthProvider } from "@/contexts/AuthContext";
-import { LanguageProvider } from "@/contexts/LanguageContext";
-import { SubscriptionProvider } from "@/contexts/SubscriptionContext";
-import { ThemeProvider } from "next-themes";
-import ProtectedRoute from "@/components/auth/ProtectedRoute";
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { Toaster } from '@/components/ui/toaster';
+import { AuthProvider } from '@/contexts/AuthContext';
+import { LanguageProvider } from '@/contexts/LanguageContext';
+import { ProjectProvider } from '@/contexts/ProjectContext';
+import { ConfigProvider } from '@/contexts/ConfigContext';
+import { SubscriptionProvider } from '@/contexts/SubscriptionContext';
+import ProtectedRoute from '@/components/auth/ProtectedRoute';
+import ProjectAnalysesPage from '@/pages/ProjectAnalysesPage';
 
 // Import pages
 import LandingPage from "@/pages/LandingPage";
@@ -59,92 +58,94 @@ import UnifiedScraper from "./pages/UnifiedScraper";
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
-      <ThemeProvider attribute="class" defaultTheme="light" enableSystem>
+      <AuthProvider>
         <LanguageProvider>
-          <BrowserRouter>
-            <AuthProvider>
+          <ProjectProvider>
+            <ConfigProvider>
               <SubscriptionProvider>
-                <TooltipProvider>
-                  <Toaster />
-                  <Routes>
-                    {/* Public routes - Landing page as home */}
-                    <Route path="/" element={<BilingualLanding />} />
-                    <Route path="/home" element={<BilingualLanding />} />
-                    <Route path="/landing" element={<LandingPage />} />
-                    <Route path="/text-analysis" element={<TextAnalysis />} />
-                    <Route path="/signin" element={<SignIn />} />
-                    <Route path="/signup" element={<SignUp />} />
-                    <Route path="/login" element={<SignIn />} />
-                    
-                    {/* Protected Dashboard routes */}
-                    <Route path="/dashboard" element={
-                      <ProtectedRoute>
-                        <DashboardLayout />
-                      </ProtectedRoute>
-                    }>
-                      <Route index element={<Dashboard />} />
-                      <Route path="posts" element={<Posts />} />
-                      <Route path="upload" element={<Upload />} />
-                      <Route path="alerts" element={<Alerts />} />
-                      <Route path="reports" element={<Reports />} />
-                      <Route path="sentiment" element={<SentimentAnalysis />} />
-                      <Route path="categories" element={<CategoryDistribution />} />
-                      <Route path="platforms" element={<PlatformDistribution />} />
-                      <Route path="topics" element={<TopTopics />} />
-                      <Route path="dialects" element={<DialectDetection />} />
-                      <Route path="settings" element={<Settings />} />
-                    </Route>
-                    
-                    {/* Projects routes */}
-                    <Route path="/projects" element={
-                      <ProtectedRoute>
-                        <DashboardLayout />
-                      </ProtectedRoute>
-                    }>
-                      <Route index element={<ProjectsPage />} />
-                      <Route path=":projectId" element={<ProjectPage />} />
-                    </Route>
-                    
-                    {/* Models & Services routes */}
-                    <Route path="/models" element={
-                      <ProtectedRoute>
-                        <DashboardLayout />
-                      </ProtectedRoute>
-                    }>
-                      <Route path="sentiment" element={<SentimentModelPage />} />
-                      <Route path="summarization" element={<SummarizationModelPage />} />
-                      <Route path="forecasting" element={<ForecastingPage />} />
-                    </Route>
+                <Router>
+                  <div className="min-h-screen bg-background">
+                    <Toaster />
+                    <Routes>
+                      {/* Public routes - Landing page as home */}
+                      <Route path="/" element={<BilingualLanding />} />
+                      <Route path="/home" element={<BilingualLanding />} />
+                      <Route path="/landing" element={<LandingPage />} />
+                      <Route path="/text-analysis" element={<TextAnalysis />} />
+                      <Route path="/signin" element={<SignIn />} />
+                      <Route path="/signup" element={<SignUp />} />
+                      <Route path="/login" element={<SignIn />} />
+                      
+                      {/* Protected Dashboard routes */}
+                      <Route path="/dashboard" element={
+                        <ProtectedRoute>
+                          <DashboardLayout />
+                        </ProtectedRoute>
+                      }>
+                        <Route index element={<Dashboard />} />
+                        <Route path="posts" element={<Posts />} />
+                        <Route path="upload" element={<Upload />} />
+                        <Route path="alerts" element={<Alerts />} />
+                        <Route path="reports" element={<Reports />} />
+                        <Route path="sentiment" element={<SentimentAnalysis />} />
+                        <Route path="categories" element={<CategoryDistribution />} />
+                        <Route path="platforms" element={<PlatformDistribution />} />
+                        <Route path="topics" element={<TopTopics />} />
+                        <Route path="dialects" element={<DialectDetection />} />
+                        <Route path="settings" element={<Settings />} />
+                      </Route>
+                      
+                      {/* Projects routes */}
+                      <Route path="/projects" element={
+                        <ProtectedRoute>
+                          <DashboardLayout />
+                        </ProtectedRoute>
+                      }>
+                        <Route index element={<ProjectsPage />} />
+                        <Route path=":projectId" element={<ProtectedRoute><ProjectPage /></ProtectedRoute>} />
+                        <Route path="/projects/:projectId/analyses" element={<ProtectedRoute><ProjectAnalysesPage /></ProtectedRoute>} />
+                      </Route>
+                      
+                      {/* Models & Services routes */}
+                      <Route path="/models" element={
+                        <ProtectedRoute>
+                          <DashboardLayout />
+                        </ProtectedRoute>
+                      }>
+                        <Route path="sentiment" element={<SentimentModelPage />} />
+                        <Route path="summarization" element={<SummarizationModelPage />} />
+                        <Route path="forecasting" element={<ForecastingPage />} />
+                      </Route>
 
-                    {/* Protected Admin routes */}
-                    <Route path="/admin" element={
-                      <ProtectedRoute adminOnly>
-                        <AdminLayout />
-                      </ProtectedRoute>
-                    }>
-                      <Route index element={<AdminDashboard />} />
-                      <Route path="users" element={<AdminUsers />} />
-                      <Route path="plans" element={<AdminPlans />} />
-                      <Route path="subscriptions" element={<AdminSubscriptions />} />
-                      <Route path="transactions" element={<AdminTransactions />} />
-                      <Route path="settings" element={<AdminSettings />} />
-                      <Route path="payment-settings" element={<PaymentSettings />} />
-                      <Route path="huggingface-config" element={<HuggingFaceConfigPage />} />
-                      <Route path="huggingface-logs" element={<HuggingFaceLogs />} />
-                    </Route>
-                    
-                    {/* Unified Scraper route */}
-                    <Route path="/dashboard/unified-scraper" element={<UnifiedScraper />} />
-                  </Routes>
-                </TooltipProvider>
+                      {/* Protected Admin routes */}
+                      <Route path="/admin" element={
+                        <ProtectedRoute adminOnly>
+                          <AdminLayout />
+                        </ProtectedRoute>
+                      }>
+                        <Route index element={<AdminDashboard />} />
+                        <Route path="users" element={<AdminUsers />} />
+                        <Route path="plans" element={<AdminPlans />} />
+                        <Route path="subscriptions" element={<AdminSubscriptions />} />
+                        <Route path="transactions" element={<AdminTransactions />} />
+                        <Route path="settings" element={<AdminSettings />} />
+                        <Route path="payment-settings" element={<PaymentSettings />} />
+                        <Route path="huggingface-config" element={<HuggingFaceConfigPage />} />
+                        <Route path="huggingface-logs" element={<HuggingFaceLogs />} />
+                      </Route>
+                      
+                      {/* Unified Scraper route */}
+                      <Route path="/dashboard/unified-scraper" element={<UnifiedScraper />} />
+                    </Routes>
+                  </div>
+                </Router>
               </SubscriptionProvider>
-            </AuthProvider>
-          </BrowserRouter>
+            </ConfigProvider>
+          </ProjectProvider>
         </LanguageProvider>
-      </ThemeProvider>
+      </AuthProvider>
     </QueryClientProvider>
   );
 }
 
 export default App;
-
