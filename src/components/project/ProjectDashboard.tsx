@@ -1,9 +1,11 @@
+
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { BarChart3, TrendingUp, FileText, Brain, Activity, Globe, Users, Target, MessageSquare, Newspaper, ArrowRight } from 'lucide-react';
 import ProjectHeader from './ProjectHeader';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
