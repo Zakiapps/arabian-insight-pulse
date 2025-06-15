@@ -1,9 +1,11 @@
+
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { UserWithProfile, Profile } from '@/types/auth';
 import { authService } from '@/services/authService';
 import { profileService } from '@/services/profileService';
 
+// Custom hook for Supabase auth state with profile loading and robust loading management
 export const useAuthState = () => {
   const [user, setUser] = useState<UserWithProfile | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
@@ -13,35 +15,31 @@ export const useAuthState = () => {
   useEffect(() => {
     let mounted = true;
 
+    const finishLoading = () => { if (mounted) setLoading(false); };
+
     // Set up auth state listener first
     const { data: { subscription } } = authService.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
-      
-      console.log('Auth state changed:', event, newSession?.user?.email);
-      
+
       if (event === 'SIGNED_IN' && newSession?.user) {
         setSession(newSession);
-        
-        // For admin users, we can continue without profile
         if (newSession.user.email === 'admin@arabinsights.com') {
           setUser({ ...newSession.user, profile: null });
           setProfile(null);
-          setLoading(false);
+          finishLoading();
         } else {
-          // For regular users, try to fetch profile
           try {
             const userProfile = await profileService.fetchUserProfile(newSession.user.id);
             if (mounted) {
               setProfile(userProfile);
               setUser({ ...newSession.user, profile: userProfile });
-              setLoading(false);
+              finishLoading();
             }
           } catch (error) {
-            console.error('Error fetching profile after sign in:', error);
             if (mounted) {
               setUser({ ...newSession.user, profile: null });
               setProfile(null);
-              setLoading(false);
+              finishLoading();
             }
           }
         }
@@ -49,10 +47,9 @@ export const useAuthState = () => {
         setUser(null);
         setProfile(null);
         setSession(null);
-        setLoading(false);
+        finishLoading();
       } else if (event === 'TOKEN_REFRESHED' && newSession?.user) {
         setSession(newSession);
-        // Keep existing user and profile during token refresh
         if (user) {
           setUser({ ...newSession.user, profile: user.profile });
         }
@@ -64,19 +61,13 @@ export const useAuthState = () => {
       try {
         const { data: { session }, error } = await authService.getSession();
         if (error) throw error;
-        
         if (!mounted) return;
-        
         if (session?.user) {
-          console.log('Initial session found for user:', session.user.email);
           setSession(session);
-          
-          // For admin users, we can continue without profile
           if (session.user.email === 'admin@arabinsights.com') {
             setUser({ ...session.user, profile: null });
             setProfile(null);
           } else {
-            // For regular users, try to fetch profile
             try {
               const userProfile = await profileService.fetchUserProfile(session.user.id);
               if (mounted) {
@@ -84,7 +75,6 @@ export const useAuthState = () => {
                 setUser({ ...session.user, profile: userProfile });
               }
             } catch (profileError) {
-              console.error('Error fetching profile:', profileError);
               if (mounted) {
                 setUser({ ...session.user, profile: null });
                 setProfile(null);
@@ -93,11 +83,12 @@ export const useAuthState = () => {
           }
         }
       } catch (error) {
-        console.error('Auth initialization error:', error);
+        // On full failure, zero everything and stop loading
+        setUser(null);
+        setProfile(null);
+        setSession(null);
       } finally {
-        if (mounted) {
-          setLoading(false);
-        }
+        finishLoading();
       }
     };
 
