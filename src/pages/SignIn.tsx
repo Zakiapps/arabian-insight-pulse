@@ -10,8 +10,8 @@ import { toast } from 'sonner';
 import { BarChart3, Eye, EyeOff } from 'lucide-react';
 
 const SignIn = () => {
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@arabinsights.com');
+  const [password, setPassword] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
   const { login, isAuthenticated, loading: authLoading } = useAuth();
@@ -28,24 +28,27 @@ const SignIn = () => {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!email.trim() || !password) {
       toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       return;
     }
 
     setLoading(true);
-    console.log('Attempting login for:', email);
+    console.log('Attempting login for:', email.trim());
 
     try {
-      const { error } = await login(email, password);
+      const { error } = await login(email.trim(), password);
+      
       if (error) {
         console.error('Login error:', error);
         let errorMessage = 'خطأ في تسجيل الدخول';
         
-        if (error.message.includes('Invalid login credentials')) {
-          errorMessage = 'بيانات الدخول غير صحيحة';
+        if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+          errorMessage = 'بيانات الدخول غير صحيحة. تأكد من البريد الإلكتروني وكلمة المرور.';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'يرجى تأكيد البريد الإلكتروني أولاً';
+        } else if (error.message.includes('Too many requests')) {
+          errorMessage = 'محاولات كثيرة جداً. يرجى المحاولة لاحقاً.';
         } else {
           errorMessage = error.message;
         }
@@ -108,6 +111,7 @@ const SignIn = () => {
                 className="mt-2 h-12 text-base"
                 disabled={loading}
                 placeholder="admin@arabinsights.com"
+                autoComplete="email"
               />
             </div>
             <div>
@@ -122,6 +126,7 @@ const SignIn = () => {
                   className="h-12 text-base pr-12"
                   disabled={loading}
                   placeholder="password"
+                  autoComplete="current-password"
                 />
                 <button
                   type="button"

@@ -13,6 +13,52 @@ export const useAuthState = () => {
   useEffect(() => {
     let mounted = true;
 
+    // Set up auth state listener first
+    const { data: { subscription } } = authService.onAuthStateChange(async (event, newSession) => {
+      if (!mounted) return;
+      
+      console.log('Auth state changed:', event, newSession?.user?.email);
+      
+      if (event === 'SIGNED_IN' && newSession?.user) {
+        setSession(newSession);
+        
+        // For admin users, we can continue without profile
+        if (newSession.user.email === 'admin@arabinsights.com') {
+          setUser({ ...newSession.user, profile: null });
+          setProfile(null);
+          setLoading(false);
+        } else {
+          // For regular users, try to fetch profile
+          try {
+            const userProfile = await profileService.fetchUserProfile(newSession.user.id);
+            if (mounted) {
+              setProfile(userProfile);
+              setUser({ ...newSession.user, profile: userProfile });
+              setLoading(false);
+            }
+          } catch (error) {
+            console.error('Error fetching profile after sign in:', error);
+            if (mounted) {
+              setUser({ ...newSession.user, profile: null });
+              setProfile(null);
+              setLoading(false);
+            }
+          }
+        }
+      } else if (event === 'SIGNED_OUT') {
+        setUser(null);
+        setProfile(null);
+        setSession(null);
+        setLoading(false);
+      } else if (event === 'TOKEN_REFRESHED' && newSession?.user) {
+        setSession(newSession);
+        // Keep existing user and profile during token refresh
+        if (user) {
+          setUser({ ...newSession.user, profile: user.profile });
+        }
+      }
+    });
+
     // Get initial session
     const initAuth = async () => {
       try {
@@ -56,53 +102,6 @@ export const useAuthState = () => {
     };
 
     initAuth();
-
-    // Set up auth state listener
-    const { data: { subscription } } = authService.onAuthStateChange((event, newSession) => {
-      if (!mounted) return;
-      
-      console.log('Auth state changed:', event, newSession?.user?.email);
-      
-      if (event === 'SIGNED_IN' && newSession?.user) {
-        setSession(newSession);
-        
-        // For admin users, we can continue without profile
-        if (newSession.user.email === 'admin@arabinsights.com') {
-          setUser({ ...newSession.user, profile: null });
-          setProfile(null);
-          setLoading(false);
-        } else {
-          // For regular users, try to fetch profile
-          profileService.fetchUserProfile(newSession.user.id)
-            .then((userProfile) => {
-              if (mounted) {
-                setProfile(userProfile);
-                setUser({ ...newSession.user, profile: userProfile });
-                setLoading(false);
-              }
-            })
-            .catch((error) => {
-              console.error('Error fetching profile after sign in:', error);
-              if (mounted) {
-                setUser({ ...newSession.user, profile: null });
-                setProfile(null);
-                setLoading(false);
-              }
-            });
-        }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        setLoading(false);
-      } else if (event === 'TOKEN_REFRESHED' && newSession?.user) {
-        setSession(newSession);
-        // Keep existing user and profile during token refresh
-        if (user) {
-          setUser({ ...newSession.user, profile: user.profile });
-        }
-      }
-    });
 
     return () => {
       mounted = false;
