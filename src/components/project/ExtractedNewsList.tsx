@@ -7,7 +7,7 @@ import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { supabase } from "@/integrations/supabase/client";
 import { useAuth } from "@/contexts/AuthContext";
-import { Brain, Trash2, ExternalLink, Newspaper } from "lucide-react";
+import { Brain, Trash2, ExternalLink, Newspaper, Sparkles, Target } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 
 interface SavedNewsArticle {
@@ -25,6 +25,11 @@ interface SavedNewsArticle {
   category?: string[];
   keywords?: string[];
   sentiment?: string;
+  emotion?: string;
+  dialect?: string;
+  dialect_confidence?: number;
+  dialect_indicators?: string[];
+  emotional_markers?: string[];
   is_analyzed: boolean;
   created_at: string;
 }
@@ -65,20 +70,23 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
       
       const { data, error } = await supabase.functions.invoke('analyze-text', {
         body: {
-          text: textToAnalyze,
-          source: 'scraped_news',
-          user_id: user.id
+          text: textToAnalyze
         }
       });
 
       if (error) throw error;
 
-      // Update the article as analyzed with sentiment
+      // Update the article with enhanced analysis results
       await supabase
         .from('scraped_news')
         .update({ 
           is_analyzed: true, 
           sentiment: data.sentiment,
+          emotion: data.emotion,
+          dialect: data.dialect === 'Jordanian' ? 'jordanian' : 'other',
+          dialect_confidence: data.dialect_confidence,
+          dialect_indicators: data.dialect_indicators || [],
+          emotional_markers: data.emotional_markers || [],
           updated_at: new Date().toISOString()
         })
         .eq('id', article.id);
@@ -86,10 +94,10 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
       await refetch();
 
       toast({
-        title: isRTL ? "تم التحليل" : "Analysis Complete",
+        title: isRTL ? "تم التحليل بنجاح" : "Analysis Complete",
         description: isRTL 
-          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'}`
-          : `Sentiment: ${data.sentiment}`,
+          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'} | العاطفة: ${data.emotion}`
+          : `Sentiment: ${data.sentiment} | Emotion: ${data.emotion}`,
       });
     } catch (error: any) {
       console.error("Analysis error:", error);
@@ -149,7 +157,7 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
   }
 
   return (
-    <Card>
+    <Card className="shadow-lg">
       <CardHeader>
         <CardTitle className="flex items-center gap-2">
           <Newspaper className="h-5 w-5" />
@@ -173,7 +181,7 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
             {savedNews.map((article) => (
               <div
                 key={article.id}
-                className="p-4 border rounded-lg bg-white flex flex-col gap-3 shadow-sm"
+                className="p-4 border rounded-lg bg-white flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow"
               >
                 {/* Header */}
                 <div className="flex items-center justify-between">
@@ -200,7 +208,7 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
                   </div>
                   
                   {/* Status badges */}
-                  <div className="flex gap-2">
+                  <div className="flex gap-2 flex-wrap">
                     <Badge variant={article.language === 'ar' ? 'default' : 'secondary'}>
                       {article.language === 'ar' ? (isRTL ? 'عربي' : 'Arabic') : (isRTL ? 'إنجليزي' : 'English')}
                     </Badge>
@@ -218,8 +226,50 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
                           : article.sentiment.charAt(0).toUpperCase() + article.sentiment.slice(1)}
                       </Badge>
                     )}
+
+                    {article.emotion && (
+                      <Badge variant="outline" className="text-xs">
+                        {article.emotion}
+                      </Badge>
+                    )}
+
+                    {article.dialect === 'jordanian' && (
+                      <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                        🇯🇴 أردني
+                      </Badge>
+                    )}
                   </div>
                 </div>
+
+                {/* Enhanced Analysis Display */}
+                {article.is_analyzed && (article.dialect_indicators?.length || article.emotional_markers?.length) && (
+                  <div className="space-y-2">
+                    {article.dialect_indicators && article.dialect_indicators.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-xs text-blue-600 font-medium">مؤشرات أردنية:</span>
+                        {article.dialect_indicators.slice(0, 5).map((indicator, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                            {indicator}
+                          </Badge>
+                        ))}
+                        {article.dialect_indicators.length > 5 && (
+                          <span className="text-xs text-blue-600">+{article.dialect_indicators.length - 5}</span>
+                        )}
+                      </div>
+                    )}
+                    
+                    {article.emotional_markers && article.emotional_markers.length > 0 && (
+                      <div className="flex flex-wrap gap-1">
+                        <span className="text-xs text-purple-600 font-medium">مؤشرات عاطفية:</span>
+                        {article.emotional_markers.slice(0, 3).map((marker, idx) => (
+                          <Badge key={idx} variant="outline" className="text-xs bg-purple-50 text-purple-700">
+                            {marker}
+                          </Badge>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+                )}
 
                 {/* Image */}
                 {article.image_url && (
@@ -266,13 +316,14 @@ const ExtractedNewsList = ({ projectId }: ExtractedNewsListProps) => {
                       size="sm"
                       onClick={() => analyzeArticle(article)}
                       disabled={analyzingArticles[article.id]}
+                      className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
                     >
                       {analyzingArticles[article.id] ? (
                         <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
                       ) : (
-                        <Brain className="h-4 w-4 mr-1" />
+                        <Sparkles className="h-4 w-4 mr-1" />
                       )}
-                      {isRTL ? "تحليل بـ AraBERT" : "Analyze with AraBERT"}
+                      {isRTL ? "تحليل بـ MARBERT" : "Analyze with MARBERT"}
                     </Button>
                   )}
                   

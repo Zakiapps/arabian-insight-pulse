@@ -3,19 +3,14 @@ import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
 import { useLanguage } from '@/contexts/LanguageContext';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
-import { Button } from '@/components/ui/button';
-import { BarChart3, TrendingUp, FileText, Brain, Activity, Upload, MessageSquare, Target, Zap, Globe, Users } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Brain, Activity, Globe, Users, Target, MessageSquare } from 'lucide-react';
 import ProjectHeader from './ProjectHeader';
-import SentimentChart from './SentimentChart';
-import DialectDistribution from './DialectDistribution';
-import TextSummarizer from './TextSummarizer';
-import TextAnalysisForm from './TextAnalysisForm';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
+import EnhancedTextAnalysisForm from './EnhancedTextAnalysisForm';
 import { useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
+import { ResponsiveContainer, AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell } from 'recharts';
 
 interface Project {
   id: string;
@@ -23,16 +18,6 @@ interface Project {
   description: string | null;
   created_at: string;
   is_active: boolean;
-}
-
-interface ProjectStats {
-  upload_count: number;
-  analysis_count: number;
-  sentiment_distribution: {
-    positive: number;
-    negative: number;
-    neutral: number;
-  };
 }
 
 interface AnalysisStats {
@@ -66,21 +51,6 @@ const ProjectDashboard = () => {
     enabled: !!projectId,
   });
 
-  const { data: stats, isLoading: statsLoading } = useQuery({
-    queryKey: ['project-stats', projectId],
-    queryFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
-      
-      const { data, error } = await supabase.rpc('get_project_stats', {
-        project_id_param: projectId,
-      });
-      
-      if (error) throw error;
-      return data as unknown as ProjectStats;
-    },
-    enabled: !!projectId,
-  });
-
   // Fetch text analysis stats
   const { data: analysisStats } = useQuery({
     queryKey: ['project-analysis-stats', projectId],
@@ -109,21 +79,6 @@ const ProjectDashboard = () => {
         .eq('project_id', projectId)
         .order('created_at', { ascending: false })
         .limit(50);
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: !!projectId,
-  });
-
-  const { data: analyses } = useQuery({
-    queryKey: ['project-analyses', projectId],
-    queryFn: async () => {
-      if (!projectId) throw new Error('Project ID is required');
-      
-      const { data, error } = await supabase.rpc('get_project_analyses', {
-        project_id_param: projectId,
-      });
       
       if (error) throw error;
       return data || [];
@@ -200,7 +155,7 @@ const ProjectDashboard = () => {
   ].filter(item => item.value > 0);
 
   return (
-    <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+    <div className="space-y-8" dir={isRTL ? 'rtl' : 'ltr'}>
       <ProjectHeader 
         project={project} 
         onUpdate={handleUpdateProject}
@@ -384,117 +339,100 @@ const ProjectDashboard = () => {
         </Card>
       </div>
 
+      {/* Enhanced Text Analysis Section */}
+      <Card className="shadow-xl border-0 bg-gradient-to-br from-blue-50 via-white to-purple-50">
+        <CardHeader className="text-center pb-6">
+          <CardTitle className="flex items-center justify-center gap-3 text-2xl">
+            <div className="p-3 bg-gradient-to-br from-primary to-blue-600 rounded-xl">
+              <Brain className="h-6 w-6 text-white" />
+            </div>
+            تحليل النصوص المطور بنموذج MARBERT
+          </CardTitle>
+          <CardDescription className="text-base">
+            تحليل متقدم للمشاعر والعواطف واللهجة الأردنية مع معالجة ذكية للنصوص العربية
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <EnhancedTextAnalysisForm projectId={project.id} />
+        </CardContent>
+      </Card>
+
       {/* Extracted News Section */}
       <ExtractedNewsList projectId={project.id} key={newsRefreshKey} />
 
-      {/* Detailed Analysis Tabs */}
-      <Tabs defaultValue="analyze" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="analyze">
-            {isRTL ? 'تحليل النص' : 'Text Analysis'}
-          </TabsTrigger>
-          <TabsTrigger value="analytics">
-            {isRTL ? 'التحليلات' : 'Analytics'}
-          </TabsTrigger>
-          <TabsTrigger value="sentiment">
-            {isRTL ? 'المشاعر' : 'Sentiment'}
-          </TabsTrigger>
-          <TabsTrigger value="dialect">
-            {isRTL ? 'اللهجات' : 'Dialects'}
-          </TabsTrigger>
-          <TabsTrigger value="summary">
-            {isRTL ? 'الملخصات' : 'Summaries'}
-          </TabsTrigger>
-        </TabsList>
-
-        <TabsContent value="analyze" className="space-y-4">
-          <TextAnalysisForm projectId={project.id} />
-        </TabsContent>
-
-        <TabsContent value="analytics" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isRTL ? 'تحليل البيانات التفصيلي' : 'Detailed Data Analysis'}</CardTitle>
-              <CardDescription>
-                {isRTL ? 'عرض شامل لجميع تحليلات النص في المشروع' : 'Comprehensive overview of all text analyses in the project'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              {textAnalyses && textAnalyses.length > 0 ? (
-                <div className="space-y-4">
-                  {textAnalyses.slice(0, 10).map((analysis: any) => (
-                    <div key={analysis.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
-                      <div className="flex justify-between items-start mb-2">
-                        <span className="font-medium">
-                          {isRTL ? 'تحليل' : 'Analysis'} #{analysis.id.slice(0, 8)}
-                        </span>
-                        <div className="flex gap-2">
-                          <Badge variant={
-                            analysis.sentiment === 'positive' ? 'default' : 
-                            analysis.sentiment === 'negative' ? 'destructive' : 'secondary'
-                          }>
-                            {analysis.sentiment === 'positive' ? 'إيجابي' :
-                             analysis.sentiment === 'negative' ? 'سلبي' : 'محايد'}
-                          </Badge>
-                          {analysis.sentiment_score && (
-                            <Badge variant="outline">
-                              {Math.round(analysis.sentiment_score * 100)}%
-                            </Badge>
-                          )}
-                          {analysis.dialect && (
-                            <Badge variant="outline" className="text-xs">
-                              {analysis.dialect === 'jordanian' ? 'أردني' :
-                               analysis.dialect === 'egyptian' ? 'مصري' :
-                               analysis.dialect === 'saudi' ? 'سعودي' : 'فصيح'}
-                            </Badge>
-                          )}
-                        </div>
-                      </div>
-                      <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                        {analysis.input_text?.slice(0, 150)}...
-                      </p>
-                      <div className="flex items-center justify-between text-xs text-muted-foreground">
-                        <span>
-                          {isRTL ? 'اللغة:' : 'Language:'} {analysis.language || 'عربي'}
-                        </span>
-                        <span>
-                          {new Date(analysis.created_at).toLocaleDateString('ar-SA')}
-                        </span>
-                      </div>
+      {/* Recent Analyses */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2">
+            <Activity className="h-5 w-5" />
+            التحليلات الأخيرة
+          </CardTitle>
+          <CardDescription>
+            عرض شامل لجميع تحليلات النص في المشروع
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          {textAnalyses && textAnalyses.length > 0 ? (
+            <div className="space-y-4">
+              {textAnalyses.slice(0, 10).map((analysis: any) => (
+                <div key={analysis.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
+                  <div className="flex justify-between items-start mb-2">
+                    <span className="font-medium">
+                      تحليل #{analysis.id.slice(0, 8)}
+                    </span>
+                    <div className="flex gap-2">
+                      <Badge variant={
+                        analysis.sentiment === 'positive' ? 'default' : 
+                        analysis.sentiment === 'negative' ? 'destructive' : 'secondary'
+                      }>
+                        {analysis.sentiment === 'positive' ? 'إيجابي' :
+                         analysis.sentiment === 'negative' ? 'سلبي' : 'محايد'}
+                      </Badge>
+                      {analysis.sentiment_score && (
+                        <Badge variant="outline">
+                          {Math.round(analysis.sentiment_score * 100)}%
+                        </Badge>
+                      )}
+                      {analysis.dialect && (
+                        <Badge variant="outline" className="text-xs">
+                          {analysis.dialect === 'jordanian' ? 'أردني' :
+                           analysis.dialect === 'egyptian' ? 'مصري' :
+                           analysis.dialect === 'saudi' ? 'سعودي' : 'فصيح'}
+                        </Badge>
+                      )}
                     </div>
-                  ))}
-                  {textAnalyses.length > 10 && (
-                    <div className="text-center">
-                      <Button variant="outline">
-                        عرض المزيد ({textAnalyses.length - 10} تحليل إضافي)
-                      </Button>
-                    </div>
-                  )}
-                </div>
-              ) : (
-                <div className="text-center py-8">
-                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
-                  <p className="text-muted-foreground">
-                    {isRTL ? 'لا توجد تحليلات متاحة' : 'No analyses available'}
+                  </div>
+                  <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
+                    {analysis.input_text?.slice(0, 150)}...
                   </p>
+                  <div className="flex items-center justify-between text-xs text-muted-foreground">
+                    <span>
+                      اللغة: {analysis.language || 'عربي'}
+                    </span>
+                    <span>
+                      {new Date(analysis.created_at).toLocaleDateString('ar-SA')}
+                    </span>
+                  </div>
+                </div>
+              ))}
+              {textAnalyses.length > 10 && (
+                <div className="text-center">
+                  <Badge variant="outline">
+                    عرض المزيد ({textAnalyses.length - 10} تحليل إضافي)
+                  </Badge>
                 </div>
               )}
-            </CardContent>
-          </Card>
-        </TabsContent>
-
-        <TabsContent value="sentiment" className="space-y-4">
-          <SentimentChart analyses={textAnalyses || []} />
-        </TabsContent>
-
-        <TabsContent value="dialect" className="space-y-4">
-          <DialectDistribution analyses={textAnalyses || []} />
-        </TabsContent>
-
-        <TabsContent value="summary" className="space-y-4">
-          <TextSummarizer />
-        </TabsContent>
-      </Tabs>
+            </div>
+          ) : (
+            <div className="text-center py-8">
+              <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+              <p className="text-muted-foreground">
+                لا توجد تحليلات متاحة
+              </p>
+            </div>
+          )}
+        </CardContent>
+      </Card>
     </div>
   );
 };
