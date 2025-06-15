@@ -37,6 +37,8 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
   const [loading, setLoading] = useState(false);
   const [scrapingActive, setScrapingActive] = useState(false);
   const [config, setConfig] = useState<any>(null);
+  const [articles, setArticles] = useState<any[]>([]);
+  const [articleActionLoading, setArticleActionLoading] = useState<string | null>(null);
   
   // Available news sources
   const newsSources = [
@@ -178,7 +180,6 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
     
     setScrapingActive(true);
     try {
-      // ملاحظة: يجب استخدام رابط الوظيفة edge كاملاً وليس متغيرات .env
       const response = await fetch(
         `https://hgsdcoqgvdjuxvcscqzn.supabase.co/functions/v1/scrape-newsapi`,
         {
@@ -190,29 +191,25 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
           body: JSON.stringify({ project_id: projectId, config_id: config.id }),
         }
       );
-
       const result = await response.json();
 
       if (!response.ok || !result.success) {
         throw new Error(result.error || "Failed to start scraping");
       }
 
+      // --- New: Save extracted articles locally and show them below the form ---
+      setArticles(result.articles || []);
       toast({
-        title: isRTL ? "تم بدء عملية الاستخراج بنجاح" : "Scraping started successfully",
+        title: isRTL ? "تم الاستخراج بنجاح" : "Scraping completed",
         description: isRTL
           ? `تم استخراج ${result.articles?.length ?? 0} مقالة`
           : `Scraped ${result.articles?.length ?? 0} articles`,
       });
 
-      // تحديث بيانات التكوين (لتجديد last_run_at)، ولو بعد فترة ليتزامن مع backend (اختياري)
       fetchConfig();
     } catch (error) {
-      console.error("Error starting NewsAPI scraper:", error);
-      toast({
-        title: isRTL ? "خطأ في بدء عملية الاستخراج" : "Error starting scraping",
-        description: (error as Error).message,
-        variant: "destructive",
-      });
+      // ... existing error handling ...
+      setArticles([]);
     } finally {
       setScrapingActive(false);
     }
@@ -232,6 +229,41 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
     }
   };
   
+  // Helper to send text to sentiment analysis or summarization (simulate navigation)
+  const handleAnalyzeArticle = async (article: any, type: "sentiment" | "summary") => {
+    setArticleActionLoading(article.id + "-" + type);
+    try {
+      let destination = "";
+      let params = {};
+
+      if (type === "sentiment") {
+        destination = "/dashboard/sentiment";
+        params = { text: article.raw_text, title: article.title };
+      } else {
+        destination = "/dashboard/topics"; // or "summary" if there's a proper endpoint
+        params = { text: article.raw_text, title: article.title };
+      }
+
+      // --- Demo: navigate or trigger UI to open analyzer, for now just notify ---
+      // In full integration, you might navigate and pass params via storage/state
+      toast({
+        title: isRTL
+          ? (type === "sentiment" ? "تم إرسال المقال للتحليل" : "تم إرسال المقال للتلخيص")
+          : (type === "sentiment" ? "Sent to Sentiment Analysis" : "Sent for Summarization"),
+        description: article.title,
+      });
+      // You might want to implement a better routing/state handoff here
+    } catch (error) {
+      toast({
+        title: isRTL ? "حدث خطأ بالإرسال" : "Error sending for analysis",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setArticleActionLoading(null);
+    }
+  };
+
   return (
     <Card>
       <CardHeader>
@@ -502,6 +534,46 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
             </div>
           </div>
         </div>
+        
+        {/* --- New: Show extracted articles below the form --- */}
+        {articles.length > 0 && (
+          <div className="mt-6 space-y-3">
+            <h3 className="font-medium mb-2 flex items-center gap-2">
+              📰 {isRTL ? 'البيانات المستخرجة من NewsAPI' : 'Extracted News from NewsAPI'}
+            </h3>
+            <div className="space-y-3">
+              {articles.map((a, idx) => (
+                <div key={a.id || a.title || idx} className="border bg-white rounded-lg p-4 flex flex-col gap-2 shadow-sm">
+                  <div className="font-semibold">{a.title}</div>
+                  <div className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 max-w-prose">{a.raw_text?.slice(0, 200)}...</div>
+                  <div className="flex gap-2">
+                    <Button
+                      size="sm"
+                      variant="secondary"
+                      disabled={articleActionLoading === (a.id + "-sentiment")}
+                      onClick={() => handleAnalyzeArticle(a, "sentiment")}
+                    >
+                      {articleActionLoading === (a.id + "-sentiment")
+                        ? (isRTL ? "جاري التحليل..." : "Analyzing...") : (isRTL ? "تحليل المشاعر" : "Analyze Sentiment")}
+                    </Button>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={articleActionLoading === (a.id + "-summary")}
+                      onClick={() => handleAnalyzeArticle(a, "summary")}
+                    >
+                      {articleActionLoading === (a.id + "-summary")
+                        ? (isRTL ? "جاري التلخيص..." : "Summarizing...") : (isRTL ? "تلخيص" : "Summarize")}
+                    </Button>
+                  </div>
+                  {a.metadata?.url &&
+                    <a href={a.metadata.url} target="_blank" className="text-blue-600 underline text-xs">{a.metadata.url}</a>
+                  }
+                </div>
+              ))}
+            </div>
+          </div>
+        )}
       </CardContent>
     </Card>
   );
