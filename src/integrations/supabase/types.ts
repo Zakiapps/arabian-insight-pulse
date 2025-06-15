@@ -9,6 +9,84 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      advanced_analysis_results: {
+        Row: {
+          analysis_quality_score: number | null
+          article_id: string | null
+          context_analysis: string | null
+          created_at: string
+          dialect_features: Json
+          emotion_scores: Json
+          id: string
+          keywords_extracted: Json
+          main_topics: Json
+          primary_emotion: string
+          project_id: string | null
+          regional_indicators: Json
+          sentiment_confidence: number
+          sentiment_reasoning: string | null
+          topic_scores: Json
+          updated_at: string
+          urgency_level: string | null
+          user_id: string
+        }
+        Insert: {
+          analysis_quality_score?: number | null
+          article_id?: string | null
+          context_analysis?: string | null
+          created_at?: string
+          dialect_features?: Json
+          emotion_scores?: Json
+          id?: string
+          keywords_extracted?: Json
+          main_topics?: Json
+          primary_emotion: string
+          project_id?: string | null
+          regional_indicators?: Json
+          sentiment_confidence: number
+          sentiment_reasoning?: string | null
+          topic_scores?: Json
+          updated_at?: string
+          urgency_level?: string | null
+          user_id: string
+        }
+        Update: {
+          analysis_quality_score?: number | null
+          article_id?: string | null
+          context_analysis?: string | null
+          created_at?: string
+          dialect_features?: Json
+          emotion_scores?: Json
+          id?: string
+          keywords_extracted?: Json
+          main_topics?: Json
+          primary_emotion?: string
+          project_id?: string | null
+          regional_indicators?: Json
+          sentiment_confidence?: number
+          sentiment_reasoning?: string | null
+          topic_scores?: Json
+          updated_at?: string
+          urgency_level?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "advanced_analysis_results_article_id_fkey"
+            columns: ["article_id"]
+            isOneToOne: false
+            referencedRelation: "scraped_news"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "advanced_analysis_results_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analyses: {
         Row: {
           created_at: string | null
@@ -124,6 +202,41 @@ export type Database = {
           user_id?: string
         }
         Relationships: []
+      }
+      article_keywords: {
+        Row: {
+          analysis_id: string | null
+          created_at: string
+          id: string
+          keyword: string
+          keyword_type: string | null
+          relevance_score: number
+        }
+        Insert: {
+          analysis_id?: string | null
+          created_at?: string
+          id?: string
+          keyword: string
+          keyword_type?: string | null
+          relevance_score: number
+        }
+        Update: {
+          analysis_id?: string | null
+          created_at?: string
+          id?: string
+          keyword?: string
+          keyword_type?: string | null
+          relevance_score?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "article_keywords_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "advanced_analysis_results"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       brightdata_configs: {
         Row: {
@@ -556,6 +669,53 @@ export type Database = {
         }
         Relationships: []
       }
+      sentiment_timeline: {
+        Row: {
+          analysis_date: string
+          average_sentiment_score: number | null
+          created_at: string
+          dominant_emotion: string | null
+          id: string
+          negative_count: number | null
+          neutral_count: number | null
+          positive_count: number | null
+          project_id: string | null
+          top_topics: Json | null
+        }
+        Insert: {
+          analysis_date: string
+          average_sentiment_score?: number | null
+          created_at?: string
+          dominant_emotion?: string | null
+          id?: string
+          negative_count?: number | null
+          neutral_count?: number | null
+          positive_count?: number | null
+          project_id?: string | null
+          top_topics?: Json | null
+        }
+        Update: {
+          analysis_date?: string
+          average_sentiment_score?: number | null
+          created_at?: string
+          dominant_emotion?: string | null
+          id?: string
+          negative_count?: number | null
+          neutral_count?: number | null
+          positive_count?: number | null
+          project_id?: string | null
+          top_topics?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sentiment_timeline_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       subscription_plans: {
         Row: {
           created_at: string | null
@@ -712,6 +872,8 @@ export type Database = {
       }
       text_analyses: {
         Row: {
+          advanced_analysis_id: string | null
+          analysis_version: string | null
           created_at: string
           dialect: string | null
           dialect_confidence: number | null
@@ -723,12 +885,15 @@ export type Database = {
           language: string
           model_response: Json | null
           project_id: string
+          quality_score: number | null
           sentiment: string
           sentiment_score: number
           updated_at: string
           user_id: string
         }
         Insert: {
+          advanced_analysis_id?: string | null
+          analysis_version?: string | null
           created_at?: string
           dialect?: string | null
           dialect_confidence?: number | null
@@ -740,12 +905,15 @@ export type Database = {
           language?: string
           model_response?: Json | null
           project_id: string
+          quality_score?: number | null
           sentiment: string
           sentiment_score: number
           updated_at?: string
           user_id: string
         }
         Update: {
+          advanced_analysis_id?: string | null
+          analysis_version?: string | null
           created_at?: string
           dialect?: string | null
           dialect_confidence?: number | null
@@ -757,12 +925,20 @@ export type Database = {
           language?: string
           model_response?: Json | null
           project_id?: string
+          quality_score?: number | null
           sentiment?: string
           sentiment_score?: number
           updated_at?: string
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "text_analyses_advanced_analysis_id_fkey"
+            columns: ["advanced_analysis_id"]
+            isOneToOne: false
+            referencedRelation: "advanced_analysis_results"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "text_analyses_project_id_fkey"
             columns: ["project_id"]
