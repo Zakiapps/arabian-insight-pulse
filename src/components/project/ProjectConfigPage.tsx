@@ -5,7 +5,7 @@ import { supabase } from '@/integrations/supabase/client';
 import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ConfigTabs from './ConfigTabs';
-import { ArrowLeft, Settings } from 'lucide-react';
+import { ArrowLeft } from 'lucide-react';
 
 interface Project {
   id: string;
@@ -19,7 +19,6 @@ const ProjectConfigPage = () => {
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
   
-  // Temporarily disabled until projects table is created
   const { data: project, isLoading, error } = useQuery({
     queryKey: ['project', projectId],
     queryFn: async () => {
@@ -27,25 +26,17 @@ const ProjectConfigPage = () => {
         throw new Error('Project ID is required');
       }
       
-      // Temporarily return mock data until projects table is created
-      return {
-        id: projectId,
-        name: 'Sample Project',
-        description: 'Sample project description',
-        created_at: new Date().toISOString()
-      } as Project;
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
       
-      // Original code commented out until projects table exists:
-      // const { data, error } = await supabase
-      //   .from('projects')
-      //   .select('*')
-      //   .eq('id', projectId)
-      //   .single();
-      // 
-      // if (error) throw error;
-      // return data as Project;
+      if (error) throw error;
+      return data as Project;
     },
-    retry: false
+    retry: false,
+    enabled: !!projectId,
   });
   
   // Handle error
@@ -90,7 +81,7 @@ const ProjectConfigPage = () => {
             <ArrowLeft className="h-4 w-4" />
           </Button>
           <div>
-            <h1 className="text-2xl font-bold">{project.name}</h1>
+            <h1 className="text-2xl font-bold">{project?.name}</h1>
             <p className="text-muted-foreground">
               {isRTL ? 'إعدادات المشروع' : 'Project Settings'}
             </p>

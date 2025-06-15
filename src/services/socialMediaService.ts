@@ -1,217 +1,160 @@
 
-import { supabase } from "@/integrations/supabase/client";
+import { supabase } from '@/integrations/supabase/client';
 
 export interface ScrapedPost {
   id: string;
   platform: string;
   post_id: string;
   content: string;
-  author_name?: string;
-  author_handle?: string;
-  post_url?: string;
-  location?: string;
-  hashtags?: string[];
+  author: string;
   category: string;
+  engagement_count: number;
+  is_viral: boolean;
+  is_jordanian_dialect: boolean;
   sentiment?: string;
   sentiment_score?: number;
-  confidence?: number;
-  is_jordanian_dialect?: boolean;
-  engagement_count: number;
-  likes_count?: number;
-  shares_count?: number;
-  comments_count?: number;
-  is_viral?: boolean;
-  scraped_at?: string;
-  created_at?: string;
-  raw_data?: any;
+  created_at: string;
 }
 
-export interface ScrapingConfig {
-  id: string;
-  platform: string;
-  search_terms: string[];
-  hashtags?: string[];
-  location_filters?: string[];
-  is_active: boolean;
-  scraping_interval?: number;
-  last_scrape_at?: string;
-  created_at?: string;
-  updated_at?: string;
+export interface SocialMediaStats {
+  totalPosts: number;
+  platformDistribution: { platform: string; count: number }[];
+  categoryDistribution: { category: string; count: number }[];
+  sentimentDistribution: { sentiment: string; count: number }[];
+  viralPosts: number;
+  jordanianDialectPosts: number;
 }
 
 class SocialMediaService {
-  async getPosts(filters?: {
+  async getScrapedPosts(filters?: {
     platform?: string;
     category?: string;
     sentiment?: string;
-    is_jordanian_dialect?: boolean;
+    isViral?: boolean;
+    isJordanianDialect?: boolean;
     limit?: number;
-    offset?: number;
   }): Promise<ScrapedPost[]> {
-    let query = supabase
-      .from('scraped_posts')
-      .select('*')
-      .order('scraped_at', { ascending: false });
+    try {
+      // Use analyzed_posts table instead of scraped_posts since it exists
+      let query = supabase
+        .from('analyzed_posts')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-    if (filters?.platform) {
-      query = query.eq('platform', filters.platform);
-    }
-    
-    if (filters?.category) {
-      query = query.eq('category', filters.category);
-    }
-    
-    if (filters?.sentiment) {
-      query = query.eq('sentiment', filters.sentiment);
-    }
-    
-    if (filters?.is_jordanian_dialect !== undefined) {
-      query = query.eq('is_jordanian_dialect', filters.is_jordanian_dialect);
-    }
-    
-    if (filters?.limit) {
-      query = query.limit(filters.limit);
-    }
-    
-    if (filters?.offset) {
-      query = query.range(filters.offset, filters.offset + (filters.limit || 50) - 1);
-    }
-
-    const { data, error } = await query;
-    
-    if (error) {
-      console.error('Error fetching posts:', error);
-      throw error;
-    }
-    
-    return data || [];
-  }
-
-  async getPostStats() {
-    const { data, error } = await supabase
-      .from('scraped_posts')
-      .select('platform, category, sentiment, is_jordanian_dialect, is_viral');
-    
-    if (error) {
-      console.error('Error fetching post stats:', error);
-      throw error;
-    }
-
-    const stats = {
-      total: data?.length || 0,
-      byPlatform: {} as Record<string, number>,
-      byCategory: {} as Record<string, number>,
-      bySentiment: {} as Record<string, number>,
-      jordanianDialect: data?.filter(p => p.is_jordanian_dialect).length || 0,
-      viral: data?.filter(p => p.is_viral).length || 0
-    };
-
-    data?.forEach(post => {
-      // Platform stats
-      stats.byPlatform[post.platform] = (stats.byPlatform[post.platform] || 0) + 1;
-      
-      // Category stats
-      stats.byCategory[post.category] = (stats.byCategory[post.category] || 0) + 1;
-      
-      // Sentiment stats
-      if (post.sentiment) {
-        stats.bySentiment[post.sentiment] = (stats.bySentiment[post.sentiment] || 0) + 1;
+      if (filters?.sentiment) {
+        query = query.eq('sentiment', filters.sentiment);
       }
-    });
 
-    return stats;
-  }
+      if (filters?.isJordanianDialect !== undefined) {
+        query = query.eq('is_jordanian_dialect', filters.isJordanianDialect);
+      }
 
-  async triggerScraping() {
-    const { data, error } = await supabase.functions.invoke('scrape-social-media', {
-      body: {}
-    });
+      if (filters?.limit) {
+        query = query.limit(filters.limit);
+      }
 
-    if (error) {
-      console.error('Error triggering scraping:', error);
-      throw error;
-    }
+      const { data, error } = await query;
 
-    return data;
-  }
+      if (error) throw error;
 
-  async getScrapingConfigs(): Promise<ScrapingConfig[]> {
-    const { data, error } = await supabase
-      .from('scraping_settings')
-      .select('*')
-      .order('created_at', { ascending: false });
-
-    if (error) {
-      console.error('Error fetching scraping configs:', error);
-      throw error;
-    }
-
-    return data || [];
-  }
-
-  async createScrapingConfig(config: Omit<ScrapingConfig, 'id' | 'created_at' | 'updated_at'>) {
-    const { data, error } = await supabase
-      .from('scraping_settings')
-      .insert(config)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error creating scraping config:', error);
-      throw error;
-    }
-
-    return data;
-  }
-
-  async updateScrapingConfig(id: string, updates: Partial<ScrapingConfig>) {
-    const { data, error } = await supabase
-      .from('scraping_settings')
-      .update({ ...updates, updated_at: new Date().toISOString() })
-      .eq('id', id)
-      .select()
-      .single();
-
-    if (error) {
-      console.error('Error updating scraping config:', error);
-      throw error;
-    }
-
-    return data;
-  }
-
-  async deleteScrapingConfig(id: string) {
-    const { error } = await supabase
-      .from('scraping_settings')
-      .delete()
-      .eq('id', id);
-
-    if (error) {
-      console.error('Error deleting scraping config:', error);
-      throw error;
+      // Transform analyzed_posts data to match ScrapedPost interface
+      return (data || []).map((post: any) => ({
+        id: post.id,
+        platform: post.source || 'unknown',
+        post_id: post.id,
+        content: post.content,
+        author: 'unknown',
+        category: 'general',
+        engagement_count: post.engagement_count || 0,
+        is_viral: (post.engagement_count || 0) > 1000,
+        is_jordanian_dialect: post.is_jordanian_dialect || false,
+        sentiment: post.sentiment,
+        sentiment_score: post.sentiment_score,
+        created_at: post.created_at,
+      }));
+    } catch (error) {
+      console.error('Error fetching scraped posts:', error);
+      return [];
     }
   }
 
-  async deletePosts(postIds: string[]) {
-    const { error } = await supabase
-      .from('scraped_posts')
-      .delete()
-      .in('id', postIds);
+  async getStats(): Promise<SocialMediaStats> {
+    try {
+      const posts = await this.getScrapedPosts();
 
-    if (error) {
-      console.error('Error deleting posts:', error);
-      throw error;
+      const platformDistribution = posts.reduce((acc: { platform: string; count: number }[], post) => {
+        const existing = acc.find(p => p.platform === post.platform);
+        if (existing) {
+          existing.count++;
+        } else {
+          acc.push({ platform: post.platform, count: 1 });
+        }
+        return acc;
+      }, []);
+
+      const categoryDistribution = posts.reduce((acc: { category: string; count: number }[], post) => {
+        const existing = acc.find(c => c.category === post.category);
+        if (existing) {
+          existing.count++;
+        } else {
+          acc.push({ category: post.category, count: 1 });
+        }
+        return acc;
+      }, []);
+
+      const sentimentDistribution = posts.reduce((acc: { sentiment: string; count: number }[], post) => {
+        if (post.sentiment) {
+          const existing = acc.find(s => s.sentiment === post.sentiment);
+          if (existing) {
+            existing.count++;
+          } else {
+            acc.push({ sentiment: post.sentiment, count: 1 });
+          }
+        }
+        return acc;
+      }, []);
+
+      return {
+        totalPosts: posts.length,
+        platformDistribution,
+        categoryDistribution,
+        sentimentDistribution,
+        viralPosts: posts.filter(p => p.is_viral).length,
+        jordanianDialectPosts: posts.filter(p => p.is_jordanian_dialect).length,
+      };
+    } catch (error) {
+      console.error('Error getting social media stats:', error);
+      return {
+        totalPosts: 0,
+        platformDistribution: [],
+        categoryDistribution: [],
+        sentimentDistribution: [],
+        viralPosts: 0,
+        jordanianDialectPosts: 0,
+      };
     }
   }
 
-  async deleteAllPosts() {
-    const { error } = await supabase
-      .from('scraped_posts')
-      .delete()
-      .neq('id', '00000000-0000-0000-0000-000000000000'); // Delete all
+  async scrapePlatform(platform: string, keywords: string[]): Promise<void> {
+    try {
+      // This would integrate with the scraping edge functions
+      const { data, error } = await supabase.functions.invoke('scrape-brightdata', {
+        body: {
+          platform,
+          keywords,
+          rules: {
+            platforms: [platform],
+            keywords,
+            limit: 100,
+          },
+        },
+      });
 
-    if (error) {
-      console.error('Error deleting all posts:', error);
+      if (error) throw error;
+
+      console.log('Scraping initiated for platform:', platform);
+    } catch (error) {
+      console.error('Error initiating scraping:', error);
       throw error;
     }
   }

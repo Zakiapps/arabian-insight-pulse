@@ -1,45 +1,47 @@
-import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
-import { useProject } from './ProjectContext';
+
+import React, { createContext, useContext, useState, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Upload {
   id: string;
-  project_id: string;
+  projectId: string;
+  rawText: string;
   source: string;
-  file_url: string | null;
-  raw_text: string;
-  metadata: any;
+  title?: string;
+  fileUrl?: string;
   processed: boolean;
-  created_at: string;
+  metadata?: any;
+  createdAt: string;
 }
 
 interface Analysis {
   id: string;
-  upload_id: string;
+  uploadId: string;
   sentiment: string;
-  sentiment_score: number;
-  dialect: string | null;
-  dialect_confidence: number | null;
-  model_response: any;
-  created_at: string;
+  sentimentScore: number;
+  dialect?: string;
+  dialectConfidence?: number;
+  modelResponse?: any;
+  createdAt: string;
 }
 
 interface Summary {
   id: string;
-  analysis_id: string;
-  summary_text: string;
-  model_used: string | null;
-  created_at: string;
+  analysisId: string;
+  summaryText: string;
+  language: string;
+  modelUsed?: string;
+  createdAt: string;
 }
 
 interface Forecast {
   id: string;
-  analysis_id: string;
-  forecast_json: any;
-  forecast_period: string | null;
-  created_at: string;
+  analysisId: string;
+  forecastData: any;
+  startDate: string;
+  endDate: string;
+  createdAt: string;
 }
 
 interface UploadContextType {
@@ -48,322 +50,286 @@ interface UploadContextType {
   summaries: Summary[];
   forecasts: Forecast[];
   loading: boolean;
-  error: string | null;
-  fetchUploads: (projectId?: string) => Promise<void>;
-  fetchAnalyses: (uploadId?: string) => Promise<void>;
-  fetchSummaries: (analysisId?: string) => Promise<void>;
-  fetchForecasts: (analysisId?: string) => Promise<void>;
-  uploadText: (projectId: string, text: string, source?: string, metadata?: any) => Promise<string | null>;
-  processUpload: (uploadId: string) => Promise<boolean>;
-  deleteUpload: (uploadId: string) => Promise<boolean>;
+  uploadText: (projectId: string, text: string, source: string, title?: string) => Promise<Upload>;
+  analyzeUpload: (uploadId: string) => Promise<Analysis>;
+  generateSummary: (analysisId: string, language?: string) => Promise<Summary>;
+  generateForecast: (analysisId: string, days?: number) => Promise<Forecast>;
+  loadUploads: (projectId: string) => Promise<void>;
+  loadAnalyses: (projectId: string) => Promise<void>;
 }
 
 const UploadContext = createContext<UploadContextType | undefined>(undefined);
 
-export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
-  const { currentProject } = useProject();
+export function UploadProvider({ children }: { children: ReactNode }) {
   const [uploads, setUploads] = useState<Upload[]>([]);
   const [analyses, setAnalyses] = useState<Analysis[]>([]);
   const [summaries, setSummaries] = useState<Summary[]>([]);
   const [forecasts, setForecasts] = useState<Forecast[]>([]);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [loading, setLoading] = useState(false);
+  const { user } = useAuth();
 
-  const fetchUploads = async (projectId?: string) => {
-    if (!user) return;
-    
-    const targetProjectId = projectId || currentProject?.id;
-    if (!targetProjectId) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      const { data, error } = await supabase
-        .from('uploads')
-        .select('*')
-        .eq('project_id', targetProjectId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      
-      setUploads(data || []);
-    } catch (err: any) {
-      console.error('Error fetching uploads:', err);
-      setError(err.message || 'Failed to fetch uploads');
-      toast.error('Failed to fetch uploads');
-    } finally {
-      setLoading(false);
-    }
-  };
+  const uploadText = async (projectId: string, text: string, source: string, title?: string): Promise<Upload> => {
+    if (!user) throw new Error('User not authenticated');
 
-  const fetchAnalyses = async (uploadId?: string) => {
-    if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
     try {
-      let query = supabase
-        .from('analyses')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (uploadId) {
-        query = query.eq('upload_id', uploadId);
-      } else if (currentProject) {
-        // If no uploadId is specified but we have a current project,
-        // fetch analyses for all uploads in the current project
-        const uploadIds = uploads.map(u => u.id);
-        if (uploadIds.length > 0) {
-          query = query.in('upload_id', uploadIds);
-        } else {
-          // No uploads to fetch analyses for
-          setAnalyses([]);
-          setLoading(false);
-          return;
-        }
-      } else {
-        // No current project and no uploadId
-        setAnalyses([]);
-        setLoading(false);
-        return;
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      setAnalyses(data || []);
-    } catch (err: any) {
-      console.error('Error fetching analyses:', err);
-      setError(err.message || 'Failed to fetch analyses');
-      toast.error('Failed to fetch analyses');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchSummaries = async (analysisId?: string) => {
-    if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      let query = supabase
-        .from('summaries')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (analysisId) {
-        query = query.eq('analysis_id', analysisId);
-      } else if (analyses.length > 0) {
-        // If no analysisId is specified but we have analyses,
-        // fetch summaries for all analyses
-        const analysisIds = analyses.map(a => a.id);
-        query = query.in('analysis_id', analysisIds);
-      } else {
-        // No analyses to fetch summaries for
-        setSummaries([]);
-        setLoading(false);
-        return;
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      setSummaries(data || []);
-    } catch (err: any) {
-      console.error('Error fetching summaries:', err);
-      setError(err.message || 'Failed to fetch summaries');
-      toast.error('Failed to fetch summaries');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const fetchForecasts = async (analysisId?: string) => {
-    if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
-    try {
-      let query = supabase
-        .from('forecasts')
-        .select('*')
-        .order('created_at', { ascending: false });
-      
-      if (analysisId) {
-        query = query.eq('analysis_id', analysisId);
-      } else if (analyses.length > 0) {
-        // If no analysisId is specified but we have analyses,
-        // fetch forecasts for all analyses
-        const analysisIds = analyses.map(a => a.id);
-        query = query.in('analysis_id', analysisIds);
-      } else {
-        // No analyses to fetch forecasts for
-        setForecasts([]);
-        setLoading(false);
-        return;
-      }
-      
-      const { data, error } = await query;
-      
-      if (error) throw error;
-      
-      setForecasts(data || []);
-    } catch (err: any) {
-      console.error('Error fetching forecasts:', err);
-      setError(err.message || 'Failed to fetch forecasts');
-      toast.error('Failed to fetch forecasts');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const uploadText = async (
-    projectId: string, 
-    text: string, 
-    source: string = 'manual', 
-    metadata: any = {}
-  ): Promise<string | null> => {
-    if (!user || !projectId || !text.trim()) return null;
-    
-    try {
+      setLoading(true);
       const { data, error } = await supabase
         .from('uploads')
         .insert({
           project_id: projectId,
-          source,
           raw_text: text,
-          metadata,
-          processed: false
+          source,
+          title,
+          processed: false,
         })
         .select()
         .single();
-      
+
       if (error) throw error;
-      
-      toast.success('Text uploaded successfully');
-      await fetchUploads(projectId);
-      return data.id;
-    } catch (err: any) {
-      console.error('Error uploading text:', err);
-      toast.error('Failed to upload text');
-      return null;
+
+      const upload: Upload = {
+        id: data.id,
+        projectId: data.project_id,
+        rawText: data.raw_text,
+        source: data.source,
+        title: data.title,
+        fileUrl: data.file_url,
+        processed: data.processed,
+        metadata: data.metadata,
+        createdAt: data.created_at,
+      };
+
+      setUploads(prev => [upload, ...prev]);
+      return upload;
+    } catch (error) {
+      console.error('Error uploading text:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  const processUpload = async (uploadId: string): Promise<boolean> => {
-    if (!user || !uploadId) return false;
-    
+  const analyzeUpload = async (uploadId: string): Promise<Analysis> => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/process-upload`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${import.meta.env.VITE_SUPABASE_ANON_KEY}`
-        },
-        body: JSON.stringify({ upload_id: uploadId })
+      setLoading(true);
+      
+      // Call the analyze-text edge function
+      const { data, error } = await supabase.functions.invoke('analyze-text', {
+        body: { uploadId },
       });
-      
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Failed to process upload');
-      }
-      
-      const result = await response.json();
-      
-      if (result.success) {
-        toast.success('Upload processed successfully');
-        
-        // Refresh data
-        const uploadProjectId = uploads.find(u => u.id === uploadId)?.project_id;
-        if (uploadProjectId) {
-          await fetchUploads(uploadProjectId);
-        }
-        await fetchAnalyses(uploadId);
-        
-        // If we have an analysis_id, fetch summaries and forecasts
-        if (result.analysis_id) {
-          await fetchSummaries(result.analysis_id);
-          await fetchForecasts(result.analysis_id);
-        }
-        
-        return true;
-      } else {
-        throw new Error(result.message || 'Failed to process upload');
-      }
-    } catch (err: any) {
-      console.error('Error processing upload:', err);
-      toast.error(err.message || 'Failed to process upload');
-      return false;
-    }
-  };
 
-  const deleteUpload = async (uploadId: string): Promise<boolean> => {
-    if (!user || !uploadId) return false;
-    
-    try {
-      const { error } = await supabase
-        .from('uploads')
-        .delete()
-        .eq('id', uploadId);
-      
       if (error) throw error;
-      
-      toast.success('Upload deleted successfully');
-      
-      // Refresh uploads for the current project
-      if (currentProject) {
-        await fetchUploads(currentProject.id);
-      }
-      
-      return true;
-    } catch (err: any) {
-      console.error('Error deleting upload:', err);
-      toast.error('Failed to delete upload');
-      return false;
+
+      // Fetch the created analysis
+      const { data: analysisData, error: analysisError } = await supabase
+        .from('analyses')
+        .select('*')
+        .eq('upload_id', uploadId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (analysisError) throw analysisError;
+
+      const analysis: Analysis = {
+        id: analysisData.id,
+        uploadId: analysisData.upload_id,
+        sentiment: analysisData.sentiment,
+        sentimentScore: analysisData.sentiment_score,
+        dialect: analysisData.dialect,
+        dialectConfidence: analysisData.dialect_confidence,
+        modelResponse: analysisData.model_response,
+        createdAt: analysisData.created_at,
+      };
+
+      setAnalyses(prev => [analysis, ...prev]);
+      return analysis;
+    } catch (error) {
+      console.error('Error analyzing upload:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
   };
 
-  // Fetch uploads when current project changes
-  useEffect(() => {
-    if (currentProject) {
-      fetchUploads(currentProject.id);
-    } else {
-      setUploads([]);
-      setAnalyses([]);
-      setSummaries([]);
-      setForecasts([]);
-    }
-  }, [currentProject]);
+  const generateSummary = async (analysisId: string, language = 'ar'): Promise<Summary> => {
+    if (!user) throw new Error('User not authenticated');
 
-  // Fetch analyses when uploads change
-  useEffect(() => {
-    if (uploads.length > 0) {
-      fetchAnalyses();
-    } else {
-      setAnalyses([]);
-      setSummaries([]);
-      setForecasts([]);
-    }
-  }, [uploads]);
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('generate-summary', {
+        body: { analysisId, language },
+      });
 
-  // Fetch summaries and forecasts when analyses change
-  useEffect(() => {
-    if (analyses.length > 0) {
-      fetchSummaries();
-      fetchForecasts();
-    } else {
-      setSummaries([]);
-      setForecasts([]);
+      if (error) throw error;
+
+      const { data: summaryData, error: summaryError } = await supabase
+        .from('summaries')
+        .select('*')
+        .eq('analysis_id', analysisId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (summaryError) throw summaryError;
+
+      const summary: Summary = {
+        id: summaryData.id,
+        analysisId: summaryData.analysis_id,
+        summaryText: summaryData.summary_text,
+        language: summaryData.language,
+        modelUsed: summaryData.model_used,
+        createdAt: summaryData.created_at,
+      };
+
+      setSummaries(prev => [summary, ...prev]);
+      return summary;
+    } catch (error) {
+      console.error('Error generating summary:', error);
+      throw error;
+    } finally {
+      setLoading(false);
     }
-  }, [analyses]);
+  };
+
+  const generateForecast = async (analysisId: string, days = 30): Promise<Forecast> => {
+    if (!user) throw new Error('User not authenticated');
+
+    try {
+      setLoading(true);
+      
+      const { data, error } = await supabase.functions.invoke('generate-forecast', {
+        body: { analysisId, days },
+      });
+
+      if (error) throw error;
+
+      const { data: forecastData, error: forecastError } = await supabase
+        .from('forecasts')
+        .select('*')
+        .eq('analysis_id', analysisId)
+        .order('created_at', { ascending: false })
+        .limit(1)
+        .single();
+
+      if (forecastError) throw forecastError;
+
+      const forecast: Forecast = {
+        id: forecastData.id,
+        analysisId: forecastData.analysis_id,
+        forecastData: forecastData.forecast_json,
+        startDate: forecastData.start_date,
+        endDate: forecastData.end_date,
+        createdAt: forecastData.created_at,
+      };
+
+      setForecasts(prev => [forecast, ...prev]);
+      return forecast;
+    } catch (error) {
+      console.error('Error generating forecast:', error);
+      throw error;
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadUploads = async (projectId: string) => {
+    try {
+      setLoading(true);
+      const { data, error } = await supabase
+        .from('uploads')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+
+      const formattedUploads: Upload[] = (data || []).map(upload => ({
+        id: upload.id,
+        projectId: upload.project_id,
+        rawText: upload.raw_text,
+        source: upload.source,
+        title: upload.title,
+        fileUrl: upload.file_url,
+        processed: upload.processed,
+        metadata: upload.metadata,
+        createdAt: upload.created_at,
+      }));
+
+      setUploads(formattedUploads);
+    } catch (error) {
+      console.error('Error loading uploads:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const loadAnalyses = async (projectId: string) => {
+    try {
+      const { data, error } = await supabase.rpc('get_project_analyses', {
+        project_id_param: projectId,
+      });
+
+      if (error) throw error;
+
+      const formattedAnalyses: Analysis[] = (data || []).map((analysis: any) => ({
+        id: analysis.id,
+        uploadId: analysis.upload_id,
+        sentiment: analysis.sentiment,
+        sentimentScore: analysis.sentiment_score,
+        dialect: analysis.dialect,
+        dialectConfidence: analysis.dialect_confidence,
+        modelResponse: analysis.model_response,
+        createdAt: analysis.created_at,
+      }));
+
+      setAnalyses(formattedAnalyses);
+
+      // Load summaries and forecasts for these analyses
+      const analysisIds = formattedAnalyses.map(a => a.id);
+      
+      if (analysisIds.length > 0) {
+        const { data: summariesData } = await supabase
+          .from('summaries')
+          .select('*')
+          .in('analysis_id', analysisIds);
+
+        const { data: forecastsData } = await supabase
+          .from('forecasts')
+          .select('*')
+          .in('analysis_id', analysisIds);
+
+        if (summariesData) {
+          const formattedSummaries: Summary[] = summariesData.map(summary => ({
+            id: summary.id,
+            analysisId: summary.analysis_id,
+            summaryText: summary.summary_text,
+            language: summary.language,
+            modelUsed: summary.model_used,
+            createdAt: summary.created_at,
+          }));
+          setSummaries(formattedSummaries);
+        }
+
+        if (forecastsData) {
+          const formattedForecasts: Forecast[] = forecastsData.map(forecast => ({
+            id: forecast.id,
+            analysisId: forecast.analysis_id,
+            forecastData: forecast.forecast_json,
+            startDate: forecast.start_date,
+            endDate: forecast.end_date,
+            createdAt: forecast.created_at,
+          }));
+          setForecasts(formattedForecasts);
+        }
+      }
+    } catch (error) {
+      console.error('Error loading analyses:', error);
+    }
+  };
 
   const value = {
     uploads,
@@ -371,14 +337,12 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
     summaries,
     forecasts,
     loading,
-    error,
-    fetchUploads,
-    fetchAnalyses,
-    fetchSummaries,
-    fetchForecasts,
     uploadText,
-    processUpload,
-    deleteUpload
+    analyzeUpload,
+    generateSummary,
+    generateForecast,
+    loadUploads,
+    loadAnalyses,
   };
 
   return (
@@ -386,7 +350,7 @@ export const UploadProvider: React.FC<{ children: ReactNode }> = ({ children }) 
       {children}
     </UploadContext.Provider>
   );
-};
+}
 
 export const useUpload = () => {
   const context = useContext(UploadContext);

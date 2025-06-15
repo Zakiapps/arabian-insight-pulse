@@ -1,29 +1,27 @@
+
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
-import { useAuth } from './AuthContext';
 import { supabase } from '@/integrations/supabase/client';
-import { toast } from 'sonner';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface Project {
   id: string;
   name: string;
   description: string | null;
-  is_active: boolean;
-  upload_count: number;
-  analysis_count: number;
-  created_at: string;
-  updated_at: string;
+  isActive: boolean;
+  createdAt: string;
+  updatedAt: string;
+  uploadCount: number;
+  analysisCount: number;
 }
 
 interface ProjectStats {
-  upload_count: number;
-  analysis_count: number;
-  sentiment_distribution: {
+  uploadCount: number;
+  analysisCount: number;
+  sentimentDistribution: {
     positive: number;
     negative: number;
     neutral: number;
   };
-  dialect_distribution: Record<string, number>;
-  source_distribution: Record<string, number>;
 }
 
 interface ProjectContextType {
@@ -31,191 +29,174 @@ interface ProjectContextType {
   currentProject: Project | null;
   projectStats: ProjectStats | null;
   loading: boolean;
-  error: string | null;
-  fetchProjects: () => Promise<void>;
-  createProject: (name: string, description?: string) => Promise<string | null>;
-  updateProject: (id: string, data: { name?: string; description?: string; is_active?: boolean }) => Promise<boolean>;
-  deleteProject: (id: string) => Promise<boolean>;
+  createProject: (name: string, description?: string) => Promise<Project>;
+  updateProject: (id: string, updates: Partial<Project>) => Promise<void>;
+  deleteProject: (id: string) => Promise<void>;
   setCurrentProject: (project: Project | null) => void;
-  fetchProjectStats: (projectId: string) => Promise<void>;
+  loadProjectStats: (projectId: string) => Promise<void>;
+  refreshProjects: () => Promise<void>;
 }
 
 const ProjectContext = createContext<ProjectContextType | undefined>(undefined);
 
-export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children }) => {
-  const { user } = useAuth();
+export function ProjectProvider({ children }: { children: ReactNode }) {
   const [projects, setProjects] = useState<Project[]>([]);
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [projectStats, setProjectStats] = useState<ProjectStats | null>(null);
   const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const { user } = useAuth();
 
-  const fetchProjects = async () => {
+  useEffect(() => {
+    if (user) {
+      loadProjects();
+    } else {
+      setProjects([]);
+      setCurrentProject(null);
+      setProjectStats(null);
+      setLoading(false);
+    }
+  }, [user]);
+
+  const loadProjects = async () => {
     if (!user) return;
-    
-    setLoading(true);
-    setError(null);
-    
+
     try {
+      setLoading(true);
       const { data, error } = await supabase.rpc('get_user_projects');
       
       if (error) throw error;
-      
-      setProjects(data || []);
-      
-      // Set current project to the first one if none is selected
-      if (!currentProject && data && data.length > 0) {
-        setCurrentProject(data[0]);
-      }
-    } catch (err: any) {
-      console.error('Error fetching projects:', err);
-      setError(err.message || 'Failed to fetch projects');
-      toast.error('Failed to fetch projects');
+
+      const formattedProjects: Project[] = (data || []).map((project: any) => ({
+        id: project.id,
+        name: project.name,
+        description: project.description,
+        isActive: project.is_active,
+        createdAt: project.created_at,
+        updatedAt: project.updated_at,
+        uploadCount: parseInt(project.upload_count) || 0,
+        analysisCount: parseInt(project.analysis_count) || 0,
+      }));
+
+      setProjects(formattedProjects);
+    } catch (error) {
+      console.error('Error loading projects:', error);
     } finally {
       setLoading(false);
     }
   };
 
-  const createProject = async (name: string, description?: string): Promise<string | null> => {
-    if (!user) return null;
-    
+  const createProject = async (name: string, description?: string): Promise<Project> => {
+    if (!user) throw new Error('User not authenticated');
+
     try {
-      const { data, error } = await supabase.rpc('create_project', {
+      const projectId = await supabase.rpc('create_project', {
         name_param: name,
-        description_param: description || null
-      });
-      
-      if (error) throw error;
-      
-      toast.success('Project created successfully');
-      await fetchProjects();
-      return data;
-    } catch (err: any) {
-      console.error('Error creating project:', err);
-      toast.error('Failed to create project');
-      return null;
-    }
-  };
-
-  const updateProject = async (
-    id: string, 
-    { name, description, is_active }: { name?: string; description?: string; is_active?: boolean }
-  ): Promise<boolean> => {
-    if (!user) return false;
-    
-    try {
-      const { data, error } = await supabase.rpc('update_project', {
-        project_id_param: id,
-        name_param: name || null,
         description_param: description || null,
-        is_active_param: is_active === undefined ? null : is_active
       });
-      
-      if (error) throw error;
-      
-      if (data) {
-        toast.success('Project updated successfully');
-        await fetchProjects();
-        
-        // Update current project if it's the one being updated
-        if (currentProject && currentProject.id === id) {
-          const updatedProject = projects.find(p => p.id === id);
-          if (updatedProject) {
-            setCurrentProject(updatedProject);
-          }
-        }
-      } else {
-        toast.error('Project not found or you do not have permission to update it');
-      }
-      
-      return data;
-    } catch (err: any) {
-      console.error('Error updating project:', err);
-      toast.error('Failed to update project');
-      return false;
+
+      const newProject: Project = {
+        id: projectId,
+        name,
+        description: description || null,
+        isActive: true,
+        createdAt: new Date().toISOString(),
+        updatedAt: new Date().toISOString(),
+        uploadCount: 0,
+        analysisCount: 0,
+      };
+
+      setProjects(prev => [newProject, ...prev]);
+      return newProject;
+    } catch (error) {
+      console.error('Error creating project:', error);
+      throw error;
     }
   };
 
-  const deleteProject = async (id: string): Promise<boolean> => {
-    if (!user) return false;
-    
+  const updateProject = async (id: string, updates: Partial<Project>) => {
     try {
-      const { data, error } = await supabase.rpc('delete_project', {
-        project_id_param: id
+      const success = await supabase.rpc('update_project', {
+        project_id_param: id,
+        name_param: updates.name,
+        description_param: updates.description,
+        is_active_param: updates.isActive,
       });
-      
-      if (error) throw error;
-      
-      if (data) {
-        toast.success('Project deleted successfully');
+
+      if (success) {
+        setProjects(prev => prev.map(project => 
+          project.id === id ? { ...project, ...updates } : project
+        ));
         
-        // If the deleted project is the current one, set current to null
-        if (currentProject && currentProject.id === id) {
-          setCurrentProject(null);
+        if (currentProject?.id === id) {
+          setCurrentProject(prev => prev ? { ...prev, ...updates } : null);
         }
-        
-        await fetchProjects();
-      } else {
-        toast.error('Project not found or you do not have permission to delete it');
       }
-      
-      return data;
-    } catch (err: any) {
-      console.error('Error deleting project:', err);
-      toast.error('Failed to delete project');
-      return false;
+    } catch (error) {
+      console.error('Error updating project:', error);
+      throw error;
     }
   };
 
-  const fetchProjectStats = async (projectId: string) => {
-    if (!user || !projectId) return;
-    
+  const deleteProject = async (id: string) => {
+    try {
+      const success = await supabase.rpc('delete_project', {
+        project_id_param: id,
+      });
+
+      if (success) {
+        setProjects(prev => prev.filter(project => project.id !== id));
+        
+        if (currentProject?.id === id) {
+          setCurrentProject(null);
+          setProjectStats(null);
+        }
+      }
+    } catch (error) {
+      console.error('Error deleting project:', error);
+      throw error;
+    }
+  };
+
+  const loadProjectStats = async (projectId: string) => {
     try {
       const { data, error } = await supabase.rpc('get_project_stats', {
-        project_id_param: projectId
+        project_id_param: projectId,
       });
-      
+
       if (error) throw error;
-      
-      setProjectStats(data);
-    } catch (err: any) {
-      console.error('Error fetching project stats:', err);
-      toast.error('Failed to fetch project statistics');
+
+      if (data && typeof data === 'object') {
+        const stats = data as any;
+        setProjectStats({
+          uploadCount: stats.upload_count || 0,
+          analysisCount: stats.analysis_count || 0,
+          sentimentDistribution: {
+            positive: stats.sentiment_distribution?.positive || 0,
+            negative: stats.sentiment_distribution?.negative || 0,
+            neutral: stats.sentiment_distribution?.neutral || 0,
+          },
+        });
+      }
+    } catch (error) {
+      console.error('Error loading project stats:', error);
     }
   };
 
-  // Fetch projects when user changes
-  useEffect(() => {
-    if (user) {
-      fetchProjects();
-    } else {
-      setProjects([]);
-      setCurrentProject(null);
-      setProjectStats(null);
-    }
-  }, [user]);
-
-  // Fetch stats when current project changes
-  useEffect(() => {
-    if (currentProject) {
-      fetchProjectStats(currentProject.id);
-    } else {
-      setProjectStats(null);
-    }
-  }, [currentProject]);
+  const refreshProjects = async () => {
+    await loadProjects();
+  };
 
   const value = {
     projects,
     currentProject,
     projectStats,
     loading,
-    error,
-    fetchProjects,
     createProject,
     updateProject,
     deleteProject,
     setCurrentProject,
-    fetchProjectStats
+    loadProjectStats,
+    refreshProjects,
   };
 
   return (
@@ -223,7 +204,7 @@ export const ProjectProvider: React.FC<{ children: ReactNode }> = ({ children })
       {children}
     </ProjectContext.Provider>
   );
-};
+}
 
 export const useProject = () => {
   const context = useContext(ProjectContext);

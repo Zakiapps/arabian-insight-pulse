@@ -1,36 +1,15 @@
-import { useState, useEffect } from 'react';
-import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+
+import { useParams } from 'react-router-dom';
+import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
-import { useToast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
+import { useLanguage } from '@/contexts/LanguageContext';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
-import { Textarea } from '@/components/ui/textarea';
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
-import { Separator } from '@/components/ui/separator';
-import { Progress } from '@/components/ui/progress';
-import { 
-  BarChart3, 
-  Globe, 
-  MessageSquare, 
-  TrendingUp, 
-  FileText, 
-  RefreshCw, 
-  Plus, 
-  Trash2, 
-  Download, 
-  Copy, 
-  CheckCircle, 
-  AlertCircle,
-  Newspaper,
-  Search
-} from 'lucide-react';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { BarChart3, TrendingUp, FileText, Brain } from 'lucide-react';
+import ProjectHeader from './ProjectHeader';
 import SentimentChart from './SentimentChart';
 import DialectDistribution from './DialectDistribution';
-import { useLanguage } from '@/contexts/LanguageContext';
+import TextSummarizer from './TextSummarizer';
 
 interface Project {
   id: string;
@@ -39,668 +18,200 @@ interface Project {
   created_at: string;
 }
 
-interface Upload {
-  id: string;
-  project_id: string;
-  source: string;
-  title: string | null;
-  raw_text: string;
-  processed: boolean;
-  created_at: string;
-}
-
-interface Analysis {
-  id: string;
-  upload_id: string;
-  sentiment: string;
-  sentiment_score: number;
-  dialect: string;
-  dialect_confidence: number;
-  created_at: string;
-  upload?: {
-    raw_text: string;
-    source: string;
+interface ProjectStats {
+  upload_count: number;
+  analysis_count: number;
+  sentiment_distribution: {
+    positive: number;
+    negative: number;
+    neutral: number;
   };
 }
 
-interface Summary {
-  id: string;
-  analysis_id: string;
-  summary_text: string;
-  language: string;
-  created_at: string;
-}
-
-interface Forecast {
-  id: string;
-  analysis_id: string;
-  forecast_json: {
-    historical: Array<{
-      date: string;
-      sentiment_score: number;
-    }>;
-    forecast: Array<{
-      date: string;
-      sentiment_score: number;
-      is_forecast: boolean;
-    }>;
-  };
-  created_at: string;
-}
-
-interface ProjectDashboardProps {
-  projectId: string;
-}
-
-const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
-  const { toast } = useToast();
-  const queryClient = useQueryClient();
+const ProjectDashboard = () => {
+  const { projectId } = useParams<{ projectId: string }>();
   const { isRTL } = useLanguage();
-  const [activeTab, setActiveTab] = useState('analysis');
-  const [searchTerm, setSearchTerm] = useState('');
-  const [sentimentFilter, setSentimentFilter] = useState('all');
-  const [dialectFilter, setDialectFilter] = useState('all');
-  const [manualText, setManualText] = useState('');
-  const [manualTitle, setManualTitle] = useState('');
-  
-  // Temporarily return mock data until database schema is ready
+
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: async () => {
-      // Mock data until projects table exists
-      return {
-        id: projectId,
-        name: 'Sample Project',
-        description: 'Sample project description',
-        created_at: new Date().toISOString()
-      } as Project;
-    }
+      if (!projectId) throw new Error('Project ID is required');
+      
+      const { data, error } = await supabase
+        .from('projects')
+        .select('*')
+        .eq('id', projectId)
+        .single();
+      
+      if (error) throw error;
+      return data as Project;
+    },
+    enabled: !!projectId,
   });
-  
-  const { data: uploads, isLoading: uploadsLoading } = useQuery({
-    queryKey: ['uploads', projectId],
+
+  const { data: stats, isLoading: statsLoading } = useQuery({
+    queryKey: ['project-stats', projectId],
     queryFn: async () => {
-      // Mock data until uploads table exists
-      return [] as Upload[];
-    }
-  });
-  
-  const { data: analyses, isLoading: analysesLoading } = useQuery({
-    queryKey: ['analyses', projectId],
-    queryFn: async () => {
-      // Mock data until analyses table exists
-      return [] as Analysis[];
-    }
-  });
-  
-  const { data: summaries, isLoading: summariesLoading } = useQuery({
-    queryKey: ['summaries', projectId],
-    queryFn: async () => {
-      // Mock data until summaries table exists
-      return [] as Summary[];
-    }
-  });
-  
-  const { data: forecasts, isLoading: forecastsLoading } = useQuery({
-    queryKey: ['forecasts', projectId],
-    queryFn: async () => {
-      // Mock data until forecasts table exists
-      return [] as Forecast[];
-    }
-  });
-  
-  // Mutation for scraping NewsAPI
-  const scrapeNewsMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('scrape-newsapi', {
-        body: { project_id: projectId }
+      if (!projectId) throw new Error('Project ID is required');
+      
+      const { data, error } = await supabase.rpc('get_project_stats', {
+        project_id_param: projectId,
       });
       
       if (error) throw error;
-      return data;
+      return data as ProjectStats;
     },
-    onSuccess: () => {
-      toast({
-        title: isRTL ? "تم بدء عملية الاستخراج بنجاح" : "Scraping started successfully",
-        description: isRTL ? "سيتم تحديث البيانات قريبًا" : "Data will be updated soon",
-      });
-      
-      // Refetch uploads after a delay to allow for processing
-      setTimeout(() => {
-        queryClient.invalidateQueries({ queryKey: ['uploads', projectId] });
-      }, 5000);
-    },
-    onError: (error) => {
-      toast({
-        title: isRTL ? "فشل في بدء عملية الاستخراج" : "Failed to start scraping",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    enabled: !!projectId,
   });
-  
-  // Mutation for analyzing content
-  const analyzeContentMutation = useMutation({
-    mutationFn: async (uploadId: string) => {
-      const { data, error } = await supabase.functions.invoke('analyze-content', {
-        body: { upload_id: uploadId }
+
+  const { data: analyses } = useQuery({
+    queryKey: ['project-analyses', projectId],
+    queryFn: async () => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      const { data, error } = await supabase.rpc('get_project_analyses', {
+        project_id_param: projectId,
       });
       
       if (error) throw error;
-      return data;
+      return data || [];
     },
-    onSuccess: () => {
-      toast({
-        title: isRTL ? "تم تحليل المحتوى بنجاح" : "Content analyzed successfully",
-      });
-      
-      // Refetch analyses and summaries
-      queryClient.invalidateQueries({ queryKey: ['analyses', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['summaries', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['uploads', projectId] });
-    },
-    onError: (error) => {
-      toast({
-        title: isRTL ? "فشل في تحليل المحتوى" : "Failed to analyze content",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
+    enabled: !!projectId,
   });
-  
-  // Mutation for generating forecast
-  const generateForecastMutation = useMutation({
-    mutationFn: async () => {
-      const { data, error } = await supabase.functions.invoke('generate-forecast', {
-        body: { project_id: projectId }
-      });
-      
-      if (error) throw error;
-      return data;
-    },
-    onSuccess: () => {
-      toast({
-        title: isRTL ? "تم إنشاء التنبؤ بنجاح" : "Forecast generated successfully",
-      });
-      
-      // Refetch forecasts
-      queryClient.invalidateQueries({ queryKey: ['forecasts', projectId] });
-    },
-    onError: (error) => {
-      toast({
-        title: isRTL ? "فشل في إنشاء التنبؤ" : "Failed to generate forecast",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // Mutation for manual text upload
-  const uploadManualTextMutation = useMutation({
-    mutationFn: async () => {
-      // Mock implementation until database is ready
-      toast({
-        title: isRTL ? "تم تحليل النص بنجاح" : "Text analyzed successfully",
-        description: isRTL ? "الميزة ستكون متاحة قريبًا" : "Feature will be available soon",
-      });
-      
-      // Clear form
-      setManualText('');
-      setManualTitle('');
-      
-      return { success: true };
-    },
-    onSuccess: () => {
-      // Refetch data
-      queryClient.invalidateQueries({ queryKey: ['uploads', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['analyses', projectId] });
-      queryClient.invalidateQueries({ queryKey: ['summaries', projectId] });
-    },
-    onError: (error) => {
-      toast({
-        title: isRTL ? "فشل في تحليل النص" : "Failed to analyze text",
-        description: error.message,
-        variant: "destructive",
-      });
-    }
-  });
-  
-  // Filter analyses based on search and filters
-  const filteredAnalyses = analyses?.filter(analysis => {
-    const matchesSearch = analysis.upload?.raw_text.toLowerCase().includes(searchTerm.toLowerCase()) || false;
-    const matchesSentiment = sentimentFilter === 'all' || analysis.sentiment === sentimentFilter;
-    const matchesDialect = dialectFilter === 'all' || analysis.dialect === dialectFilter;
-    
-    return matchesSearch && matchesSentiment && matchesDialect;
-  });
-  
-  // Copy summary to clipboard
-  const copySummary = (text: string) => {
-    navigator.clipboard.writeText(text);
-    toast({
-      title: isRTL ? "تم نسخ الملخص" : "Summary copied",
-      description: isRTL ? "تم نسخ الملخص إلى الحافظة" : "Summary copied to clipboard",
-    });
-  };
-  
-  // Get sentiment badge
-  const getSentimentBadge = (sentiment: string) => {
-    switch (sentiment) {
-      case 'positive':
-        return <Badge className="bg-green-500">{isRTL ? 'إيجابي' : 'Positive'}</Badge>;
-      case 'negative':
-        return <Badge variant="destructive">{isRTL ? 'سلبي' : 'Negative'}</Badge>;
-      default:
-        return <Badge variant="secondary">{isRTL ? 'محايد' : 'Neutral'}</Badge>;
-    }
-  };
-  
-  // Get dialect badge
-  const getDialectBadge = (dialect: string) => {
-    switch (dialect) {
-      case 'jordanian':
-        return <Badge variant="outline">{isRTL ? 'أردني' : 'Jordanian'}</Badge>;
-      default:
-        return <Badge variant="outline">{dialect}</Badge>;
-    }
-  };
-  
-  // Get source badge
-  const getSourceBadge = (source: string) => {
-    switch (source) {
-      case 'newsapi':
-        return (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Newspaper className="h-3 w-3" />
-            NewsAPI
-          </Badge>
-        );
-      case 'brightdata':
-        return (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <Globe className="h-3 w-3" />
-            BrightData
-          </Badge>
-        );
-      case 'manual':
-        return (
-          <Badge variant="outline" className="flex items-center gap-1">
-            <MessageSquare className="h-3 w-3" />
-            {isRTL ? 'يدوي' : 'Manual'}
-          </Badge>
-        );
-      default:
-        return <Badge variant="outline">{source}</Badge>;
-    }
-  };
-  
-  // Loading state
-  if (projectLoading) {
+
+  if (projectLoading || !project) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
       </div>
     );
   }
-  
+
   return (
     <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
-      {/* Project Header */}
-      <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-        <div>
-          <h1 className="text-3xl font-bold">{project?.name}</h1>
-          <p className="text-muted-foreground">
-            {project?.description || (isRTL ? 'مشروع تحليل المحتوى العربي' : 'Arabic content analysis project')}
-          </p>
-        </div>
-        <div className="flex items-center gap-2">
-          <Button 
-            onClick={() => scrapeNewsMutation.mutate()} 
-            disabled={scrapeNewsMutation.isPending}
-          >
-            {scrapeNewsMutation.isPending ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                {isRTL ? 'جاري الاستخراج...' : 'Scraping...'}
-              </>
-            ) : (
-              <>
-                <Globe className="mr-2 h-4 w-4" />
-                {isRTL ? 'استخراج الأخبار' : 'Scrape News'}
-              </>
-            )}
-          </Button>
-          <Button 
-            variant="outline" 
-            onClick={() => generateForecastMutation.mutate()}
-            disabled={generateForecastMutation.isPending || analysesLoading || analyses?.length === 0}
-          >
-            {generateForecastMutation.isPending ? (
-              <>
-                <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                {isRTL ? 'جاري التنبؤ...' : 'Forecasting...'}
-              </>
-            ) : (
-              <>
-                <TrendingUp className="mr-2 h-4 w-4" />
-                {isRTL ? 'إنشاء تنبؤ' : 'Generate Forecast'}
-              </>
-            )}
-          </Button>
-        </div>
-      </div>
+      <ProjectHeader project={project} />
       
       {/* Stats Cards */}
-      <div className="grid gap-4 md:grid-cols-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
-              {isRTL ? 'المحتوى المستخرج' : 'Extracted Content'}
-            </CardTitle>
-            <Globe className="h-4 w-4 text-muted-foreground" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{uploads?.length || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isRTL ? 'عنصر محتوى' : 'content items'}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {isRTL ? 'التحليلات' : 'Analyses'}
+              {isRTL ? 'إجمالي التحليلات' : 'Total Analyses'}
             </CardTitle>
             <BarChart3 className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{analyses?.length || 0}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isRTL ? 'تحليل مكتمل' : 'completed analyses'}
-            </p>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : stats?.analysis_count || 0}
+            </div>
           </CardContent>
         </Card>
-        
+
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">
+              {isRTL ? 'إجمالي الرفوعات' : 'Total Uploads'}
+            </CardTitle>
+            <FileText className="h-4 w-4 text-muted-foreground" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : stats?.upload_count || 0}
+            </div>
+          </CardContent>
+        </Card>
+
         <Card>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">
               {isRTL ? 'المشاعر الإيجابية' : 'Positive Sentiment'}
             </CardTitle>
-            <TrendingUp className="h-4 w-4 text-green-500" />
+            <TrendingUp className="h-4 w-4 text-muted-foreground" />
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-green-500">
-              {analyses?.filter(a => a.sentiment === 'positive').length || 0}
+            <div className="text-2xl font-bold">
+              {statsLoading ? '...' : stats?.sentiment_distribution?.positive || 0}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isRTL ? 'محتوى إيجابي' : 'positive content'}
-            </p>
-          </CardContent>
-        </Card>
-        
-        <Card>
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">
-              {isRTL ? 'اللهجة الأردنية' : 'Jordanian Dialect'}
-            </CardTitle>
-            <MessageSquare className="h-4 w-4 text-blue-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-500">
-              {analyses?.filter(a => a.dialect === 'jordanian').length || 0}
-            </div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {isRTL ? 'محتوى باللهجة الأردنية' : 'jordanian dialect content'}
-            </p>
           </CardContent>
         </Card>
       </div>
-      
+
       {/* Main Content Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab}>
+      <Tabs defaultValue="analytics" className="space-y-4">
         <TabsList className="grid w-full grid-cols-4">
-          <TabsTrigger value="analysis" className="flex items-center gap-2">
-            <BarChart3 className="h-4 w-4" />
-            <span>{isRTL ? 'التحليل' : 'Analysis'}</span>
+          <TabsTrigger value="analytics">
+            {isRTL ? 'التحليلات' : 'Analytics'}
           </TabsTrigger>
-          <TabsTrigger value="forecast" className="flex items-center gap-2">
-            <TrendingUp className="h-4 w-4" />
-            <span>{isRTL ? 'التنبؤ' : 'Forecast'}</span>
+          <TabsTrigger value="sentiment">
+            {isRTL ? 'المشاعر' : 'Sentiment'}
           </TabsTrigger>
-          <TabsTrigger value="summaries" className="flex items-center gap-2">
-            <FileText className="h-4 w-4" />
-            <span>{isRTL ? 'الملخصات' : 'Summaries'}</span>
+          <TabsTrigger value="dialect">
+            {isRTL ? 'اللهجات' : 'Dialects'}
           </TabsTrigger>
-          <TabsTrigger value="upload" className="flex items-center gap-2">
-            <Plus className="h-4 w-4" />
-            <span>{isRTL ? 'تحليل نص' : 'Analyze Text'}</span>
+          <TabsTrigger value="summary">
+            {isRTL ? 'الملخصات' : 'Summaries'}
           </TabsTrigger>
         </TabsList>
-        
-        {/* Analysis Tab */}
-        <TabsContent value="analysis" className="space-y-4">
-          {/* Filters */}
-          <Card>
-            <CardContent className="p-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'بحث' : 'Search'}</Label>
-                  <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      type="search"
-                      placeholder={isRTL ? "بحث في المحتوى..." : "Search content..."}
-                      className="pl-8"
-                      value={searchTerm}
-                      onChange={(e) => setSearchTerm(e.target.value)}
-                    />
-                  </div>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'المشاعر' : 'Sentiment'}</Label>
-                  <Select value={sentimentFilter} onValueChange={setSentimentFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{isRTL ? 'الكل' : 'All'}</SelectItem>
-                      <SelectItem value="positive">{isRTL ? 'إيجابي' : 'Positive'}</SelectItem>
-                      <SelectItem value="negative">{isRTL ? 'سلبي' : 'Negative'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'اللهجة' : 'Dialect'}</Label>
-                  <Select value={dialectFilter} onValueChange={setDialectFilter}>
-                    <SelectTrigger>
-                      <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">{isRTL ? 'الكل' : 'All'}</SelectItem>
-                      <SelectItem value="jordanian">{isRTL ? 'أردني' : 'Jordanian'}</SelectItem>
-                      <SelectItem value="standard_arabic">{isRTL ? 'عربي فصيح' : 'Standard Arabic'}</SelectItem>
-                    </SelectContent>
-                  </Select>
-                </div>
-              </div>
-            </CardContent>
-          </Card>
-          
-          {/* Analysis Charts */}
-          <div className="grid gap-4 md:grid-cols-2">
-            <Card>
-              <CardHeader>
-                <CardTitle>{isRTL ? 'توزيع المشاعر' : 'Sentiment Distribution'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {analysesLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  </div>
-                ) : analyses?.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <BarChart3 className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      {isRTL ? 'لا توجد تحليلات بعد' : 'No analyses yet'}
-                    </p>
-                  </div>
-                ) : (
-                  <SentimentChart analyses={analyses} />
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>{isRTL ? 'توزيع اللهجات' : 'Dialect Distribution'}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                {analysesLoading ? (
-                  <div className="flex items-center justify-center h-64">
-                    <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                  </div>
-                ) : analyses?.length === 0 ? (
-                  <div className="flex flex-col items-center justify-center h-64 text-center">
-                    <Globe className="h-12 w-12 text-muted-foreground mb-4" />
-                    <p className="text-muted-foreground">
-                      {isRTL ? 'لا توجد تحليلات بعد' : 'No analyses yet'}
-                    </p>
-                  </div>
-                ) : (
-                  <DialectDistribution analyses={analyses} />
-                )}
-              </CardContent>
-            </Card>
-          </div>
-          
-          {/* Analysis List */}
+
+        <TabsContent value="analytics" className="space-y-4">
           <Card>
             <CardHeader>
-              <CardTitle>{isRTL ? 'قائمة التحليلات' : 'Analysis List'}</CardTitle>
+              <CardTitle>{isRTL ? 'تحليل البيانات' : 'Data Analysis'}</CardTitle>
               <CardDescription>
-                {isRTL 
-                  ? `${filteredAnalyses?.length || 0} تحليل من إجمالي ${analyses?.length || 0}`
-                  : `${filteredAnalyses?.length || 0} analyses out of ${analyses?.length || 0}`}
+                {isRTL ? 'عرض شامل لتحليل البيانات' : 'Comprehensive data analysis overview'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  {isRTL ? 'سيتم عرض التحليلات هنا بمجرد إنشاء قاعدة البيانات' : 'Analyses will appear here once the database is set up'}
-                </p>
-              </div>
+              {analyses && analyses.length > 0 ? (
+                <div className="space-y-4">
+                  {analyses.slice(0, 5).map((analysis: any) => (
+                    <div key={analysis.id} className="p-4 border rounded-lg">
+                      <div className="flex justify-between items-start mb-2">
+                        <span className="font-medium">
+                          {isRTL ? 'تحليل' : 'Analysis'} #{analysis.id.slice(0, 8)}
+                        </span>
+                        <span className={`px-2 py-1 rounded text-xs ${
+                          analysis.sentiment === 'positive' ? 'bg-green-100 text-green-800' :
+                          analysis.sentiment === 'negative' ? 'bg-red-100 text-red-800' :
+                          'bg-gray-100 text-gray-800'
+                        }`}>
+                          {analysis.sentiment}
+                        </span>
+                      </div>
+                      <p className="text-sm text-muted-foreground mb-2">
+                        {analysis.raw_text?.slice(0, 100)}...
+                      </p>
+                      <div className="text-xs text-muted-foreground">
+                        {isRTL ? 'المصدر:' : 'Source:'} {analysis.source} | 
+                        {isRTL ? ' النتيجة:' : ' Score:'} {analysis.sentiment_score?.toFixed(2)}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-8">
+                  <Brain className="h-12 w-12 text-muted-foreground mx-auto mb-4" />
+                  <p className="text-muted-foreground">
+                    {isRTL ? 'لا توجد تحليلات متاحة' : 'No analyses available'}
+                  </p>
+                </div>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
-        
-        {/* Other tabs with similar placeholder content */}
-        <TabsContent value="forecast" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isRTL ? 'تنبؤ المشاعر' : 'Sentiment Forecast'}</CardTitle>
-              <CardDescription>
-                {isRTL 
-                  ? 'توقع اتجاهات المشاعر المستقبلية بناءً على البيانات التاريخية'
-                  : 'Predict future sentiment trends based on historical data'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  {isRTL ? 'سيتم عرض التنبؤات هنا بمجرد إنشاء قاعدة البيانات' : 'Forecasts will appear here once the database is set up'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+
+        <TabsContent value="sentiment" className="space-y-4">
+          <SentimentChart data={stats?.sentiment_distribution} />
         </TabsContent>
-        
-        <TabsContent value="summaries" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isRTL ? 'ملخصات المحتوى' : 'Content Summaries'}</CardTitle>
-              <CardDescription>
-                {isRTL 
-                  ? 'ملخصات آلية للمحتوى المحلل باستخدام نماذج التلخيص المتقدمة'
-                  : 'Automatic summaries of analyzed content using advanced summarization models'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="flex flex-col items-center justify-center h-64 text-center">
-                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                <p className="text-muted-foreground">
-                  {isRTL ? 'سيتم عرض الملخصات هنا بمجرد إنشاء قاعدة البيانات' : 'Summaries will appear here once the database is set up'}
-                </p>
-              </div>
-            </CardContent>
-          </Card>
+
+        <TabsContent value="dialect" className="space-y-4">
+          <DialectDistribution analyses={analyses || []} />
         </TabsContent>
-        
-        <TabsContent value="upload" className="space-y-4">
-          <Card>
-            <CardHeader>
-              <CardTitle>{isRTL ? 'تحليل نص جديد' : 'Analyze New Text'}</CardTitle>
-              <CardDescription>
-                {isRTL 
-                  ? 'أدخل نصًا عربيًا لتحليله وتلخيصه'
-                  : 'Enter Arabic text to analyze and summarize'}
-              </CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="space-y-4">
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'العنوان (اختياري)' : 'Title (Optional)'}</Label>
-                  <Input 
-                    placeholder={isRTL ? "عنوان المحتوى" : "Content title"}
-                    value={manualTitle}
-                    onChange={(e) => setManualTitle(e.target.value)}
-                  />
-                </div>
-                
-                <div className="space-y-2">
-                  <Label>{isRTL ? 'النص العربي' : 'Arabic Text'}</Label>
-                  <Textarea 
-                    placeholder={isRTL ? "أدخل النص العربي هنا..." : "Enter Arabic text here..."}
-                    className="min-h-[200px]"
-                    value={manualText}
-                    onChange={(e) => setManualText(e.target.value)}
-                  />
-                </div>
-                
-                <Button 
-                  onClick={() => uploadManualTextMutation.mutate()}
-                  disabled={uploadManualTextMutation.isPending || !manualText.trim()}
-                  className="w-full"
-                >
-                  {uploadManualTextMutation.isPending ? (
-                    <>
-                      <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                      {isRTL ? 'جاري التحليل...' : 'Analyzing...'}
-                    </>
-                  ) : (
-                    <>
-                      <BarChart3 className="mr-2 h-4 w-4" />
-                      {isRTL ? 'تحليل النص' : 'Analyze Text'}
-                    </>
-                  )}
-                </Button>
-              </div>
-            </CardContent>
-          </Card>
+
+        <TabsContent value="summary" className="space-y-4">
+          <TextSummarizer projectId={projectId!} />
         </TabsContent>
       </Tabs>
-      
-      {/* Database Status Notice */}
-      <div className="mt-6 p-4 bg-muted rounded-lg">
-        <p className="text-sm text-muted-foreground">
-          <strong>Note:</strong> Project dashboard is temporarily using mock data while the database schema is being updated. 
-          Full functionality will be available once the backend tables are created.
-        </p>
-      </div>
     </div>
   );
 };
