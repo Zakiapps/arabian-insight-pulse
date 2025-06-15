@@ -2,7 +2,6 @@
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { ButtonRTL } from "@/components/ui/button-rtl";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useAuth } from "@/contexts/AuthContext";
@@ -20,20 +19,67 @@ import {
   TrendingDown,
   TrendingUp,
   Upload,
-  Users
+  Users,
+  FolderKanban,
+  ArrowRight,
+  Calendar,
+  Target
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 const Dashboard = () => {
   const { profile, isAdmin } = useAuth();
   const { isRTL } = useLanguage();
   const navigate = useNavigate();
 
-  const isActive = (path: string) => location.pathname === path || location.pathname.startsWith(path);
+  // Fetch projects with statistics
+  const { data: projects, isLoading: projectsLoading } = useQuery({
+    queryKey: ['dashboard-projects', profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      
+      const { data, error } = await supabase.rpc('get_user_projects');
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.id
+  });
+
+  // Fetch sentiment trends over time
+  const { data: sentimentTrends } = useQuery({
+    queryKey: ['sentiment-trends', profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('analyzed_posts')
+        .select('sentiment, created_at')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: true })
+        .limit(50);
+      
+      if (error) throw error;
+      
+      // Group by day and calculate sentiment distribution
+      const groupedData = data?.reduce((acc: any, post) => {
+        const date = new Date(post.created_at).toISOString().split('T')[0];
+        if (!acc[date]) {
+          acc[date] = { date, positive: 0, negative: 0, neutral: 0, total: 0 };
+        }
+        acc[date][post.sentiment || 'neutral']++;
+        acc[date].total++;
+        return acc;
+      }, {});
+      
+      return Object.values(groupedData || {}).slice(-7); // Last 7 days
+    },
+    enabled: !!profile?.id
+  });
 
   // Fetch real data from Supabase - user's own data only
-  const { data: postsData, isLoading: postsLoading, refetch: refetchPosts } = useQuery({
+  const { data: postsData, isLoading: postsLoading } = useQuery({
     queryKey: ['dashboard-posts', profile?.id],
     queryFn: async () => {
       if (!profile?.id) return [];
@@ -51,46 +97,25 @@ const Dashboard = () => {
     enabled: !!profile?.id
   });
 
-  // Admin data - only for admins
-  const { data: usersData, isLoading: usersLoading } = useQuery({
-    queryKey: ['dashboard-users'],
-    queryFn: async () => {
-      const { data, error } = await supabase
-        .from('profiles')
-        .select('*');
-      
-      if (error) throw error;
-      return data || [];
-    },
-    enabled: isAdmin
-  });
-
-  // Calculate real metrics from user's data
+  // Calculate metrics
+  const totalProjects = projects?.length || 0;
+  const activeProjects = projects?.filter(p => p.is_active)?.length || 0;
   const totalPosts = postsData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
-  const jordanianPosts = postsData?.filter(post => post.is_jordanian_dialect === true).length || 0;
-  const totalUsers = usersData?.length || 0;
-
+  
   const sentimentPercentage = totalPosts > 0 ? {
     positive: Math.round((positivePosts / totalPosts) * 100),
     negative: Math.round((negativePosts / totalPosts) * 100),
     neutral: Math.round(((totalPosts - positivePosts - negativePosts) / totalPosts) * 100)
   } : { positive: 0, negative: 0, neutral: 0 };
 
-  // Recent posts for activity feed - only real data
-  const recentPosts = postsData?.slice(0, 5) || [];
-
-  // Handle new analysis button click
-  const handleNewAnalysis = () => {
-    try {
-      navigate('/dashboard/upload');
-      toast.success('تم الانتقال إلى صفحة رفع وتحليل البيانات');
-    } catch (error) {
-      console.error('Navigation error:', error);
-      toast.error('حدث خطأ في الانتقال');
-    }
-  };
+  // Sentiment distribution data for pie chart
+  const sentimentData = [
+    { name: 'إيجابي', value: positivePosts, color: '#10b981' },
+    { name: 'سلبي', value: negativePosts, color: '#ef4444' },
+    { name: 'محايد', value: totalPosts - positivePosts - negativePosts, color: '#6b7280' }
+  ].filter(item => item.value > 0);
 
   return (
     <div className="space-y-6" dir={isRTL ? "rtl" : "ltr"}>
@@ -109,19 +134,34 @@ const Dashboard = () => {
           </div>
         </div>
         <div className="flex items-center gap-3">
-          <ButtonRTL 
-            size="sm" 
-            onClick={handleNewAnalysis} 
-            className="bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
-          >
+          <Button onClick={() => navigate('/projects')} variant="outline">
+            <FolderKanban className="h-4 w-4 mr-2" />
+            إدارة المشاريع
+          </Button>
+          <Button onClick={() => navigate('/dashboard/upload')} className="bg-gradient-to-r from-primary to-blue-600">
             <Plus className="h-4 w-4 mr-2" />
             تحليل جديد
-          </ButtonRTL>
+          </Button>
         </div>
       </div>
 
-      {/* Enhanced Quick Stats Cards with real data */}
+      {/* Key Metrics Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        <Card className="border-r-4 border-r-purple-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/projects')}>
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-medium">المشاريع النشطة</CardTitle>
+            <div className="p-2 rounded-full bg-purple-100">
+              <FolderKanban className="h-4 w-4 text-purple-600" />
+            </div>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{activeProjects}</div>
+            <p className="text-xs text-muted-foreground">
+              من أصل {totalProjects} مشروع
+            </p>
+          </CardContent>
+        </Card>
+
         <Card className="border-r-4 border-r-blue-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/posts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">إجمالي المنشورات</CardTitle>
@@ -167,212 +207,172 @@ const Dashboard = () => {
             </p>
           </CardContent>
         </Card>
-
-        {isAdmin ? (
-          <Card className="border-r-4 border-r-purple-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/admin/users')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">المستخدمين النشطين</CardTitle>
-              <div className="p-2 rounded-full bg-purple-100">
-                <Users className="h-4 w-4 text-purple-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-purple-600">{totalUsers.toLocaleString()}</div>
-              <p className="text-xs text-muted-foreground">
-                <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-                إجمالي المستخدمين
-              </p>
-            </CardContent>
-          </Card>
-        ) : (
-          <Card className="border-r-4 border-r-orange-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/dialects')}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">اللهجة الأردنية</CardTitle>
-              <div className="p-2 rounded-full bg-orange-100">
-                <Globe className="h-4 w-4 text-orange-600" />
-              </div>
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold text-orange-600">
-                {jordanianPosts}
-              </div>
-              <p className="text-xs text-muted-foreground">
-                منشور بالأردنية
-              </p>
-            </CardContent>
-          </Card>
-        )}
       </div>
 
       {/* Main Content Grid */}
       <div className="grid gap-6 lg:grid-cols-3">
-        {/* Left Column - Enhanced Activity Feed */}
+        {/* Projects Overview */}
         <div className="lg:col-span-2 space-y-6">
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-primary/5 to-blue-500/5">
+          <Card>
+            <CardHeader>
               <div className="flex items-center justify-between">
                 <div>
                   <CardTitle className="flex items-center gap-2">
-                    <BarChart3 className="h-5 w-5" />
-                    النشاط في الوقت الفعلي
+                    <FolderKanban className="h-5 w-5" />
+                    المشاريع الحديثة
                   </CardTitle>
-                  <CardDescription>آخر المنشورات والتفاعلات المحللة</CardDescription>
+                  <CardDescription>آخر المشاريع وحالة التحليل</CardDescription>
                 </div>
-                <Badge variant="secondary" className="animate-pulse">
-                  <div className="w-2 h-2 bg-green-500 rounded-full mr-2"></div>
-                  مباشر
-                </Badge>
+                <Button variant="outline" size="sm" onClick={() => navigate('/projects')}>
+                  عرض الكل
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                </Button>
               </div>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="space-y-4">
-                {postsLoading ? (
-                  <div className="text-center py-8 text-muted-foreground">
-                    <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
-                    جاري تحميل البيانات...
-                  </div>
-                ) : recentPosts.length > 0 ? (
-                  recentPosts.map((post, index) => (
-                    <div key={post.id} className="flex items-start gap-3 p-4 rounded-xl bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all duration-300 cursor-pointer border border-muted/20 hover:border-primary/20" onClick={() => navigate('/dashboard/posts')}>
-                      <Avatar className="h-10 w-10 border-2 border-primary/20">
-                        <AvatarFallback className="text-xs bg-gradient-to-br from-primary/10 to-blue-500/10">
-                          {post.source?.charAt(0)?.toUpperCase() || 'P'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-2">
-                          <Badge variant={
-                            post.sentiment === 'positive' ? 'default' : 
-                            post.sentiment === 'negative' ? 'destructive' : 'secondary'
-                          } className="text-xs">
-                            {post.sentiment === 'positive' ? 'إيجابي' : 
-                             post.sentiment === 'negative' ? 'سلبي' : 'محايد'}
-                          </Badge>
-                          {post.is_jordanian_dialect && (
-                            <Badge variant="outline" className="text-xs">
-                              أردني
-                            </Badge>
-                          )}
-                          <span className="text-xs text-muted-foreground">
-                            {new Date(post.created_at).toLocaleDateString('ar')}
-                          </span>
+            <CardContent>
+              {projectsLoading ? (
+                <div className="text-center py-8">
+                  <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto mb-4"></div>
+                  جاري تحميل المشاريع...
+                </div>
+              ) : projects && projects.length > 0 ? (
+                <div className="space-y-4">
+                  {projects.slice(0, 4).map((project: any) => (
+                    <div 
+                      key={project.id} 
+                      className="flex items-center justify-between p-4 rounded-lg border bg-gradient-to-r from-muted/30 to-muted/10 hover:from-muted/50 hover:to-muted/20 transition-all cursor-pointer"
+                      onClick={() => navigate(`/projects/${project.id}`)}
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <FolderKanban className="h-4 w-4 text-primary" />
                         </div>
-                        <p className="text-sm line-clamp-2 mb-2" dir="rtl">{post.content}</p>
-                        <div className="flex items-center gap-4 text-xs text-muted-foreground">
-                          <span className="flex items-center gap-1">
-                            <Globe className="h-3 w-3" />
-                            {post.source || 'غير محدد'}
-                          </span>
-                          {post.engagement_count && (
+                        <div>
+                          <h4 className="font-medium">{project.name}</h4>
+                          <div className="flex items-center gap-4 text-xs text-muted-foreground mt-1">
                             <span className="flex items-center gap-1">
-                              <Heart className="h-3 w-3" />
-                              {post.engagement_count.toLocaleString()}
+                              <Upload className="h-3 w-3" />
+                              {project.upload_count || 0} رفع
                             </span>
-                          )}
-                          {post.sentiment_score && (
                             <span className="flex items-center gap-1">
                               <BarChart3 className="h-3 w-3" />
-                              {Math.round(post.sentiment_score * 100)}%
+                              {project.analysis_count || 0} تحليل
                             </span>
-                          )}
+                            <span className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              {new Date(project.created_at).toLocaleDateString('ar')}
+                            </span>
+                          </div>
                         </div>
                       </div>
+                      <div className="flex items-center gap-2">
+                        {project.is_active && (
+                          <Badge variant="default" className="text-xs">نشط</Badge>
+                        )}
+                        <ArrowRight className="h-4 w-4 text-muted-foreground" />
+                      </div>
                     </div>
-                  ))
-                ) : (
-                  <div className="text-center py-12 text-muted-foreground">
-                    <div className="p-4 rounded-full bg-muted/30 w-fit mx-auto mb-4">
-                      <MessageSquare className="h-12 w-12 text-muted-foreground/50" />
-                    </div>
-                    <h3 className="text-lg font-medium mb-2">لا توجد منشورات حالياً</h3>
-                    <p className="text-sm mb-4">ابدأ بتحليل بعض البيانات لرؤية النتائج هنا</p>
-                    <Button onClick={handleNewAnalysis} className="bg-gradient-to-r from-primary to-blue-600">
-                      <Upload className="h-4 w-4 mr-2" />
-                      رفع بيانات جديدة
-                    </Button>
+                  ))}
+                </div>
+              ) : (
+                <div className="text-center py-12">
+                  <div className="p-4 rounded-full bg-muted/30 w-fit mx-auto mb-4">
+                    <FolderKanban className="h-12 w-12 text-muted-foreground/50" />
                   </div>
-                )}
-              </div>
+                  <h3 className="text-lg font-medium mb-2">لا توجد مشاريع حالياً</h3>
+                  <p className="text-sm text-muted-foreground mb-4">ابدأ بإنشاء مشروع جديد لتحليل البيانات</p>
+                  <Button onClick={() => navigate('/projects')}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    إنشاء مشروع جديد
+                  </Button>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Enhanced Quick Insights */}
-          <Card className="overflow-hidden">
-            <CardHeader className="bg-gradient-to-r from-green-500/5 to-blue-500/5">
+          {/* Sentiment Trends Chart */}
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                رؤى سريعة ومقاييس الأداء
+                اتجاهات المشاعر (آخر 7 أيام)
               </CardTitle>
             </CardHeader>
-            <CardContent className="p-6">
-              <div className="grid gap-4 md:grid-cols-2">
-                <div className="p-4 rounded-xl bg-gradient-to-br from-green-50 to-green-100 border border-green-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/dashboard/sentiment')}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <TrendingUp className="h-5 w-5 text-green-600" />
-                    <span className="font-medium text-green-900">اتجاه إيجابي</span>
-                  </div>
-                  <div className="text-2xl font-bold text-green-700 mb-1">
-                    {sentimentPercentage.positive}%
-                  </div>
-                  <p className="text-sm text-green-600">
-                    من المشاعر إيجابية في التحليل الحالي
-                  </p>
+            <CardContent>
+              {sentimentTrends && sentimentTrends.length > 0 ? (
+                <ResponsiveContainer width="100%" height={300}>
+                  <LineChart data={sentimentTrends}>
+                    <CartesianGrid strokeDasharray="3 3" />
+                    <XAxis dataKey="date" />
+                    <YAxis />
+                    <Tooltip />
+                    <Line type="monotone" dataKey="positive" stroke="#10b981" strokeWidth={2} name="إيجابي" />
+                    <Line type="monotone" dataKey="negative" stroke="#ef4444" strokeWidth={2} name="سلبي" />
+                    <Line type="monotone" dataKey="neutral" stroke="#6b7280" strokeWidth={2} name="محايد" />
+                  </LineChart>
+                </ResponsiveContainer>
+              ) : (
+                <div className="text-center py-12 text-muted-foreground">
+                  <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                  <p>لا توجد بيانات كافية لعرض الاتجاهات</p>
                 </div>
-                <div className="p-4 rounded-xl bg-gradient-to-br from-blue-50 to-blue-100 border border-blue-200 cursor-pointer hover:shadow-md transition-shadow" onClick={() => navigate('/dashboard/posts')}>
-                  <div className="flex items-center gap-2 mb-3">
-                    <MessageSquare className="h-5 w-5 text-blue-600" />
-                    <span className="font-medium text-blue-900">نشاط عالي</span>
-                  </div>
-                  <div className="text-2xl font-bold text-blue-700 mb-1">
-                    {totalPosts.toLocaleString()}
-                  </div>
-                  <p className="text-sm text-blue-600">
-                    منشور تم تحليله بنجاح
-                  </p>
-                </div>
-              </div>
+              )}
             </CardContent>
           </Card>
         </div>
 
-        {/* Right Column - Enhanced Summary */}
+        {/* Right Column - Analytics & Quick Actions */}
         <div className="space-y-6">
-          {/* Enhanced Platform Summary */}
+          {/* Sentiment Distribution */}
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
-                <Globe className="h-5 w-5" />
-                ملخص المنصات
+                <Target className="h-5 w-5" />
+                توزيع المشاعر
               </CardTitle>
             </CardHeader>
             <CardContent>
-              <div className="space-y-3">
-                {['تويتر', 'فيسبوك', 'إنستغرام', 'لينكدإن'].map((platform, index) => {
-                  const platformPosts = postsData?.filter(post => 
-                    post.source?.toLowerCase().includes(platform.toLowerCase())
-                  ).length || 0;
-                  const percentage = totalPosts > 0 ? Math.round((platformPosts / totalPosts) * 100) : 0;
-                  
-                  return (
-                    <div key={platform} className="flex items-center justify-between cursor-pointer hover:bg-muted/30 p-3 rounded-lg transition-colors" onClick={() => navigate('/dashboard/platforms')}>
-                      <span className="text-sm font-medium">{platform}</span>
-                      <div className="flex items-center gap-3">
-                        <div className="w-20 h-2 bg-muted rounded-full overflow-hidden">
-                          <div 
-                            className="h-full bg-gradient-to-r from-primary to-blue-500 transition-all duration-500"
-                            style={{ width: `${percentage}%` }}
-                          />
+              {sentimentData.length > 0 ? (
+                <div className="space-y-4">
+                  <ResponsiveContainer width="100%" height={200}>
+                    <PieChart>
+                      <Pie
+                        data={sentimentData}
+                        cx="50%"
+                        cy="50%"
+                        outerRadius={80}
+                        dataKey="value"
+                        label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                      >
+                        {sentimentData.map((entry, index) => (
+                          <Cell key={`cell-${index}`} fill={entry.color} />
+                        ))}
+                      </Pie>
+                      <Tooltip />
+                    </PieChart>
+                  </ResponsiveContainer>
+                  <div className="space-y-2">
+                    {sentimentData.map((item, index) => (
+                      <div key={index} className="flex items-center justify-between text-sm">
+                        <div className="flex items-center gap-2">
+                          <div className="w-3 h-3 rounded-full" style={{ backgroundColor: item.color }} />
+                          <span>{item.name}</span>
                         </div>
-                        <span className="text-xs text-muted-foreground w-10 text-right">{percentage}%</span>
+                        <span className="font-medium">{item.value.toLocaleString()}</span>
                       </div>
-                    </div>
-                  );
-                })}
-              </div>
+                    ))}
+                  </div>
+                </div>
+              ) : (
+                <div className="text-center py-8 text-muted-foreground">
+                  <Target className="h-8 w-8 mx-auto mb-2 opacity-50" />
+                  <p className="text-sm">لا توجد بيانات للعرض</p>
+                </div>
+              )}
             </CardContent>
           </Card>
 
-          {/* Enhanced User Profile Card */}
+          {/* User Profile Card */}
           <Card>
             <CardHeader>
               <CardTitle>الملف الشخصي</CardTitle>
@@ -399,8 +399,8 @@ const Dashboard = () => {
               <Separator className="my-4" />
               <div className="space-y-2 text-sm">
                 <div className="flex justify-between">
-                  <span>آخر دخول:</span>
-                  <span className="text-muted-foreground">اليوم</span>
+                  <span>المشاريع النشطة:</span>
+                  <span className="text-muted-foreground font-medium">{activeProjects}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>المنشورات المحللة:</span>
@@ -411,6 +411,39 @@ const Dashboard = () => {
                   <span className="text-green-600 font-medium">98.5%</span>
                 </div>
               </div>
+            </CardContent>
+          </Card>
+
+          {/* Quick Actions */}
+          <Card>
+            <CardHeader>
+              <CardTitle>إجراءات سريعة</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-3">
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => navigate('/projects')}
+              >
+                <FolderKanban className="h-4 w-4 mr-2" />
+                إدارة المشاريع
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => navigate('/dashboard/upload')}
+              >
+                <Upload className="h-4 w-4 mr-2" />
+                رفع بيانات جديدة
+              </Button>
+              <Button 
+                variant="outline" 
+                className="w-full justify-start" 
+                onClick={() => navigate('/dashboard/reports')}
+              >
+                <BarChart3 className="h-4 w-4 mr-2" />
+                إنشاء تقرير
+              </Button>
             </CardContent>
           </Card>
         </div>
