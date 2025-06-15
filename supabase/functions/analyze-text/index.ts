@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
@@ -13,11 +12,12 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL');
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Hugging Face endpoint & token
+// Hugging Face endpoint & token -- USING the provided ones for testing
 const HF_ENDPOINT = "https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud";
-const HF_TOKEN = Deno.env.get('HUGGINGFACE_API_KEY');
+// Provided token (hard-coded for now, REMOVE after testing)
+const HF_TOKEN = "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";
 
-// Enhanced Jordanian dialect detection
+// Enhanced Jordanian dialect detection (keep as before)
 function detectJordanianDialect(text: string): string {
   const jordanianTerms = [
     "زلمة", "يا زلمة", "خرفنة", "تسليك", "احشش", "انكب", "راعي", "هسا", "شو", "كيفك",
@@ -76,10 +76,7 @@ serve(async (req) => {
       return new Response(JSON.stringify({ error: "Hugging Face API key missing" }), { status: 500, headers: corsHeaders });
     }
 
-    console.log('Starting sentiment analysis with custom MARBERT endpoint...');
-    console.log('Input text:', text);
-
-    // Call HuggingFace endpoint
+    // Call HuggingFace endpoint (match your sample Python logic: parameters: {})
     const response = await fetch(HF_ENDPOINT, {
       method: "POST",
       headers: {
@@ -89,86 +86,75 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         inputs: text,
-        parameters: {
-          return_all_scores: true
-        }
+        parameters: {}
       })
     });
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("HuggingFace error:", response.status, errText);
       return new Response(JSON.stringify({ error: "Failed to call HuggingFace", details: errText }), { status: 500, headers: corsHeaders });
     }
 
     const hfResult = await response.json();
-    console.log('HuggingFace response:', JSON.stringify(hfResult));
 
-    // Parse sentiment result - handle different response formats
+    // Defensive: always extract scores in a robust way
     let sentiment = "neutral";
-    let confidence = 0;
+    let confidence = 0.5;
     let positive_prob = 0.5;
     let negative_prob = 0.5;
 
     try {
-      // Handle the response format from your custom endpoint
-      let scores;
-      if (Array.isArray(hfResult) && hfResult.length > 0) {
-        scores = hfResult[0];
-      } else if (hfResult.scores) {
-        scores = hfResult.scores;
-      } else if (Array.isArray(hfResult)) {
-        scores = hfResult;
+      // HuggingFace result structure varies: sometimes it's [ [ {label,score}, ... ] ] or [ {label,score}, ... ]
+      let scores: any[] = Array.isArray(hfResult) && hfResult.length > 0 && Array.isArray(hfResult[0])
+        ? hfResult[0]
+        : Array.isArray(hfResult) ? hfResult : hfResult.scores || [];
+
+      // fallback: if not an array, cannot parse
+      if (!Array.isArray(scores)) {
+        throw new Error("Scores is not an array");
+      }
+
+      // Try to find best matching positive/negative
+      const positiveScore = scores.find(s => 
+        s.label && (
+          s.label.toLowerCase().includes('positive') || 
+          s.label.toLowerCase().includes('pos') ||
+          s.label === 'LABEL_1' ||
+          s.label === '1' ||
+          s.label === 'POSITIVE'
+        ) && typeof s.score === "number"
+      );
+  
+      const negativeScore = scores.find(s => 
+        s.label && (
+          s.label.toLowerCase().includes('negative') || 
+          s.label.toLowerCase().includes('neg') ||
+          s.label === 'LABEL_0' ||
+          s.label === '0' ||
+          s.label === 'NEGATIVE'
+        ) && typeof s.score === "number"
+      );
+
+      // Never let scores be NaN
+      if (positiveScore && negativeScore) {
+        positive_prob = typeof positiveScore.score === "number" ? positiveScore.score : 0.5;
+        negative_prob = typeof negativeScore.score === "number" ? negativeScore.score : 0.5;
+      } else if (scores.length >= 2 && typeof scores[0].score === "number" && typeof scores[1].score === "number") {
+        negative_prob = scores[0].score;
+        positive_prob = scores[1].score;
       } else {
-        throw new Error('Unexpected response format from HuggingFace');
+        positive_prob = 0.5;
+        negative_prob = 0.5;
       }
 
-      console.log('Parsed scores:', scores);
+      // If for any reason value is not a positive real number, set to 0.5
+      if (!isFinite(positive_prob) || positive_prob < 0 || positive_prob > 1) positive_prob = 0.5;
+      if (!isFinite(negative_prob) || negative_prob < 0 || negative_prob > 1) negative_prob = 0.5;
 
-      if (Array.isArray(scores)) {
-        // Find positive and negative scores for MARBERT model
-        const positiveScore = scores.find(s => 
-          s.label && (
-            s.label.toLowerCase().includes('positive') || 
-            s.label.toLowerCase().includes('pos') ||
-            s.label === 'LABEL_1' ||
-            s.label === '1' ||
-            s.label === 'POSITIVE'
-          )
-        );
-        
-        const negativeScore = scores.find(s => 
-          s.label && (
-            s.label.toLowerCase().includes('negative') || 
-            s.label.toLowerCase().includes('neg') ||
-            s.label === 'LABEL_0' ||
-            s.label === '0' ||
-            s.label === 'NEGATIVE'
-          )
-        );
+      sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
+      confidence = Math.max(positive_prob, negative_prob);
 
-        if (positiveScore && negativeScore) {
-          positive_prob = positiveScore.score;
-          negative_prob = negativeScore.score;
-        } else if (scores.length >= 2) {
-          // Fallback: assume first two scores are negative and positive
-          negative_prob = scores[0].score;
-          positive_prob = scores[1].score;
-        }
-
-        sentiment = positive_prob > negative_prob ? 'positive' : 'negative';
-        confidence = Math.max(positive_prob, negative_prob);
-
-        console.log('Final sentiment analysis:', {
-          sentiment,
-          confidence,
-          positive_prob,
-          negative_prob
-        });
-      }
     } catch (e) {
-      console.error("Could not parse sentiment from HuggingFace response", e);
-      // Return default values if parsing fails
       sentiment = "neutral";
       confidence = 0.5;
       positive_prob = 0.5;
@@ -177,7 +163,6 @@ serve(async (req) => {
 
     // Detect dialect
     const dialect = detectJordanianDialect(text);
-    console.log('Dialect detection result:', dialect);
 
     const result = {
       sentiment,
@@ -188,11 +173,8 @@ serve(async (req) => {
       modelSource: 'MARBERT_Custom_Endpoint'
     };
 
-    console.log('Returning analysis result:', result);
-
     return new Response(JSON.stringify(result), { headers: corsHeaders });
   } catch (error) {
-    console.error("analyze-text function error:", error);
     return new Response(JSON.stringify({ error: "Internal error", details: error.message }), { status: 500, headers: corsHeaders });
   }
 });
