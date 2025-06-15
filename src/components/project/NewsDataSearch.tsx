@@ -35,6 +35,12 @@ const NewsDataSearch = () => {
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failed'>('unknown');
   const [hasSearched, setHasSearched] = useState(false);
 
+  // Function to detect if text contains Arabic characters
+  const isArabicText = (text: string) => {
+    const arabicRegex = /[\u0600-\u06FF\u0750-\u077F]/;
+    return arabicRegex.test(text);
+  };
+
   const testConnection = async () => {
     setTestingConnection(true);
     try {
@@ -90,10 +96,16 @@ const NewsDataSearch = () => {
     try {
       console.log("Fetching news for keyword:", kw);
       
+      // Detect if keyword is Arabic and set appropriate language
+      const isArabic = isArabicText(kw);
+      const language = isArabic ? 'ar' : 'en';
+      
+      console.log("Detected language:", language, "for keyword:", kw);
+      
       const { data, error } = await supabase.functions.invoke('scrape-newsdata', {
         body: { 
           query: kw,
-          language: 'en'
+          language: language
         }
       });
       
@@ -203,7 +215,7 @@ const NewsDataSearch = () => {
           <Input
             type="text"
             placeholder={
-              isRTL ? "أدخل كلمة البحث مثل: الصحة، فلسطين..." : "Enter search term e.g. health, Palestine..."
+              isRTL ? "أدخل كلمة البحث مثل: الصحة، فلسطين، الأردن..." : "Enter search term e.g. health, Palestine, Jordan..."
             }
             value={keyword}
             onChange={(e) => setKeyword(e.target.value)}
@@ -214,6 +226,13 @@ const NewsDataSearch = () => {
             {isRTL ? "بحث" : "Search"}
           </Button>
         </form>
+
+        {/* Language Detection Info */}
+        {keyword && (
+          <div className="mb-4 text-xs text-muted-foreground">
+            {isRTL ? "اللغة المكتشفة:" : "Detected language:"} {isArabicText(keyword) ? (isRTL ? "العربية" : "Arabic") : (isRTL ? "الإنجليزية" : "English")}
+          </div>
+        )}
 
         {/* Loading State */}
         {loading && (
