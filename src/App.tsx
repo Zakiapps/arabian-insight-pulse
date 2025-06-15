@@ -50,6 +50,7 @@ import AdminTransactions from "@/pages/admin/AdminTransactions";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import PaymentSettings from "@/pages/admin/PaymentSettings";
 import HuggingFaceConfigPage from "@/pages/admin/HuggingFaceConfig";
+import HuggingFaceLogs from "@/pages/admin/HuggingFaceLogs";
 
 const queryClient = new QueryClient();
 
@@ -131,7 +132,7 @@ function App() {
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="payment-settings" element={<PaymentSettings />} />
                       <Route path="huggingface-config" element={<HuggingFaceConfigPage />} />
-                      <Route path="huggingface-logs" element={<import('./pages/admin/HuggingFaceLogs') />} />
+                      <Route path="huggingface-logs" element={<HuggingFaceLogs />} />
                     </Route>
                     
                     {/* Unified Scraper route */}
