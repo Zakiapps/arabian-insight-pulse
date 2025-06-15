@@ -29,6 +29,14 @@ interface SavedNewsArticle {
   created_at: string;
 }
 
+// Utility to bound numeric values for database insertion
+function boundValue(value: number | undefined, min: number, max: number, defaultValue: number): number {
+  if (value === undefined || value === null || isNaN(value) || !isFinite(value)) {
+    return defaultValue;
+  }
+  return Math.max(min, Math.min(max, value));
+}
+
 export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => void) => {
   const [analyzingArticles, setAnalyzingArticles] = useState<Record<string, boolean>>({});
   const { toast } = useToast();
@@ -49,53 +57,13 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
     setAnalyzingArticles(prev => ({ ...prev, [article.id]: true }));
 
     try {
-      // Enhanced content prioritization with fallback support
-      let textToAnalyze = '';
-      let contentSource = 'none';
-
-      // Check if main content is available and usable
-      if (article.content && article.content.trim().length > 0) {
-        const placeholderPatterns = [
-          /ONLY AVAILABLE IN PAID PLANS/i,
-          /upgrade to premium/i,
-          /subscribe to read/i,
-          /premium content/i,
-          /paywall/i
-        ];
-        
-        const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(article.content));
-        
-        if (!hasPlaceholder) {
-          textToAnalyze = article.content;
-          contentSource = 'content';
-        }
-      }
-
-      // If main content is blocked or unavailable, use title + description
-      if (!textToAnalyze) {
-        const fallbackParts = [article.title, article.description].filter(part => part && part.trim().length > 0);
-        if (fallbackParts.length > 0) {
-          textToAnalyze = fallbackParts.join('. ');
-          contentSource = 'title_description';
-        }
-      }
-
-      // Last resort: just title
-      if (!textToAnalyze && article.title) {
-        textToAnalyze = article.title;
-        contentSource = 'title_only';
-      }
+      // Enhanced content analysis - prioritize title + description
+      console.log('Calling analyze-text with title and description...');
       
-      if (!textToAnalyze || textToAnalyze.trim().length < 3) {
-        throw new Error(isRTL ? "لا يوجد محتوى كافي للتحليل" : "No sufficient content for analysis");
-      }
-
-      console.log(`Analyzing text from ${contentSource}:`, textToAnalyze.substring(0, 100) + '...');
-      
-      // Call our enhanced MARBERT analysis function
       const { data, error } = await supabase.functions.invoke('analyze-text', {
         body: {
-          text: textToAnalyze
+          title: article.title,
+          description: article.description
         }
       });
 
@@ -111,24 +79,27 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
         throw new Error('Invalid analysis result received');
       }
 
-      // Store the analysis in text_analyses table
+      // Bound all numeric values to prevent database overflow
+      const boundedConfidence = boundValue(data.confidence, 0, 1, 0.5);
+      const boundedDialectConfidence = boundValue(data.dialect_confidence, 0, 100, 0);
+
+      // Store the analysis in text_analyses table with bounded values
       const { error: insertError } = await supabase
         .from('text_analyses')
         .insert({
           project_id: projectId,
-          input_text: textToAnalyze,
+          input_text: data.analyzedText || `${article.title}. ${article.description || ''}`.substring(0, 500),
           sentiment: data.sentiment || 'neutral',
-          sentiment_score: data.confidence || 0.5,
+          sentiment_score: boundedConfidence,
           emotion: data.emotion || 'محايد',
           language: article.language || 'ar',
           dialect: data.dialect === 'Jordanian' ? 'jordanian' : 'other',
-          dialect_confidence: data.dialect_confidence || 0,
+          dialect_confidence: boundedDialectConfidence,
           dialect_indicators: data.dialect_indicators || [],
           emotional_markers: data.emotional_markers || [],
           model_response: {
             ...data,
-            content_source: contentSource,
-            original_content_blocked: contentSource !== 'content'
+            content_source: data.contentSource || 'title_description'
           },
           user_id: user.id
         });
@@ -138,7 +109,7 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
         throw insertError;
       }
 
-      // Update the article with enhanced analysis results
+      // Update the article with bounded analysis results
       const { error: updateError } = await supabase
         .from('scraped_news')
         .update({ 
@@ -146,7 +117,7 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
           sentiment: data.sentiment || 'neutral',
           emotion: data.emotion || 'محايد',
           dialect: data.dialect === 'Jordanian' ? 'jordanian' : 'other',
-          dialect_confidence: data.dialect_confidence || 0,
+          dialect_confidence: boundedDialectConfidence,
           dialect_indicators: data.dialect_indicators || [],
           emotional_markers: data.emotional_markers || [],
           updated_at: new Date().toISOString()
@@ -158,21 +129,22 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
         throw updateError;
       }
 
-      console.log('Analysis completed successfully for article:', article.id, 'using', contentSource);
+      console.log('Analysis completed successfully for article:', article.id, 'using', data.contentSource);
 
       // Trigger refresh in parent component
       if (onAnalysisComplete) {
         onAnalysisComplete();
       }
 
-      const sourceDisplay = contentSource === 'content' ? 'المحتوى الكامل' : 
-                           contentSource === 'title_description' ? 'العنوان والوصف' : 'العنوان فقط';
+      const sourceDisplay = data.contentSource === 'title_description' ? 'العنوان والوصف' : 
+                           data.contentSource === 'title_only' ? 'العنوان فقط' : 
+                           data.contentSource === 'description_only' ? 'الوصف فقط' : 'النص المباشر';
 
       toast({
         title: isRTL ? "تم التحليل بنجاح" : "Analysis Complete",
         description: isRTL 
           ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'} | العاطفة: ${data.emotion || 'محايد'} | المصدر: ${sourceDisplay}`
-          : `Sentiment: ${data.sentiment || 'neutral'} | Emotion: ${data.emotion || 'neutral'} | Source: ${contentSource}`,
+          : `Sentiment: ${data.sentiment || 'neutral'} | Emotion: ${data.emotion || 'neutral'} | Source: ${sourceDisplay}`,
       });
     } catch (error: any) {
       console.error("Analysis error:", error);

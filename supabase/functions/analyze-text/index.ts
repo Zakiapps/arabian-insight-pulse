@@ -69,28 +69,32 @@ function detectJordanianDialect(text: string): {
   };
 }
 
-function validateText(text: string): boolean {
-  if (!text || text.trim().length < 3) {
-    return false;
+// Enhanced text validation - more lenient for title+description analysis
+function validateAndCleanText(text: string): { isValid: boolean; cleanText: string; contentType: string } {
+  if (!text || text.trim().length < 2) {
+    return { isValid: false, cleanText: "", contentType: "none" };
   }
   
-  // Check for placeholder content patterns
-  const placeholderPatterns = [
-    /ONLY AVAILABLE IN PAID PLANS/i,
-    /upgrade to premium/i,
-    /subscribe to read/i,
-    /premium content/i,
-    /paywall/i
-  ];
+  const cleanText = text.trim();
   
-  const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(text));
-  if (hasPlaceholder) {
-    return false;
+  // Check for Arabic characters (more lenient)
+  const hasArabic = /[\u0600-\u06FF]/.test(cleanText);
+  const hasEnglish = /[a-zA-Z]/.test(cleanText);
+  
+  // Accept if has Arabic or if it's a title/description with some meaningful content
+  if (hasArabic) {
+    return { isValid: true, cleanText, contentType: "arabic" };
+  } else if (hasEnglish && cleanText.length > 10) {
+    return { isValid: true, cleanText, contentType: "english" };
   }
   
-  // Check for Arabic characters
-  const hasArabic = /[\u0600-\u06FF]/.test(text);
-  return hasArabic;
+  return { isValid: false, cleanText: "", contentType: "unknown" };
+}
+
+// Utility to bound numeric values to prevent overflow
+function boundNumericValue(value: number, min: number, max: number): number {
+  if (isNaN(value) || !isFinite(value)) return min;
+  return Math.max(min, Math.min(max, value));
 }
 
 serve(async (req) => {
@@ -99,21 +103,44 @@ serve(async (req) => {
   }
 
   try {
-    const { text } = await req.json();
+    const { text, title, description } = await req.json();
     
-    console.log('Received text for analysis:', text.substring(0, 100) + '...');
-
-    if (!validateText(text)) {
+    // Enhanced content selection logic
+    let textToAnalyze = '';
+    let contentSource = 'none';
+    
+    // If explicit text is provided, use it
+    if (text) {
+      const validation = validateAndCleanText(text);
+      if (validation.isValid) {
+        textToAnalyze = validation.cleanText;
+        contentSource = 'direct_text';
+      }
+    }
+    
+    // If no valid text, try title + description combination
+    if (!textToAnalyze && (title || description)) {
+      const combinedText = [title, description].filter(Boolean).join('. ');
+      const validation = validateAndCleanText(combinedText);
+      if (validation.isValid) {
+        textToAnalyze = validation.cleanText;
+        contentSource = title && description ? 'title_description' : (title ? 'title_only' : 'description_only');
+      }
+    }
+    
+    if (!textToAnalyze) {
       return new Response(JSON.stringify({ 
-        error: "النص غير صالح للتحليل أو يحتوي على محتوى محجوب" 
+        error: "لا يوجد نص صالح للتحليل",
+        contentSource: 'none'
       }), { 
         status: 400, 
         headers: corsHeaders 
       });
     }
 
+    console.log(`Analyzing text from ${contentSource}: ${textToAnalyze.substring(0, 100)}...`);
+
     // Call MARBERT analysis
-    console.log('Calling MARBERT endpoint...');
     const response = await fetch(HF_ENDPOINT, {
       method: "POST",
       headers: {
@@ -122,7 +149,7 @@ serve(async (req) => {
         "Accept": "application/json",
       },
       body: JSON.stringify({
-        inputs: text,
+        inputs: textToAnalyze,
         parameters: {}
       })
     });
@@ -136,7 +163,7 @@ serve(async (req) => {
     const hfResult = await response.json();
     console.log('HuggingFace result:', hfResult);
 
-    // Process sentiment analysis result
+    // Process sentiment analysis result with bounds checking
     let sentiment = "neutral";
     let confidence = 0.5;
     let positive_prob = 0.5;
@@ -148,11 +175,11 @@ serve(async (req) => {
       if (scores.length === 1) {
         const score = scores[0];
         if (score.label === 'LABEL_0') {
-          negative_prob = score.score;
-          positive_prob = 1 - score.score;
+          negative_prob = boundNumericValue(score.score, 0, 1);
+          positive_prob = 1 - negative_prob;
         } else {
-          positive_prob = score.score;
-          negative_prob = 1 - score.score;
+          positive_prob = boundNumericValue(score.score, 0, 1);
+          negative_prob = 1 - positive_prob;
         }
       }
     }
@@ -178,7 +205,7 @@ serve(async (req) => {
     }
 
     // Enhanced dialect detection
-    const dialectResult = detectJordanianDialect(text);
+    const dialectResult = detectJordanianDialect(textToAnalyze);
 
     // Map emotion based on sentiment and content
     let emotion = 'محايد';
@@ -188,14 +215,17 @@ serve(async (req) => {
       emotion = dialectResult.emotionalMarkers.length > 0 ? 'غضب' : 'استياء';
     }
 
+    // Bound all numeric values to prevent overflow
     const result = {
       sentiment: sentiment,
-      confidence: confidence,
+      confidence: boundNumericValue(confidence, 0, 1),
       emotion: emotion,
       dialect: dialectResult.isJordanian ? 'Jordanian' : 'Other Arabic',
-      dialect_confidence: dialectResult.confidence,
+      dialect_confidence: boundNumericValue(dialectResult.confidence, 0, 100),
       dialect_indicators: dialectResult.indicators,
       emotional_markers: dialectResult.emotionalMarkers,
+      contentSource: contentSource,
+      analyzedText: textToAnalyze.length > 200 ? textToAnalyze.substring(0, 200) + '...' : textToAnalyze,
       hf_result: hfResult
     };
 
@@ -209,7 +239,8 @@ serve(async (req) => {
     console.error("Analysis error:", error);
     return new Response(JSON.stringify({ 
       error: "فشل في تحليل النص", 
-      details: error.message 
+      details: error.message,
+      contentSource: 'error'
     }), { 
       status: 500, 
       headers: corsHeaders 

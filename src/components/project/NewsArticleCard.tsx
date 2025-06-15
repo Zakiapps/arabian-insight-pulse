@@ -1,14 +1,12 @@
 
-import { useState } from "react";
-import { Button } from "@/components/ui/button";
-import { Badge } from "@/components/ui/badge";
-import { Checkbox } from "@/components/ui/checkbox";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle, Info, RefreshCw } from "lucide-react";
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
+import { Brain, ExternalLink, Clock, Globe, Newspaper, CheckCircle, AlertCircle } from 'lucide-react';
+import { useNewsAnalysis } from '@/hooks/useNewsAnalysis';
 
-interface SavedNewsArticle {
+interface NewsArticle {
   id: string;
-  article_id: string;
   title: string;
   description?: string;
   content?: string;
@@ -31,374 +29,209 @@ interface SavedNewsArticle {
 }
 
 interface NewsArticleCardProps {
-  article: SavedNewsArticle;
-  onAnalyze: (article: SavedNewsArticle) => void;
-  onDelete: (articleId: string) => void;
-  isAnalyzing: boolean;
-  isDeleting: boolean;
-  selectionMode?: boolean;
-  selected?: boolean;
-  onSelect?: (selected: boolean) => void;
+  article: NewsArticle;
+  projectId: string;
+  onAnalysisComplete?: () => void;
 }
 
-const NewsArticleCard = ({ 
-  article, 
-  onAnalyze, 
-  onDelete, 
-  isAnalyzing, 
-  isDeleting,
-  selectionMode = false,
-  selected = false,
-  onSelect
-}: NewsArticleCardProps) => {
-  const { isRTL } = useLanguage();
+const NewsArticleCard = ({ article, projectId, onAnalysisComplete }: NewsArticleCardProps) => {
+  const { analyzingArticles, analyzeArticle } = useNewsAnalysis(projectId, onAnalysisComplete);
+  
+  const isAnalyzing = analyzingArticles[article.id];
 
-  // Enhanced content quality assessment with fallback support
-  const getContentQuality = () => {
-    const content = article.content || '';
-    const description = article.description || '';
-    const title = article.title || '';
-    
-    // Check for placeholder content patterns
-    const placeholderPatterns = [
-      /ONLY AVAILABLE IN PAID PLANS/i,
-      /upgrade to premium/i,
-      /subscribe to read/i,
-      /premium content/i,
-      /paywall/i
-    ];
-    
-    const hasPlaceholder = placeholderPatterns.some(pattern => 
-      pattern.test(content) || pattern.test(description)
-    );
-    
-    // If main content is blocked, check if we have usable title + description
-    if (hasPlaceholder) {
-      const fallbackText = `${title} ${description}`.trim();
-      const fallbackWordCount = fallbackText.split(/\s+/).length;
-      const hasArabic = /[\u0600-\u06FF]/.test(fallbackText);
-      
-      if (!hasArabic || fallbackWordCount < 5) {
-        return { 
-          level: 'blocked', 
-          score: 0, 
-          message: 'محتوى محجوب - لا يوجد نص كافي',
-          icon: AlertTriangle,
-          color: 'text-red-600 bg-red-50',
-          canAnalyze: false
-        };
-      }
-      
-      // We have usable fallback content
-      return { 
-        level: 'fallback', 
-        score: Math.min(fallbackWordCount * 3, 60), 
-        message: 'تحليل العنوان والوصف متاح',
-        icon: Info,
-        color: 'text-blue-600 bg-blue-50',
-        canAnalyze: true
-      };
-    }
+  const handleAnalyze = () => {
+    analyzeArticle(article);
+  };
 
-    // Regular content assessment
-    const totalLength = content.length + description.length + title.length;
-    const wordCount = (content + ' ' + description + ' ' + title).split(/\s+/).length;
-    
-    if (content.length > 500) {
-      return { 
-        level: 'excellent', 
-        score: 95, 
-        message: 'محتوى ممتاز للتحليل',
-        icon: CheckCircle,
-        color: 'text-green-600 bg-green-50',
-        canAnalyze: true
-      };
-    } else if (content.length > 200 || (description.length > 100 && title.length > 20)) {
-      return { 
-        level: 'good', 
-        score: 75, 
-        message: 'محتوى جيد للتحليل',
-        icon: CheckCircle,
-        color: 'text-green-600 bg-green-50',
-        canAnalyze: true
-      };
-    } else if (description.length > 50 || title.length > 30) {
-      return { 
-        level: 'fair', 
-        score: 50, 
-        message: 'محتوى محدود للتحليل',
-        icon: Info,
-        color: 'text-yellow-600 bg-yellow-50',
-        canAnalyze: true
-      };
+  const getContentSourceIcon = () => {
+    if (article.content && article.content.length > 100) {
+      return <CheckCircle className="h-4 w-4 text-green-600" title="محتوى كامل متوفر" />;
     } else {
-      return { 
-        level: 'poor', 
-        score: 25, 
-        message: 'محتوى قصير للتحليل',
-        icon: AlertTriangle,
-        color: 'text-orange-600 bg-orange-50',
-        canAnalyze: true
-      };
+      return <AlertCircle className="h-4 w-4 text-orange-600" title="سيتم التحليل باستخدام العنوان والوصف" />;
     }
   };
 
-  const contentQuality = getContentQuality();
-  const QualityIcon = contentQuality.icon;
+  const getAnalysisSourceBadge = () => {
+    if (!article.is_analyzed) return null;
+    
+    const hasContent = article.content && article.content.length > 100;
+    const hasDescription = article.description && article.description.length > 10;
+    
+    let sourceText = '';
+    let badgeColor = 'bg-blue-100 text-blue-800';
+    
+    if (hasContent) {
+      sourceText = 'تحليل النص الكامل';
+      badgeColor = 'bg-green-100 text-green-800';
+    } else if (hasDescription) {
+      sourceText = 'تحليل العنوان والوصف';
+      badgeColor = 'bg-orange-100 text-orange-800';
+    } else {
+      sourceText = 'تحليل العنوان فقط';
+      badgeColor = 'bg-yellow-100 text-yellow-800';
+    }
+    
+    return (
+      <Badge variant="outline" className={`text-xs ${badgeColor}`}>
+        {sourceText}
+      </Badge>
+    );
+  };
 
   return (
-    <div className={`p-4 border rounded-lg bg-white flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow ${
-      selectionMode && selected ? 'ring-2 ring-blue-500 bg-blue-50' : ''
-    }`}>
-      {/* Header with selection */}
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-3 flex-1">
-          {selectionMode && (
-            <Checkbox
-              checked={selected}
-              onCheckedChange={onSelect}
-              disabled={article.is_analyzed || !contentQuality.canAnalyze}
-            />
-          )}
-          
-          {article.source_icon ? (
-            <img
-              src={article.source_icon}
-              alt={article.source_name || ""}
-              className="w-6 h-6 rounded"
-              loading="lazy"
-            />
-          ) : (
-            <span className="text-xs bg-muted rounded px-2 py-1">
-              {article.source_name || ""}
-            </span>
-          )}
-          
+    <Card className="mb-4 hover:shadow-md transition-shadow">
+      <CardHeader className="pb-3">
+        <div className="flex items-start justify-between gap-3">
           <div className="flex-1">
-            <h3 className="font-semibold text-sm line-clamp-2">{article.title}</h3>
-            <div className="text-xs text-muted-foreground">
-              {article.pub_date ? new Date(article.pub_date).toLocaleDateString() : 
-               new Date(article.created_at).toLocaleDateString()}
-            </div>
-          </div>
-        </div>
-        
-        {/* Status badges */}
-        <div className="flex gap-2 flex-wrap">
-          <Badge variant={article.language === 'ar' ? 'default' : 'secondary'}>
-            {article.language === 'ar' ? (isRTL ? 'عربي' : 'Arabic') : (isRTL ? 'إنجليزي' : 'English')}
-          </Badge>
-          
-          {article.is_analyzed && article.sentiment && (
-            <Badge
-              variant={
-                article.sentiment === 'positive' ? 'default' :
-                article.sentiment === 'negative' ? 'destructive' : 'secondary'
-              }
-            >
-              {isRTL
-                ? article.sentiment === 'positive' ? 'إيجابي' : 
-                  article.sentiment === 'negative' ? 'سلبي' : 'محايد'
-                : article.sentiment.charAt(0).toUpperCase() + article.sentiment.slice(1)}
-            </Badge>
-          )}
-
-          {article.emotion && (
-            <Badge variant="outline" className="text-xs">
-              {article.emotion}
-            </Badge>
-          )}
-
-          {article.dialect === 'jordanian' && (
-            <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
-              🇯🇴 أردني
-            </Badge>
-          )}
-        </div>
-      </div>
-
-      {/* Enhanced Content Quality Indicator */}
-      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${contentQuality.color}`}>
-        <QualityIcon className="h-4 w-4" />
-        <span className="text-sm font-medium">{contentQuality.message}</span>
-        <Badge variant="outline" className="text-xs">
-          {contentQuality.score}%
-        </Badge>
-        {contentQuality.level === 'fallback' && (
-          <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
-            عنوان + وصف
-          </Badge>
-        )}
-      </div>
-
-      {/* Enhanced Analysis Display */}
-      {article.is_analyzed && (
-        <div className="space-y-2">
-          {/* Analysis Results Summary */}
-          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
-            <div className="flex items-center gap-2 mb-2">
-              <CheckCircle className="h-4 w-4 text-green-600" />
-              <span className="text-sm font-medium text-green-800">تم التحليل بـ MARBERT</span>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-2 text-xs">
-              {article.sentiment && (
-                <div>
-                  <span className="font-medium">المشاعر:</span> 
-                  <span className={`ml-1 ${
-                    article.sentiment === 'positive' ? 'text-green-600' :
-                    article.sentiment === 'negative' ? 'text-red-600' : 'text-gray-600'
-                  }`}>
-                    {article.sentiment === 'positive' ? 'إيجابي' : 
-                     article.sentiment === 'negative' ? 'سلبي' : 'محايد'}
-                  </span>
+            <CardTitle className="text-lg leading-tight mb-2 line-clamp-2">
+              {article.title}
+            </CardTitle>
+            <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              {article.source_name && (
+                <div className="flex items-center gap-1">
+                  <Newspaper className="h-4 w-4" />
+                  <span>{article.source_name}</span>
                 </div>
               )}
+              {article.pub_date && (
+                <div className="flex items-center gap-1">
+                  <Clock className="h-4 w-4" />
+                  <span>{new Date(article.pub_date).toLocaleDateString('ar-SA')}</span>
+                </div>
+              )}
+              {getContentSourceIcon()}
+            </div>
+          </div>
+          {article.image_url && (
+            <img 
+              src={article.image_url} 
+              alt={article.title}
+              className="w-20 h-20 object-cover rounded-md flex-shrink-0"
+            />
+          )}
+        </div>
+      </CardHeader>
+      
+      <CardContent className="pt-0">
+        {article.description && (
+          <p className="text-sm text-muted-foreground mb-3 line-clamp-2">
+            {article.description}
+          </p>
+        )}
+        
+        <div className="flex flex-wrap gap-2 mb-3">
+          {article.language && (
+            <Badge variant="outline" className="text-xs">
+              <Globe className="h-3 w-3 mr-1" />
+              {article.language === 'ar' ? 'عربي' : article.language.toUpperCase()}
+            </Badge>
+          )}
+          
+          {article.category && article.category.slice(0, 2).map((cat, index) => (
+            <Badge key={index} variant="secondary" className="text-xs">
+              {cat}
+            </Badge>
+          ))}
+          
+          {getAnalysisSourceBadge()}
+        </div>
+
+        {article.is_analyzed && (
+          <div className="bg-muted/50 rounded-lg p-3 mb-3">
+            <div className="flex flex-wrap gap-2 mb-2">
+              <Badge variant={
+                article.sentiment === 'positive' ? 'default' : 
+                article.sentiment === 'negative' ? 'destructive' : 'secondary'
+              }>
+                {article.sentiment === 'positive' ? 'إيجابي' :
+                 article.sentiment === 'negative' ? 'سلبي' : 'محايد'}
+              </Badge>
               
               {article.emotion && (
-                <div>
-                  <span className="font-medium">العاطفة:</span> 
-                  <span className="ml-1 text-purple-600">{article.emotion}</span>
-                </div>
-              )}
-              
-              {article.dialect && (
-                <div>
-                  <span className="font-medium">اللهجة:</span> 
-                  <span className="ml-1 text-blue-600">
-                    {article.dialect === 'jordanian' ? 'أردنية' : 'عربية أخرى'}
-                  </span>
-                </div>
-              )}
-              
-              {article.dialect_confidence && article.dialect_confidence > 0 && (
-                <div>
-                  <span className="font-medium">الثقة:</span> 
-                  <span className="ml-1">{Math.round(article.dialect_confidence)}%</span>
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Dialect Indicators */}
-          {article.dialect_indicators && article.dialect_indicators.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              <span className="text-xs text-blue-600 font-medium">مؤشرات أردنية:</span>
-              {article.dialect_indicators.slice(0, 5).map((indicator, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs bg-blue-50 text-blue-700">
-                  {indicator}
+                <Badge variant="outline" className="text-xs">
+                  {article.emotion}
                 </Badge>
-              ))}
-              {article.dialect_indicators.length > 5 && (
-                <span className="text-xs text-blue-600">+{article.dialect_indicators.length - 5}</span>
+              )}
+              
+              {article.dialect === 'jordanian' && (
+                <Badge variant="outline" className="text-xs bg-blue-50 text-blue-700">
+                  🇯🇴 أردني {article.dialect_confidence && `(${Math.round(article.dialect_confidence)}%)`}
+                </Badge>
               )}
             </div>
+            
+            {article.dialect_indicators && article.dialect_indicators.length > 0 && (
+              <div className="text-xs text-muted-foreground">
+                <span className="font-medium">دلائل لهجة: </span>
+                {article.dialect_indicators.slice(0, 3).join(', ')}
+                {article.dialect_indicators.length > 3 && '...'}
+              </div>
+            )}
+          </div>
+        )}
+
+        <div className="flex gap-2">
+          {!article.is_analyzed ? (
+            <Button 
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              size="sm"
+              className="flex-1"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  جاري التحليل...
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4 mr-2" />
+                  تحليل المشاعر
+                </>
+              )}
+            </Button>
+          ) : (
+            <Button 
+              onClick={handleAnalyze}
+              disabled={isAnalyzing}
+              variant="outline"
+              size="sm"
+              className="flex-1"
+            >
+              {isAnalyzing ? (
+                <>
+                  <div className="h-4 w-4 animate-spin rounded-full border-2 border-current border-t-transparent mr-2" />
+                  إعادة التحليل...
+                </>
+              ) : (
+                <>
+                  <Brain className="h-4 w-4 mr-2" />
+                  إعادة التحليل
+                </>
+              )}
+            </Button>
           )}
           
-          {/* Emotional Markers */}
-          {article.emotional_markers && article.emotional_markers.length > 0 && (
-            <div className="flex flex-wrap gap-1">
-              <span className="text-xs text-purple-600 font-medium">مؤشرات عاطفية:</span>
-              {article.emotional_markers.slice(0, 3).map((marker, idx) => (
-                <Badge key={idx} variant="outline" className="text-xs bg-purple-50 text-purple-700">
-                  {marker}
-                </Badge>
-              ))}
-            </div>
+          {article.link && (
+            <Button 
+              asChild 
+              variant="outline" 
+              size="sm"
+            >
+              <a 
+                href={article.link} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="flex items-center gap-2"
+              >
+                <ExternalLink className="h-4 w-4" />
+                المصدر
+              </a>
+            </Button>
           )}
         </div>
-      )}
-
-      {/* Image */}
-      {article.image_url && (
-        <img
-          src={article.image_url}
-          alt={article.title}
-          className="w-full max-w-sm rounded object-cover"
-          loading="lazy"
-        />
-      )}
-
-      {/* Description */}
-      <p className="text-sm text-muted-foreground line-clamp-3">
-        {article.description || article.content || ""}
-      </p>
-
-      {/* Tags */}
-      {(article.category?.length || article.keywords?.length) && (
-        <div className="flex flex-wrap gap-1">
-          {article.category?.map((cat, idx) => (
-            <span
-              key={cat + idx}
-              className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
-            >
-              {cat}
-            </span>
-          ))}
-          {article.keywords?.slice(0, 3).map((kw, idx) => (
-            <span
-              key={kw + idx}
-              className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full"
-            >
-              {kw}
-            </span>
-          ))}
-        </div>
-      )}
-
-      {/* Action Buttons */}
-      <div className="flex gap-2 pt-2">
-        {!article.is_analyzed && !selectionMode && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onAnalyze(article)}
-            disabled={isAnalyzing || !contentQuality.canAnalyze}
-            className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
-          >
-            {isAnalyzing ? (
-              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Sparkles className="h-4 w-4 mr-1" />
-            )}
-            {isRTL ? "تحليل بـ MARBERT" : "Analyze with MARBERT"}
-          </Button>
-        )}
-        
-        {article.link && (
-          <Button
-            variant="outline"
-            size="sm"
-            asChild
-          >
-            <a
-              href={article.link}
-              target="_blank"
-              rel="noopener noreferrer"
-            >
-              <ExternalLink className="h-4 w-4 mr-1" />
-              {isRTL ? "فتح الرابط" : "Open Link"}
-            </a>
-          </Button>
-        )}
-        
-        {!selectionMode && (
-          <Button
-            variant="outline"
-            size="sm"
-            onClick={() => onDelete(article.id)}
-            disabled={isDeleting}
-          >
-            {isDeleting ? (
-              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
-            ) : (
-              <Trash2 className="h-4 w-4 mr-1" />
-            )}
-            {isRTL ? "حذف" : "Delete"}
-          </Button>
-        )}
-      </div>
-    </div>
+      </CardContent>
+    </Card>
   );
 };
 
