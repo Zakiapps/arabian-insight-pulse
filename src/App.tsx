@@ -52,6 +52,8 @@ import PaymentSettings from "@/pages/admin/PaymentSettings";
 
 const queryClient = new QueryClient();
 
+import UnifiedScraper from "./pages/UnifiedScraper";
+
 function App() {
   return (
     <QueryClientProvider client={queryClient}>
@@ -128,6 +130,9 @@ function App() {
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="payment-settings" element={<PaymentSettings />} />
                     </Route>
+                    
+                    {/* Unified Scraper route */}
+                    <Route path="/dashboard/unified-scraper" element={<UnifiedScraper />} />
                   </Routes>
                 </TooltipProvider>
               </SubscriptionProvider>
