@@ -57,7 +57,7 @@ export default function PublicTextAnalyzer() {
       if (data) {
         console.log('Analysis successful:', data);
         setResult(data);
-        toast.success("تم تحليل النص بنجاح باستخدام نموذج ONNX");
+        toast.success("تم تحليل النص بنجاح باستخدام نموذج MARBERT");
       } else {
         throw new Error('لم يتم استلام نتائج التحليل');
       }
@@ -92,7 +92,7 @@ export default function PublicTextAnalyzer() {
             <div className="p-3 bg-gradient-to-br from-primary to-blue-600 rounded-xl">
               <Brain className="h-8 w-8 text-white" />
             </div>
-            تحليل المشاعر بنموذج ONNX
+            تحليل المشاعر بنموذج MARBERT
           </CardTitle>
           <p className="text-lg text-muted-foreground">
             اكتشف المشاعر واللهجة الأردنية في النصوص العربية باستخدام الذكاء الاصطناعي
@@ -119,12 +119,12 @@ export default function PublicTextAnalyzer() {
             {isAnalyzing ? (
               <>
                 <Loader2 className="h-6 w-6 animate-spin ml-3" />
-                جاري التحليل بنموذج ONNX...
+                جاري التحليل بنموذج MARBERT...
               </>
             ) : (
               <>
                 <Sparkles className="h-6 w-6 ml-3" />
-                تحليل بنموذج ONNX
+                تحليل بنموذج MARBERT
               </>
             )}
           </Button>
@@ -195,7 +195,7 @@ export default function PublicTextAnalyzer() {
               </div>
 
               <div className="text-center text-sm text-gray-500 mt-4 p-3 bg-white/50 rounded-lg">
-                تم التحليل باستخدام نموذج ONNX
+                تم التحليل باستخدام نموذج MARBERT المخصص
               </div>
             </div>
           )}
@@ -212,9 +212,9 @@ export default function PublicTextAnalyzer() {
             <Button
               variant="outline"
               className="text-right h-auto p-4 justify-start"
-              onClick={() => setText('هذا الموقع جيد بامكانه كشف اللهجة بشكل فوري')}
+              onClick={() => setText('هذا المنتج رائع وأنصح بتجربته. الجودة عالية والخدمة ممتازة')}
             >
-              "هذا الموقع جيد بامكانه كشف اللهجة بشكل فوري"
+              "هذا المنتج رائع وأنصح بتجربته. الجودة عالية والخدمة ممتازة"
             </Button>
             <Button
               variant="outline"
