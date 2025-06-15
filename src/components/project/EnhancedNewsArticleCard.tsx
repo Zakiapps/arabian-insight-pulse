@@ -48,7 +48,17 @@ const EnhancedNewsArticleCard = ({ article, projectId, onAnalysisComplete }: Enh
       }
 
       if (data) {
-        setAdvancedAnalysis(data);
+        // تحويل البيانات إلى النوع الصحيح
+        const typedData: AdvancedAnalysisResult = {
+          ...data,
+          emotion_scores: (data.emotion_scores as any) || {},
+          main_topics: Array.isArray(data.main_topics) ? data.main_topics as string[] : [],
+          topic_scores: (data.topic_scores as any) || {},
+          keywords_extracted: Array.isArray(data.keywords_extracted) ? data.keywords_extracted as string[] : [],
+          dialect_features: (data.dialect_features as any) || {},
+          regional_indicators: Array.isArray(data.regional_indicators) ? data.regional_indicators as string[] : []
+        };
+        setAdvancedAnalysis(typedData);
       }
     } catch (error) {
       console.error('Error loading advanced analysis:', error);

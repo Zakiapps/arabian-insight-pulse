@@ -114,7 +114,7 @@ export const useAdvancedAnalysis = (projectId: string, onAnalysisComplete?: () =
       }
 
       // حفظ الكلمات المفتاحية
-      if (data.keywords_extracted && data.keywords_extracted.length > 0) {
+      if (data.keywords_extracted && Array.isArray(data.keywords_extracted) && data.keywords_extracted.length > 0) {
         const keywordsToInsert = data.keywords_extracted.map((keyword: string, index: number) => ({
           analysis_id: advancedResult.id,
           keyword,
@@ -148,7 +148,18 @@ export const useAdvancedAnalysis = (projectId: string, onAnalysisComplete?: () =
           : `Sentiment: ${data.sentiment} | Emotion: ${data.primary_emotion} | Quality: ${Math.round((data.analysis_quality_score || 0.5) * 100)}%`,
       });
 
-      return advancedResult;
+      // تحويل البيانات إلى النوع الصحيح
+      const typedResult: AdvancedAnalysisResult = {
+        ...advancedResult,
+        emotion_scores: (advancedResult.emotion_scores as any) || {},
+        main_topics: Array.isArray(advancedResult.main_topics) ? advancedResult.main_topics as string[] : [],
+        topic_scores: (advancedResult.topic_scores as any) || {},
+        keywords_extracted: Array.isArray(advancedResult.keywords_extracted) ? advancedResult.keywords_extracted as string[] : [],
+        dialect_features: (advancedResult.dialect_features as any) || {},
+        regional_indicators: Array.isArray(advancedResult.regional_indicators) ? advancedResult.regional_indicators as string[] : []
+      };
+
+      return typedResult;
 
     } catch (error: any) {
       console.error("Advanced analysis error:", error);
@@ -175,7 +186,7 @@ export const useAdvancedAnalysis = (projectId: string, onAnalysisComplete?: () =
 
       const sentiment = analysisData.sentiment;
       const emotion = analysisData.primary_emotion || 'محايد';
-      const topics = analysisData.main_topics || [];
+      const topics = Array.isArray(analysisData.main_topics) ? analysisData.main_topics : [];
 
       if (existingRecord) {
         // تحديث السجل الموجود
@@ -184,7 +195,7 @@ export const useAdvancedAnalysis = (projectId: string, onAnalysisComplete?: () =
           negative_count: sentiment === 'سلبي' ? existingRecord.negative_count + 1 : existingRecord.negative_count,
           neutral_count: sentiment === 'محايد' ? existingRecord.neutral_count + 1 : existingRecord.neutral_count,
           dominant_emotion: emotion,
-          top_topics: [...new Set([...existingRecord.top_topics, ...topics])].slice(0, 5)
+          top_topics: [...new Set([...(Array.isArray(existingRecord.top_topics) ? existingRecord.top_topics : []), ...topics])].slice(0, 5)
         };
 
         await supabase
