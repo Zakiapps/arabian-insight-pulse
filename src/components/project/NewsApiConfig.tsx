@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,45 +65,46 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
     },
   });
   
-  // Fetch existing configuration
+  // Temporarily disable the database operations until the table is created
   useEffect(() => {
-    const fetchConfig = async () => {
-      setLoading(true);
-      try {
-        const { data, error } = await supabase
-          .from('news_configs')
-          .select('*')
-          .eq('project_id', projectId)
-          .maybeSingle();
-        
-        if (error && error.code !== 'PGRST116') {
-          throw error;
-        }
-        
-        if (data) {
-          setConfig(data);
-          form.reset({
-            api_key: data.api_key,
-            sources: data.sources || [],
-            keywords: data.keywords || [""],
-            language: data.language || 'ar',
-            is_active: data.is_active,
-          });
-        }
-      } catch (error) {
-        console.error('Error fetching NewsAPI config:', error);
-        toast({
-          title: isRTL ? "خطأ في جلب الإعدادات" : "Error fetching settings",
-          description: (error as Error).message,
-          variant: "destructive",
-        });
-      } finally {
-        setLoading(false);
-      }
-    };
-    
-    fetchConfig();
+    // fetchConfig();
   }, [projectId]);
+
+  const fetchConfig = async () => {
+    setLoading(true);
+    try {
+      // Temporarily commented out until news_configs table is created
+      // const { data, error } = await supabase
+      //   .from('news_configs')
+      //   .select('*')
+      //   .eq('project_id', projectId)
+      //   .maybeSingle();
+      
+      // if (error && error.code !== 'PGRST116') {
+      //   throw error;
+      // }
+      
+      // if (data) {
+      //   setConfig(data);
+      //   form.reset({
+      //     api_key: data.api_key,
+      //     sources: data.sources || [],
+      //     keywords: data.keywords || [""],
+      //     language: data.language || 'ar',
+      //     is_active: data.is_active,
+      //   });
+      // }
+    } catch (error) {
+      console.error('Error fetching NewsAPI config:', error);
+      toast({
+        title: isRTL ? "خطأ في جلب الإعدادات" : "Error fetching settings",
+        description: (error as Error).message,
+        variant: "destructive",
+      });
+    } finally {
+      setLoading(false);
+    }
+  };
   
   // Save configuration
   const onSubmit = async (values: z.infer<typeof newsApiFormSchema>) => {
@@ -117,35 +119,44 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
         is_active: values.is_active,
       };
       
-      if (config) {
-        // Update existing config
-        const { error } = await supabase
-          .from('news_configs')
-          .update(configData)
-          .eq('id', config.id);
-        
-        if (error) throw error;
-      } else {
-        // Create new config
-        const { error } = await supabase
-          .from('news_configs')
-          .insert(configData);
-        
-        if (error) throw error;
-      }
+      // Temporarily commented out until news_configs table is created
+      // if (config) {
+      //   // Update existing config
+      //   const { error } = await supabase
+      //     .from('news_configs')
+      //     .update(configData)
+      //     .eq('id', config.id);
+      
+      //   if (error) throw error;
+      // } else {
+      //   // Create new config
+      //   const { error } = await supabase
+      //     .from('news_configs')
+      //     .insert(configData);
+      
+      //   if (error) throw error;
+      // }
       
       toast({
         title: isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully",
       });
       
-      // Refresh config
-      const { data } = await supabase
-        .from('news_configs')
-        .select('*')
-        .eq('project_id', projectId)
-        .single();
+      // Temporarily set config locally
+      setConfig({
+        id: 'temp-id',
+        ...configData,
+        updated_at: new Date().toISOString(),
+        last_run_at: null
+      });
       
-      setConfig(data);
+      // Refresh config
+      // const { data } = await supabase
+      //   .from('news_configs')
+      //   .select('*')
+      //   .eq('project_id', projectId)
+      //   .single();
+      
+      // setConfig(data);
     } catch (error) {
       console.error('Error saving NewsAPI config:', error);
       toast({
@@ -488,6 +499,13 @@ const NewsApiConfig = ({ projectId }: NewsApiConfigProps) => {
               </div>
             </div>
           </div>
+        </div>
+        
+        <div className="mt-6 p-4 bg-muted rounded-lg">
+          <p className="text-sm text-muted-foreground">
+            <strong>Note:</strong> NewsAPI configuration is temporarily disabled while the database schema is being updated. 
+            The configuration will be saved locally until the backend is ready.
+          </p>
         </div>
       </CardContent>
     </Card>
