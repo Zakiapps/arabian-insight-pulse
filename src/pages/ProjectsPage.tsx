@@ -281,12 +281,11 @@ const ProjectsPage = () => {
                 </p>
               </>
             )}
-            <DialogTrigger asChild>
-              <Button>
-                <Plus className="mr-2 h-4 w-4" />
-                {isRTL ? 'إنشاء مشروع' : 'Create Project'}
-              </Button>
-            </DialogTrigger>
+            {/* FIXED: Only open the dialog with button, not DialogTrigger */}
+            <Button onClick={() => setIsCreateDialogOpen(true)}>
+              <Plus className="mr-2 h-4 w-4" />
+              {isRTL ? 'إنشاء مشروع' : 'Create Project'}
+            </Button>
           </CardContent>
         </Card>
       ) : (
