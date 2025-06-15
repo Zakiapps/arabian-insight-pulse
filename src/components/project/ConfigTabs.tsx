@@ -37,7 +37,7 @@ const ConfigTabs = ({ projectId }: ConfigTabsProps) => {
       </TabsContent>
       
       <TabsContent value="newsdata">
-        <NewsDataConfig projectId={projectId} />
+        <NewsDataConfig />
       </TabsContent>
       
       <TabsContent value="summarizer">

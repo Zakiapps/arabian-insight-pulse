@@ -1,4 +1,3 @@
-
 import { useParams, useNavigate } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -8,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { useLanguage } from '@/contexts/LanguageContext';
 import ProjectDashboard from '@/components/project/ProjectDashboard';
 import BrightDataConfig from '@/components/project/BrightDataConfig';
-import NewsApiConfig from '@/components/project/NewsApiConfig';
+import NewsDataConfig from '@/components/project/NewsDataConfig';
 import TextSummarizer from '@/components/project/TextSummarizer';
 import { ArrowLeft, Settings, Globe, Newspaper, FileText } from 'lucide-react';
 
@@ -99,9 +98,9 @@ const ProjectPage = () => {
             <Globe className="mr-2 h-4 w-4" />
             BrightData
           </TabsTrigger>
-          <TabsTrigger value="newsapi">
+          <TabsTrigger value="newsdata">
             <Newspaper className="mr-2 h-4 w-4" />
-            NewsAPI
+            NewsData.io
           </TabsTrigger>
           <TabsTrigger value="summarizer">
             <FileText className="mr-2 h-4 w-4" />
@@ -117,8 +116,8 @@ const ProjectPage = () => {
           <BrightDataConfig projectId={projectId} />
         </TabsContent>
         
-        <TabsContent value="newsapi">
-          <NewsApiConfig projectId={projectId} />
+        <TabsContent value="newsdata">
+          <NewsDataConfig />
         </TabsContent>
         
         <TabsContent value="summarizer">
