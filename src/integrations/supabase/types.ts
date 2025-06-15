@@ -9,38 +9,79 @@ export type Json =
 export type Database = {
   public: {
     Tables: {
+      analyses: {
+        Row: {
+          created_at: string | null
+          dialect: string | null
+          dialect_confidence: number | null
+          id: string
+          model_response: Json | null
+          sentiment: string
+          sentiment_score: number
+          upload_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          dialect?: string | null
+          dialect_confidence?: number | null
+          id?: string
+          model_response?: Json | null
+          sentiment: string
+          sentiment_score: number
+          upload_id: string
+        }
+        Update: {
+          created_at?: string | null
+          dialect?: string | null
+          dialect_confidence?: number | null
+          id?: string
+          model_response?: Json | null
+          sentiment?: string
+          sentiment_score?: number
+          upload_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "analyses_upload_id_fkey"
+            columns: ["upload_id"]
+            isOneToOne: false
+            referencedRelation: "uploads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       analysis_settings: {
         Row: {
           accuracy_level: string | null
           auto_categorization: boolean | null
-          created_at: string
+          created_at: string | null
           dialect_detection_enabled: boolean | null
           email_notifications: boolean | null
           id: string
           sentiment_threshold: number | null
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           accuracy_level?: string | null
           auto_categorization?: boolean | null
-          created_at?: string
+          created_at?: string | null
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
           id?: string
           sentiment_threshold?: number | null
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           accuracy_level?: string | null
           auto_categorization?: boolean | null
-          created_at?: string
+          created_at?: string | null
           dialect_detection_enabled?: boolean | null
           email_notifications?: boolean | null
           id?: string
           sentiment_threshold?: number | null
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
@@ -84,12 +125,168 @@ export type Database = {
         }
         Relationships: []
       }
+      brightdata_configs: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          last_run_at: string | null
+          project_id: string
+          rules: Json
+          token: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          project_id: string
+          rules: Json
+          token: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          last_run_at?: string | null
+          project_id?: string
+          rules?: Json
+          token?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "brightdata_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      forecasts: {
+        Row: {
+          analysis_id: string
+          created_at: string | null
+          end_date: string
+          forecast_json: Json
+          id: string
+          start_date: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string | null
+          end_date: string
+          forecast_json: Json
+          id?: string
+          start_date: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string | null
+          end_date?: string
+          forecast_json?: Json
+          id?: string
+          start_date?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "forecasts_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      function_logs: {
+        Row: {
+          created_at: string | null
+          duration_ms: number | null
+          error_message: string | null
+          function_name: string
+          id: string
+          request_payload: Json | null
+          response_payload: Json | null
+          status: string
+        }
+        Insert: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name: string
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status: string
+        }
+        Update: {
+          created_at?: string | null
+          duration_ms?: number | null
+          error_message?: string | null
+          function_name?: string
+          id?: string
+          request_payload?: Json | null
+          response_payload?: Json | null
+          status?: string
+        }
+        Relationships: []
+      }
+      news_configs: {
+        Row: {
+          api_key: string
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          keywords: string[] | null
+          language: string | null
+          last_run_at: string | null
+          project_id: string
+          sources: string[] | null
+          updated_at: string | null
+        }
+        Insert: {
+          api_key: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          language?: string | null
+          last_run_at?: string | null
+          project_id: string
+          sources?: string[] | null
+          updated_at?: string | null
+        }
+        Update: {
+          api_key?: string
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          keywords?: string[] | null
+          language?: string | null
+          last_run_at?: string | null
+          project_id?: string
+          sources?: string[] | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "news_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       notification_history: {
         Row: {
           alert_id: string | null
           id: string
           message: string | null
-          sent_at: string
+          sent_at: string | null
           status: string | null
           type: string
           user_id: string
@@ -98,7 +295,7 @@ export type Database = {
           alert_id?: string | null
           id?: string
           message?: string | null
-          sent_at?: string
+          sent_at?: string | null
           status?: string | null
           type: string
           user_id: string
@@ -107,7 +304,7 @@ export type Database = {
           alert_id?: string | null
           id?: string
           message?: string | null
-          sent_at?: string
+          sent_at?: string | null
           status?: string | null
           type?: string
           user_id?: string
@@ -155,49 +352,13 @@ export type Database = {
         }
         Relationships: []
       }
-      payment_methods: {
-        Row: {
-          brand: string | null
-          created_at: string | null
-          id: string
-          is_default: boolean | null
-          last_four: string | null
-          stripe_payment_method_id: string | null
-          type: string
-          updated_at: string | null
-          user_id: string | null
-        }
-        Insert: {
-          brand?: string | null
-          created_at?: string | null
-          id?: string
-          is_default?: boolean | null
-          last_four?: string | null
-          stripe_payment_method_id?: string | null
-          type: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Update: {
-          brand?: string | null
-          created_at?: string | null
-          id?: string
-          is_default?: boolean | null
-          last_four?: string | null
-          stripe_payment_method_id?: string | null
-          type?: string
-          updated_at?: string | null
-          user_id?: string | null
-        }
-        Relationships: []
-      }
       predictions: {
         Row: {
           confidence: number
-          created_at: string
+          created_at: string | null
           dialect: string
           id: string
-          model_source: string
+          model_source: string | null
           negative_prob: number
           positive_prob: number
           sentiment: string
@@ -206,10 +367,10 @@ export type Database = {
         }
         Insert: {
           confidence: number
-          created_at?: string
+          created_at?: string | null
           dialect: string
           id?: string
-          model_source?: string
+          model_source?: string | null
           negative_prob: number
           positive_prob: number
           sentiment: string
@@ -218,10 +379,10 @@ export type Database = {
         }
         Update: {
           confidence?: number
-          created_at?: string
+          created_at?: string | null
           dialect?: string
           id?: string
-          model_source?: string
+          model_source?: string | null
           negative_prob?: number
           positive_prob?: number
           sentiment?: string
@@ -233,93 +394,123 @@ export type Database = {
       profiles: {
         Row: {
           avatar_url: string | null
-          created_at: string
+          created_at: string | null
           full_name: string | null
           id: string
           role: string
           subscription_plan: string | null
-          updated_at: string
+          updated_at: string | null
         }
         Insert: {
           avatar_url?: string | null
-          created_at?: string
+          created_at?: string | null
           full_name?: string | null
           id: string
           role?: string
           subscription_plan?: string | null
-          updated_at?: string
+          updated_at?: string | null
         }
         Update: {
           avatar_url?: string | null
-          created_at?: string
+          created_at?: string | null
           full_name?: string | null
           id?: string
           role?: string
           subscription_plan?: string | null
-          updated_at?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
+      projects: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          updated_at?: string | null
+          user_id?: string
         }
         Relationships: []
       }
       sendgrid_settings: {
         Row: {
           api_key: string | null
-          created_at: string
+          created_at: string | null
           enabled: boolean | null
           from_email: string | null
           from_name: string | null
           id: string
-          updated_at: string
+          updated_at: string | null
           user_id: string
         }
         Insert: {
           api_key?: string | null
-          created_at?: string
+          created_at?: string | null
           enabled?: boolean | null
           from_email?: string | null
           from_name?: string | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id: string
         }
         Update: {
           api_key?: string | null
-          created_at?: string
+          created_at?: string | null
           enabled?: boolean | null
           from_email?: string | null
           from_name?: string | null
           id?: string
-          updated_at?: string
+          updated_at?: string | null
           user_id?: string
         }
         Relationships: []
       }
       subscription_plans: {
         Row: {
-          created_at: string
+          created_at: string | null
           description: string | null
           features: Json
           id: string
-          is_active: boolean
+          is_active: boolean | null
           name: string
           price_monthly: number
           price_yearly: number
         }
         Insert: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
-          features?: Json
+          features: Json
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           name: string
           price_monthly: number
           price_yearly: number
         }
         Update: {
-          created_at?: string
+          created_at?: string | null
           description?: string | null
           features?: Json
           id?: string
-          is_active?: boolean
+          is_active?: boolean | null
           name?: string
           price_monthly?: number
           price_yearly?: number
@@ -329,7 +520,7 @@ export type Database = {
       subscriptions: {
         Row: {
           cancel_at: string | null
-          created_at: string
+          created_at: string | null
           current_period_end: string
           current_period_start: string
           id: string
@@ -341,7 +532,7 @@ export type Database = {
         }
         Insert: {
           cancel_at?: string | null
-          created_at?: string
+          created_at?: string | null
           current_period_end: string
           current_period_start: string
           id?: string
@@ -353,7 +544,7 @@ export type Database = {
         }
         Update: {
           cancel_at?: string | null
-          created_at?: string
+          created_at?: string | null
           current_period_end?: string
           current_period_start?: string
           id?: string
@@ -369,6 +560,41 @@ export type Database = {
             columns: ["plan_id"]
             isOneToOne: false
             referencedRelation: "subscription_plans"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      summaries: {
+        Row: {
+          analysis_id: string
+          created_at: string | null
+          id: string
+          language: string
+          model_used: string | null
+          summary_text: string
+        }
+        Insert: {
+          analysis_id: string
+          created_at?: string | null
+          id?: string
+          language?: string
+          model_used?: string | null
+          summary_text: string
+        }
+        Update: {
+          analysis_id?: string
+          created_at?: string | null
+          id?: string
+          language?: string
+          model_used?: string | null
+          summary_text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "summaries_analysis_id_fkey"
+            columns: ["analysis_id"]
+            isOneToOne: false
+            referencedRelation: "analyses"
             referencedColumns: ["id"]
           },
         ]
@@ -415,8 +641,8 @@ export type Database = {
       transactions: {
         Row: {
           amount: number
-          created_at: string
-          currency: string
+          created_at: string | null
+          currency: string | null
           id: string
           metadata: Json | null
           payment_method: string | null
@@ -427,8 +653,8 @@ export type Database = {
         }
         Insert: {
           amount: number
-          created_at?: string
-          currency?: string
+          created_at?: string | null
+          currency?: string | null
           id?: string
           metadata?: Json | null
           payment_method?: string | null
@@ -439,8 +665,8 @@ export type Database = {
         }
         Update: {
           amount?: number
-          created_at?: string
-          currency?: string
+          created_at?: string | null
+          currency?: string | null
           id?: string
           metadata?: Json | null
           payment_method?: string | null
@@ -455,6 +681,50 @@ export type Database = {
             columns: ["subscription_id"]
             isOneToOne: false
             referencedRelation: "subscriptions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      uploads: {
+        Row: {
+          created_at: string | null
+          file_url: string | null
+          id: string
+          metadata: Json | null
+          processed: boolean | null
+          project_id: string
+          raw_text: string
+          source: string
+          title: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          processed?: boolean | null
+          project_id: string
+          raw_text: string
+          source: string
+          title?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          file_url?: string | null
+          id?: string
+          metadata?: Json | null
+          processed?: boolean | null
+          project_id?: string
+          raw_text?: string
+          source?: string
+          title?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "uploads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
             referencedColumns: ["id"]
           },
         ]
@@ -648,6 +918,14 @@ export type Database = {
         }
         Returns: string
       }
+      create_project: {
+        Args: { name_param: string; description_param?: string }
+        Returns: string
+      }
+      delete_project: {
+        Args: { project_id_param: string }
+        Returns: boolean
+      }
       get_active_subscription_count: {
         Args: Record<PropertyKey, never>
         Returns: number
@@ -667,6 +945,24 @@ export type Database = {
           payment_methods_count: number
         }[]
       }
+      get_project_analyses: {
+        Args: { project_id_param: string }
+        Returns: {
+          id: string
+          upload_id: string
+          sentiment: string
+          sentiment_score: number
+          dialect: string
+          dialect_confidence: number
+          created_at: string
+          raw_text: string
+          source: string
+        }[]
+      }
+      get_project_stats: {
+        Args: { project_id_param: string }
+        Returns: Json
+      }
       get_sentiment_stats: {
         Args: { user_id_param?: string }
         Returns: {
@@ -685,13 +981,55 @@ export type Database = {
         Args: Record<PropertyKey, never>
         Returns: number
       }
+      get_user_projects: {
+        Args: Record<PropertyKey, never>
+        Returns: {
+          id: string
+          name: string
+          description: string
+          is_active: boolean
+          upload_count: number
+          analysis_count: number
+          created_at: string
+          updated_at: string
+        }[]
+      }
       is_admin: {
         Args: Record<PropertyKey, never>
         Returns: boolean
       }
+      log_function_execution: {
+        Args: {
+          function_name_param: string
+          status_param: string
+          execution_time_param?: number
+          error_message_param?: string
+          request_payload_param?: Json
+          response_payload_param?: Json
+        }
+        Returns: string
+      }
       mark_notification_read: {
         Args: { notification_id_param: string }
         Returns: undefined
+      }
+      update_project: {
+        Args: {
+          project_id_param: string
+          name_param?: string
+          description_param?: string
+          is_active_param?: boolean
+        }
+        Returns: boolean
+      }
+      update_user_preferences: {
+        Args: {
+          language_param?: string
+          theme_param?: string
+          notification_settings_param?: Json
+          dashboard_layout_param?: Json
+        }
+        Returns: boolean
       }
       update_user_session_status: {
         Args: { session_id_param: string; is_online_param?: boolean }
