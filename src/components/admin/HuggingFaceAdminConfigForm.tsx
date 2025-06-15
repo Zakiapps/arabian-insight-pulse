@@ -37,25 +37,27 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
   useEffect(() => {
     (async () => {
       setLoading(true);
-      // Supabase generated types don't know about huggingface_configs,
-      // so we must use 'as any' and check if returned data is valid HuggingFaceConfig
-      const { data, error } = await supabase
-        .from("huggingface_configs" as any)
-        .select("*")
-        .maybeSingle();
+      try {
+        const { data, error } = await supabase
+          .from("huggingface_configs" as any)
+          .select("*")
+          .maybeSingle();
 
-      if (error) {
+        if (error) {
+          toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
+        } else if (isValidConfig(data)) {
+          setArabertUrl(data.arabert_url ?? "");
+          setArabertToken(data.arabert_token ?? "");
+          setMt5Url(data.mt5_url ?? "");
+          setMt5Token(data.mt5_token ?? "");
+        } else if (data && "code" in data && "details" in data) {
+          toast.error(isRTL ? "خطأ تحميل البيانات" : "Data loading error");
+        }
+      } catch (err) {
         toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
-      } else if (isValidConfig(data)) {
-        setArabertUrl(data.arabert_url ?? "");
-        setArabertToken(data.arabert_token ?? "");
-        setMt5Url(data.mt5_url ?? "");
-        setMt5Token(data.mt5_token ?? "");
-      } else if (data && "code" in data && "details" in data) {
-        // Looks like select error format
-        toast.error(isRTL ? "خطأ تحميل البيانات" : "Data loading error");
+      } finally {
+        setLoading(false);
       }
-      setLoading(false);
     })();
   }, [isRTL]);
 
@@ -96,6 +98,7 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
               value={arabertUrl}
               onChange={e => setArabertUrl(e.target.value)}
               placeholder={isRTL ? "أدخل رابط arabert..." : "Enter arabert endpoint URL..."}
+              disabled={loading}
             />
           </div>
           <div>
@@ -104,6 +107,7 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
               value={arabertToken}
               onChange={e => setArabertToken(e.target.value)}
               placeholder={isRTL ? "أدخل توكن arabert..." : "Enter arabert token..."}
+              disabled={loading}
             />
           </div>
           <div>
@@ -112,6 +116,7 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
               value={mt5Url}
               onChange={e => setMt5Url(e.target.value)}
               placeholder={isRTL ? "أدخل رابط MT5..." : "Enter MT5 endpoint URL..."}
+              disabled={loading}
             />
           </div>
           <div>
@@ -120,12 +125,19 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
               value={mt5Token}
               onChange={e => setMt5Token(e.target.value)}
               placeholder={isRTL ? "أدخل توكن MT5..." : "Enter mt5 token..."}
+              disabled={loading}
             />
           </div>
           <Button type="submit" className="w-full py-3 font-semibold" disabled={loading}>
             {loading ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ الإعدادات" : "Save Settings")}
           </Button>
         </form>
+        {/* Fallback UI if form loads empty */}
+        {(!arabertUrl && !arabertToken && !mt5Url && !mt5Token && !loading) && (
+          <div className="text-center text-muted-foreground mt-6">
+            {isRTL ? "لم يتم إعداد أي نقاط نهاية بعد." : "No huggingface endpoints are set yet."}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

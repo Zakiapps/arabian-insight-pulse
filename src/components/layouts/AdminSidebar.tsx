@@ -1,4 +1,3 @@
-
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
@@ -70,6 +69,11 @@ const AdminSidebar = () => {
       title: "إعدادات الدفع",
       url: "/admin/payment-settings",
       icon: PaymentCardIcon,
+    },
+    {
+      title: "إعدادات Hugging Face",
+      url: "/admin/huggingface-config",
+      icon: Shield,
     },
   ];
 
