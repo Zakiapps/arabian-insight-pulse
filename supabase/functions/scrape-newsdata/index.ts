@@ -15,37 +15,36 @@ serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
+
   try {
     const urlObj = new URL(req.url);
     // Support GET query param for search, fallback to "technology"
     const query = urlObj.searchParams.get("query") || "technology";
-    // Could optionally fetch from the body as POST if desired
-    // Construct newsdata request
-    const endpoint = `${BASE_URL}?apikey=${NEWS_API_KEY}&q=${encodeURIComponent(query)}&language=ar`;
-    const result = await fetch(endpoint);
-    const newsData = await result.json();
+    // Optionally support language param, default to "ar"
+    const language = urlObj.searchParams.get("language") || "ar";
+    const endpoint = `${BASE_URL}?apikey=${NEWS_API_KEY}&q=${encodeURIComponent(query)}&language=${encodeURIComponent(language)}`;
+    const apiRes = await fetch(endpoint);
+    const newsData = await apiRes.json();
 
-    // Success = newsData.results
+    // Strongly validate expected shape
+    const results = Array.isArray(newsData.results) ? newsData.results : [];
+
     return new Response(
       JSON.stringify({
         success: true,
-        articles: Array.isArray(newsData.results) ? newsData.results : [],
+        articles: results,
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 200,
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: any) {
+    // Log and always return JSON
+    console.error("Edge error fetching newsdata.io:", error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error?.message || "Unknown error"
+        error: error?.message || "Unknown error, see edge logs."
       }),
-      {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-        status: 500
-      }
+      { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );
   }
 });
