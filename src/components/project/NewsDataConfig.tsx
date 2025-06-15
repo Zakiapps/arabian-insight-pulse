@@ -1,22 +1,47 @@
-// Simple config page; could be expanded for advanced config
-import { Card, CardHeader, CardTitle, CardContent } from "@/components/ui/card";
-import NewsDataSearch from "./NewsDataSearch";
-import { useLanguage } from "@/contexts/LanguageContext";
-import { Newspaper } from "lucide-react";
 
-// Turn this config page into the main NewsData.io search UI
-export default function NewsDataConfig() {
+import { useState } from "react";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { useLanguage } from "@/contexts/LanguageContext";
+import NewsDataSearch from "./NewsDataSearch";
+
+const NewsDataConfig = () => {
   const { isRTL } = useLanguage();
+  const [refreshTrigger, setRefreshTrigger] = useState(0);
+
+  const handleNewsSaved = () => {
+    // Trigger a refresh of any news lists
+    setRefreshTrigger(prev => prev + 1);
+  };
+
   return (
-    <div>
-      <NewsDataSearch />
-      <Card className="mt-3">
-        <CardContent className="text-xs text-muted-foreground">
-          {isRTL
-            ? "يتم جلب الأخبار عبر NewsData.io. يمكنك البحث باستخدام الكلمات الرئيسية كما في البحث عبر Google."
-            : "News fetched via NewsData.io API. Use keywords as you would in a Google search."}
+    <div className="space-y-6" dir={isRTL ? 'rtl' : 'ltr'}>
+      <Card>
+        <CardHeader>
+          <CardTitle>
+            {isRTL ? "إعدادات NewsData.io" : "NewsData.io Configuration"}
+          </CardTitle>
+          <CardDescription>
+            {isRTL 
+              ? "ابحث في الأخبار باستخدام واجهة برمجة التطبيقات NewsData.io وقم بحفظها وتحليلها"
+              : "Search for news using NewsData.io API and save/analyze them"
+            }
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="space-y-4">
+            <div className="text-sm text-muted-foreground">
+              {isRTL 
+                ? "يمكنك البحث في الأخبار باللغتين العربية والإنجليزية. سيتم حفظ النتائج في قاعدة البيانات وعرضها في لوحة تحكم المشروع."
+                : "You can search for news in both Arabic and English. Results will be saved to the database and displayed in the project dashboard."
+              }
+            </div>
+          </div>
         </CardContent>
       </Card>
+
+      <NewsDataSearch onNewsSaved={handleNewsSaved} />
     </div>
   );
-}
+};
+
+export default NewsDataConfig;

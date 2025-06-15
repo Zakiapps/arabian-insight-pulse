@@ -1,3 +1,4 @@
+
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -26,7 +27,11 @@ interface NewsArticle {
   sentiment?: string;
 }
 
-const NewsDataSearch = () => {
+interface NewsDataSearchProps {
+  onNewsSaved?: () => void; // Callback to refresh the news list
+}
+
+const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
   const { isRTL } = useLanguage();
   const { toast } = useToast();
   const { user } = useAuth();
@@ -193,6 +198,11 @@ const NewsDataSearch = () => {
 
       if (error) throw error;
 
+      // Call the callback to refresh the news list in the dashboard
+      if (onNewsSaved) {
+        onNewsSaved();
+      }
+
       toast({
         title: isRTL ? "تم الحفظ" : "Saved Successfully",
         description: isRTL ? "تم حفظ المقال في المشروع" : "Article saved to project",
@@ -209,8 +219,8 @@ const NewsDataSearch = () => {
     }
   };
 
-  const analyzeArticle = async (article: NewsArticle) => {
-    if (!user) {
+  const analyzeAndSaveArticle = async (article: NewsArticle) => {
+    if (!user || !projectId) {
       toast({
         title: isRTL ? "خطأ" : "Error",
         description: isRTL ? "يجب تسجيل الدخول أولاً" : "You must be logged in",
@@ -222,9 +232,35 @@ const NewsDataSearch = () => {
     setAnalyzingArticles(prev => ({ ...prev, [article.article_id]: true }));
 
     try {
+      // First save the article to the project
+      const { data: savedArticle, error: saveError } = await supabase
+        .from('scraped_news')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          article_id: article.article_id,
+          title: article.title,
+          description: article.description,
+          content: article.content,
+          source_name: article.source_name,
+          source_icon: article.source_icon,
+          image_url: article.image_url,
+          link: article.link,
+          pub_date: article.pubDate ? new Date(article.pubDate).toISOString() : null,
+          language: isArabicText(article.title || '') ? 'ar' : 'en',
+          category: article.category || [],
+          keywords: article.keywords || [],
+          is_analyzed: false,
+        })
+        .select()
+        .single();
+
+      if (saveError) throw saveError;
+
+      // Then analyze the article using AraBERT
       const textToAnalyze = article.content || article.description || article.title;
       
-      const { data, error } = await supabase.functions.invoke('analyze-text', {
+      const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-text', {
         body: {
           text: textToAnalyze,
           source: 'newsdata',
@@ -232,19 +268,36 @@ const NewsDataSearch = () => {
         }
       });
 
-      if (error) throw error;
+      if (analysisError) throw analysisError;
+
+      // Update the saved article with analysis results
+      const { error: updateError } = await supabase
+        .from('scraped_news')
+        .update({ 
+          is_analyzed: true, 
+          sentiment: analysisData.sentiment,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', savedArticle.id);
+
+      if (updateError) throw updateError;
+
+      // Call the callback to refresh the news list in the dashboard
+      if (onNewsSaved) {
+        onNewsSaved();
+      }
 
       toast({
-        title: isRTL ? "تم التحليل" : "Analysis Complete",
+        title: isRTL ? "تم التحليل والحفظ" : "Analyzed and Saved",
         description: isRTL 
-          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'}`
-          : `Sentiment: ${data.sentiment}`,
+          ? `تم حفظ المقال وتحليله. المشاعر: ${analysisData.sentiment === 'positive' ? 'إيجابي' : analysisData.sentiment === 'negative' ? 'سلبي' : 'محايد'}`
+          : `Article saved and analyzed. Sentiment: ${analysisData.sentiment}`,
       });
     } catch (error: any) {
-      console.error("Analysis error:", error);
+      console.error("Analysis and save error:", error);
       toast({
-        title: isRTL ? "خطأ في التحليل" : "Analysis Error",
-        description: error.message || "Failed to analyze article",
+        title: isRTL ? "خطأ في التحليل والحفظ" : "Analysis and Save Error",
+        description: error.message || "Failed to analyze and save article",
         variant: "destructive",
       });
     } finally {
@@ -451,7 +504,7 @@ const NewsDataSearch = () => {
                       <Button
                         variant="outline"
                         size="sm"
-                        onClick={() => analyzeArticle(article)}
+                        onClick={() => analyzeAndSaveArticle(article)}
                         disabled={analyzingArticles[article.article_id]}
                       >
                         {analyzingArticles[article.article_id] ? (
@@ -459,7 +512,7 @@ const NewsDataSearch = () => {
                         ) : (
                           <Brain className="h-4 w-4 mr-1" />
                         )}
-                        {isRTL ? "تحليل بـ AraBERT" : "Analyze with AraBERT"}
+                        {isRTL ? "تحليل وحفظ بـ AraBERT" : "Analyze & Save with AraBERT"}
                       </Button>
                     </div>
 

@@ -10,6 +10,7 @@ import SentimentChart from './SentimentChart';
 import DialectDistribution from './DialectDistribution';
 import TextSummarizer from './TextSummarizer';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
+import { useState } from 'react';
 
 interface Project {
   id: string;
@@ -32,6 +33,7 @@ interface ProjectStats {
 const ProjectDashboard = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const { isRTL } = useLanguage();
+  const [newsRefreshKey, setNewsRefreshKey] = useState(0);
 
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', projectId],
@@ -164,7 +166,7 @@ const ProjectDashboard = () => {
       </div>
 
       {/* القسم الجديد: عرض الأخبار المستخرجة أسفل الكروت */}
-      <ExtractedNewsList projectId={project.id} />
+      <ExtractedNewsList projectId={project.id} key={newsRefreshKey} />
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="analytics" className="space-y-4">
