@@ -1,4 +1,3 @@
-
 import { useParams } from 'react-router-dom';
 import { useQuery } from '@tanstack/react-query';
 import { supabase } from '@/integrations/supabase/client';
@@ -10,6 +9,7 @@ import ProjectHeader from './ProjectHeader';
 import SentimentChart from './SentimentChart';
 import DialectDistribution from './DialectDistribution';
 import TextSummarizer from './TextSummarizer';
+import ExtractedNewsList from "@/components/project/ExtractedNewsList";
 
 interface Project {
   id: string;
@@ -162,6 +162,9 @@ const ProjectDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* القسم الجديد: عرض الأخبار المستخرجة أسفل الكروت */}
+      <ExtractedNewsList projectId={project.id} />
 
       {/* Main Content Tabs */}
       <Tabs defaultValue="analytics" className="space-y-4">
