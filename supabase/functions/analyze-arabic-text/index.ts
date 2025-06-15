@@ -33,23 +33,25 @@ serve(async (req) => {
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { 
         status: 401, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     if (!text || !projectId) {
       return new Response(JSON.stringify({ error: "Text and projectId are required" }), { 
         status: 400, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
     if (!HF_TOKEN) {
       return new Response(JSON.stringify({ error: "Hugging Face API key missing" }), { 
         status: 500, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
+
+    console.log('Analyzing text:', text);
 
     // Call HuggingFace endpoint
     const response = await fetch(HF_ENDPOINT, {
@@ -70,7 +72,7 @@ serve(async (req) => {
       console.error("HuggingFace error:", errText);
       return new Response(JSON.stringify({ error: "Failed to analyze text", details: errText }), { 
         status: 500, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -145,7 +147,7 @@ serve(async (req) => {
       console.error("Database error:", dbError);
       return new Response(JSON.stringify({ error: "Failed to save analysis", details: dbError.message }), { 
         status: 500, 
-        headers: corsHeaders 
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' }
       });
     }
 
@@ -157,13 +159,13 @@ serve(async (req) => {
       dialect,
       dialectConfidence,
       analysis: analysisData
-    }), { headers: corsHeaders });
+    }), { headers: { ...corsHeaders, 'Content-Type': 'application/json' } });
 
   } catch (error) {
     console.error("analyze-arabic-text function error:", error);
     return new Response(JSON.stringify({ error: "Internal error", details: error.message }), { 
       status: 500, 
-      headers: corsHeaders 
+      headers: { ...corsHeaders, 'Content-Type': 'application/json' }
     });
   }
 });

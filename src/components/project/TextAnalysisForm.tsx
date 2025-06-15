@@ -33,11 +33,18 @@ const TextAnalysisForm = ({ projectId }: TextAnalysisFormProps) => {
 
   const analyzeTextMutation = useMutation({
     mutationFn: async (inputText: string) => {
+      console.log('Starting analysis for text:', inputText);
+      
       const { data, error } = await supabase.functions.invoke('analyze-arabic-text', {
         body: { text: inputText, projectId }
       });
       
-      if (error) throw error;
+      if (error) {
+        console.error('Supabase function error:', error);
+        throw new Error(error.message || 'Failed to analyze text');
+      }
+      
+      console.log('Analysis successful:', data);
       return data as AnalysisResult;
     },
     onSuccess: (data) => {
@@ -52,9 +59,10 @@ const TextAnalysisForm = ({ projectId }: TextAnalysisFormProps) => {
       queryClient.invalidateQueries({ queryKey: ['project-analyses', projectId] });
     },
     onError: (error) => {
+      console.error('Analysis error:', error);
       toast({
         title: isRTL ? "فشل في التحليل" : "Analysis Failed",
-        description: error.message,
+        description: error.message || 'An error occurred during analysis',
         variant: "destructive",
       });
     }
