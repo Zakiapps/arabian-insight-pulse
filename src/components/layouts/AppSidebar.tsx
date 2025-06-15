@@ -53,7 +53,7 @@ const AppSidebar = () => {
       icon: LayoutDashboard,
     },
     {
-      title: isRTL ? "الموحد الذكي" : "Unified Scraper",
+      title: isRTL ? "موحد الذكاء الاصطناعي" : "Unified Scraper",
       url: "/dashboard/unified-scraper",
       icon: WandSparkles,
     },
@@ -165,6 +165,11 @@ const AppSidebar = () => {
       title: isRTL ? "إعدادات النظام" : "Settings",
       url: "/admin/settings",
       icon: Settings,
+    },
+    {
+      title: isRTL ? "إعدادات HuggingFace" : "HuggingFace Setup",
+      url: "/admin/huggingface-config",
+      icon: Brain,
     },
   ];
 

@@ -17,10 +17,10 @@ const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
 // Get Hugging Face API token
-const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+// const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
 
 // Your custom Hugging Face endpoint
-const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
+// const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
 
 serve(async (req) => {
   // Handle CORS
@@ -32,10 +32,28 @@ serve(async (req) => {
     const { text } = await req.json();
     console.log('Processing text:', text?.substring(0, 50) + '...');
 
-    // Validate Hugging Face token
-    if (!hfToken) {
+    // Get admin HuggingFace config from DB
+    const { data: huggingfaceData, error: configErr } = await supabase
+      .from('huggingface_configs')
+      .select('*')
+      .limit(1)
+      .maybeSingle();
+
+    if (configErr) throw new Error('Cannot load HuggingFace config');
+    if (!huggingfaceData) {
       return new Response(
-        JSON.stringify({ error: 'Hugging Face API token not configured' }),
+        JSON.stringify({ error: "No Hugging Face configuration found." }),
+        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+      );
+    }
+
+    // Pick the endpoint/token for arabert as example (add logic for mt5 as needed)
+    const hfEndpoint = huggingfaceData.arabert_url;
+    const hfToken = huggingfaceData.arabert_token;
+
+    if (!hfToken || !hfEndpoint) {
+      return new Response(
+        JSON.stringify({ error: 'Hugging Face endpoint/token missing. Please set it in admin config.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
@@ -53,8 +71,8 @@ serve(async (req) => {
     const preprocessedText = preprocessArabicText(text);
     console.log('Text preprocessed with enhanced normalization');
 
-    // Analyze with custom MARBERT endpoint
-    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, customEndpoint, hfToken);
+    // Analyze with admin-configured HuggingFace endpoint
+    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, hfEndpoint, hfToken);
     console.log('Custom MARBERT analysis completed');
     
     // Detect dialect using enhanced Jordanian detection logic
@@ -62,7 +80,7 @@ serve(async (req) => {
     console.log('Enhanced Jordanian dialect detection completed');
     
     // Run validation in background (don't wait for it)
-    validateWithTestData(supabase, customEndpoint, hfToken).catch(err => 
+    validateWithTestData(supabase, hfEndpoint, hfToken).catch(err => 
       console.error('Background validation error:', err)
     );
     
