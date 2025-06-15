@@ -15,6 +15,17 @@ interface HuggingFaceConfig {
   mt5_token?: string;
 }
 
+// Helper to check if data is a valid config (naive check)
+function isValidConfig(data: any): data is HuggingFaceConfig {
+  return (
+    typeof data === "object" &&
+    (data.arabert_url !== undefined ||
+      data.arabert_token !== undefined ||
+      data.mt5_url !== undefined ||
+      data.mt5_token !== undefined)
+  );
+}
+
 const HuggingFaceAdminConfigForm: React.FC = () => {
   const { isRTL } = useLanguage();
   const [arabertUrl, setArabertUrl] = useState("");
@@ -27,8 +38,7 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
     (async () => {
       setLoading(true);
       // Supabase generated types don't know about huggingface_configs,
-      // so we must use 'as any' and check if object seems valid
-      // --- FIX: do NOT cast to Promise, just await the result ---
+      // so we must use 'as any' and check if returned data is valid HuggingFaceConfig
       const { data, error } = await supabase
         .from("huggingface_configs" as any)
         .select("*")
@@ -36,11 +46,14 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
 
       if (error) {
         toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
-      } else if (data) {
+      } else if (isValidConfig(data)) {
         setArabertUrl(data.arabert_url ?? "");
         setArabertToken(data.arabert_token ?? "");
         setMt5Url(data.mt5_url ?? "");
         setMt5Token(data.mt5_token ?? "");
+      } else if (data && "code" in data && "details" in data) {
+        // Looks like select error format
+        toast.error(isRTL ? "خطأ تحميل البيانات" : "Data loading error");
       }
       setLoading(false);
     })();
