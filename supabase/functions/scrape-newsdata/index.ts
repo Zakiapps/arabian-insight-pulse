@@ -19,10 +19,27 @@ serve(async (req) => {
   try {
     console.log("NewsData.io edge function called");
     
-    const urlObj = new URL(req.url);
-    const query = urlObj.searchParams.get("query") || "technology";
-    const language = urlObj.searchParams.get("language") || "en";
-    const testConnection = urlObj.searchParams.get("test") === "true";
+    let query = "technology";
+    let language = "en";
+    let testConnection = false;
+    
+    // Handle both GET and POST requests
+    if (req.method === "POST") {
+      try {
+        const body = await req.json();
+        query = body.query || query;
+        language = body.language || language;
+        testConnection = body.test === true;
+      } catch (e) {
+        console.log("No JSON body, using defaults");
+      }
+    } else {
+      // Handle GET request with URL parameters
+      const urlObj = new URL(req.url);
+      query = urlObj.searchParams.get("query") || query;
+      language = urlObj.searchParams.get("language") || language;
+      testConnection = urlObj.searchParams.get("test") === "true";
+    }
     
     console.log(`Query: ${query}, Language: ${language}, Test: ${testConnection}`);
     
@@ -46,7 +63,7 @@ serve(async (req) => {
     }
     
     const newsData = await apiRes.json();
-    console.log("NewsData.io response:", JSON.stringify(newsData, null, 2));
+    console.log("NewsData.io response received, status:", newsData.status);
     
     // Handle API-level errors from NewsData.io
     if (newsData.status === "error") {

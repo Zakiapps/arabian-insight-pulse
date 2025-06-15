@@ -6,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
 import { Newspaper, Search, Wifi, WifiOff } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
 
 interface NewsArticle {
   article_id: string;
@@ -38,36 +39,33 @@ const NewsDataSearch = () => {
     setTestingConnection(true);
     try {
       console.log("Testing NewsData.io connection...");
-      const response = await fetch(`/functions/v1/scrape-newsdata?test=true&query=test`);
-      console.log("Test response status:", response.status);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const { data, error } = await supabase.functions.invoke('scrape-newsdata', {
+        body: { 
+          test: true,
+          query: 'test'
+        }
+      });
+      
+      console.log("Test response:", { data, error });
+      
+      if (error) {
+        throw new Error(error.message || "Function invocation failed");
       }
       
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON response:", text);
-        throw new Error("Edge function returned non-JSON response");
-      }
-      
-      const data = await response.json();
-      console.log("Test response data:", data);
-      
-      if (data.success) {
+      if (data?.success) {
         setConnectionStatus('success');
         toast({
           title: isRTL ? "تم الاتصال بنجاح" : "Connection Successful",
           description: isRTL 
-            ? `تم العثور على ${data.totalResults} مقال متاح`
-            : `Found ${data.totalResults} articles available`,
+            ? `تم العثور على ${data.totalResults || 0} مقال متاح`
+            : `Found ${data.totalResults || 0} articles available`,
         });
       } else {
         setConnectionStatus('failed');
         toast({
           title: isRTL ? "فشل في الاتصال" : "Connection Failed",
-          description: data.error || "Unknown error",
+          description: data?.error || "Unknown error",
           variant: "destructive",
         });
       }
@@ -91,25 +89,22 @@ const NewsDataSearch = () => {
     
     try {
       console.log("Fetching news for keyword:", kw);
-      const response = await fetch(`/functions/v1/scrape-newsdata?query=${encodeURIComponent(kw)}&language=en`);
-      console.log("Fetch response status:", response.status);
       
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      const { data, error } = await supabase.functions.invoke('scrape-newsdata', {
+        body: { 
+          query: kw,
+          language: 'en'
+        }
+      });
+      
+      console.log("Fetch response:", { data, error });
+      
+      if (error) {
+        throw new Error(error.message || "Function invocation failed");
       }
 
-      const contentType = response.headers.get("content-type");
-      if (!contentType || !contentType.includes("application/json")) {
-        const text = await response.text();
-        console.error("Non-JSON response:", text);
-        throw new Error("Server returned HTML instead of JSON. Check edge function logs.");
-      }
-
-      const data = await response.json();
-      console.log("Fetch response data:", data);
-
-      if (!data.success) {
-        throw new Error(data.error || "API request failed");
+      if (!data?.success) {
+        throw new Error(data?.error || "API request failed");
       }
 
       // NewsData.io returns articles in 'results' field
