@@ -17,32 +17,85 @@ serve(async (req) => {
   }
 
   try {
+    console.log("NewsData.io edge function called");
+    
     const urlObj = new URL(req.url);
-    // Support GET query param for search, fallback to "technology"
     const query = urlObj.searchParams.get("query") || "technology";
-    // Optionally support language param, default to "ar"
-    const language = urlObj.searchParams.get("language") || "ar";
+    const language = urlObj.searchParams.get("language") || "en";
+    const testConnection = urlObj.searchParams.get("test") === "true";
+    
+    console.log(`Query: ${query}, Language: ${language}, Test: ${testConnection}`);
+    
+    // Build the API endpoint
     const endpoint = `${BASE_URL}?apikey=${NEWS_API_KEY}&q=${encodeURIComponent(query)}&language=${encodeURIComponent(language)}`;
+    console.log(`Calling NewsData.io API: ${endpoint}`);
+    
     const apiRes = await fetch(endpoint);
+    console.log(`API Response status: ${apiRes.status}`);
+    
+    if (!apiRes.ok) {
+      console.error(`API Error: ${apiRes.status} - ${apiRes.statusText}`);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: `NewsData.io API error: ${apiRes.status} - ${apiRes.statusText}`,
+          status: apiRes.status
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
+      );
+    }
+    
     const newsData = await apiRes.json();
-
-    // Strongly validate expected shape
+    console.log("NewsData.io response:", JSON.stringify(newsData, null, 2));
+    
+    // Handle API-level errors from NewsData.io
+    if (newsData.status === "error") {
+      console.error("NewsData.io API returned error:", newsData);
+      return new Response(
+        JSON.stringify({
+          success: false,
+          error: newsData.message || "NewsData.io API error",
+          code: newsData.code
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 400 }
+      );
+    }
+    
+    // Validate response structure
     const results = Array.isArray(newsData.results) ? newsData.results : [];
+    console.log(`Found ${results.length} articles`);
+    
+    // If this is a connection test, return minimal info
+    if (testConnection) {
+      return new Response(
+        JSON.stringify({
+          success: true,
+          connectionTest: true,
+          totalResults: newsData.totalResults || 0,
+          articlesFound: results.length,
+          apiStatus: newsData.status
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
+      );
+    }
 
     return new Response(
       JSON.stringify({
         success: true,
-        articles: results,
+        status: newsData.status,
+        totalResults: newsData.totalResults || 0,
+        results: results,
+        nextPage: newsData.nextPage || null
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 200 }
     );
   } catch (error: any) {
-    // Log and always return JSON
-    console.error("Edge error fetching newsdata.io:", error);
+    console.error("Edge function error:", error);
     return new Response(
       JSON.stringify({
         success: false,
-        error: error?.message || "Unknown error, see edge logs."
+        error: error?.message || "Unknown error occurred",
+        stack: error?.stack
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" }, status: 500 }
     );

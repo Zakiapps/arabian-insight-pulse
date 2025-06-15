@@ -5,7 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { Newspaper, Search } from "lucide-react";
+import { Newspaper, Search, Wifi, WifiOff } from "lucide-react";
 
 interface NewsArticle {
   article_id: string;
@@ -18,7 +18,7 @@ interface NewsArticle {
   source_id?: string;
   source_icon?: string;
   source_name?: string;
-  creator?: string[]; // usually an array
+  creator?: string[];
   keywords?: string[];
   category?: string[];
   sentiment?: string;
@@ -30,57 +30,116 @@ const NewsDataSearch = () => {
   const [keyword, setKeyword] = useState("");
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
+  const [testingConnection, setTestingConnection] = useState(false);
+  const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failed'>('unknown');
   const [hasSearched, setHasSearched] = useState(false);
+
+  const testConnection = async () => {
+    setTestingConnection(true);
+    try {
+      console.log("Testing NewsData.io connection...");
+      const response = await fetch(`/functions/v1/scrape-newsdata?test=true&query=test`);
+      console.log("Test response status:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+      
+      const contentType = response.headers.get("content-type");
+      if (!contentType || !contentType.includes("application/json")) {
+        const text = await response.text();
+        console.error("Non-JSON response:", text);
+        throw new Error("Edge function returned non-JSON response");
+      }
+      
+      const data = await response.json();
+      console.log("Test response data:", data);
+      
+      if (data.success) {
+        setConnectionStatus('success');
+        toast({
+          title: isRTL ? "تم الاتصال بنجاح" : "Connection Successful",
+          description: isRTL 
+            ? `تم العثور على ${data.totalResults} مقال متاح`
+            : `Found ${data.totalResults} articles available`,
+        });
+      } else {
+        setConnectionStatus('failed');
+        toast({
+          title: isRTL ? "فشل في الاتصال" : "Connection Failed",
+          description: data.error || "Unknown error",
+          variant: "destructive",
+        });
+      }
+    } catch (error: any) {
+      console.error("Connection test failed:", error);
+      setConnectionStatus('failed');
+      toast({
+        title: isRTL ? "فشل في الاتصال" : "Connection Failed",
+        description: error.message || "Unable to connect to NewsData.io",
+        variant: "destructive",
+      });
+    } finally {
+      setTestingConnection(false);
+    }
+  };
 
   const fetchNews = async (kw: string) => {
     setLoading(true);
     setHasSearched(true);
     setNews([]);
+    
     try {
-      const response = await fetch(`/functions/v1/scrape-newsdata?query=${encodeURIComponent(kw)}`);
-      let data: any;
+      console.log("Fetching news for keyword:", kw);
+      const response = await fetch(`/functions/v1/scrape-newsdata?query=${encodeURIComponent(kw)}&language=en`);
+      console.log("Fetch response status:", response.status);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
 
       const contentType = response.headers.get("content-type");
-      if (contentType && contentType.includes("application/json")) {
-        data = await response.json();
-      } else {
+      if (!contentType || !contentType.includes("application/json")) {
         const text = await response.text();
-        console.error("Unexpected response (not JSON):", text);
-        toast({
-          title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
-          description: isRTL
-            ? "لم يتم العثور على أخبار أو حدث خطأ في الخادم."
-            : "No news found or server error.",
-          variant: "destructive",
-        });
-        setNews([]);
-        return;
+        console.error("Non-JSON response:", text);
+        throw new Error("Server returned HTML instead of JSON. Check edge function logs.");
       }
 
-      // NewsData.io now returns articles as data.articles or data.results
-      let articles: NewsArticle[] = [];
-      if (Array.isArray(data.articles)) {
-        articles = data.articles;
-      } else if (Array.isArray(data.results)) {
-        articles = data.results;
+      const data = await response.json();
+      console.log("Fetch response data:", data);
+
+      if (!data.success) {
+        throw new Error(data.error || "API request failed");
       }
 
+      // NewsData.io returns articles in 'results' field
+      const articles: NewsArticle[] = Array.isArray(data.results) ? data.results : [];
+      
       if (articles.length > 0) {
-        setNews(articles.slice(0, 10));
-      } else {
+        setNews(articles.slice(0, 10)); // Show first 10 articles
+        setConnectionStatus('success');
         toast({
-          title: isRTL ? "لا توجد نتائج" : "No news found",
+          title: isRTL ? "تم جلب الأخبار" : "News Fetched",
+          description: isRTL 
+            ? `تم العثور على ${articles.length} خبر`
+            : `Found ${articles.length} articles`,
+        });
+      } else {
+        setNews([]);
+        toast({
+          title: isRTL ? "لا توجد نتائج" : "No Results",
           description: isRTL
             ? "لم يتم العثور على أخبار مطابقة لهذه الكلمة."
-            : "No matching news articles for this keyword.",
+            : "No articles found for this keyword.",
           variant: "destructive",
         });
-        setNews([]);
       }
     } catch (error: any) {
+      console.error("News fetch error:", error);
+      setConnectionStatus('failed');
       toast({
-        title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
-        description: error?.message,
+        title: isRTL ? "خطأ في جلب الأخبار" : "Error Fetching News",
+        description: error.message || "Failed to fetch news",
         variant: "destructive",
       });
     } finally {
@@ -93,6 +152,7 @@ const NewsDataSearch = () => {
     if (keyword.trim() === "") {
       toast({
         title: isRTL ? "يرجى إدخال كلمة بحث" : "Please enter a keyword",
+        variant: "destructive",
       });
       return;
     }
@@ -105,9 +165,41 @@ const NewsDataSearch = () => {
         <CardTitle className="flex items-center gap-2">
           <Newspaper className="h-5 w-5" />
           {isRTL ? "البحث في أخبار NewsData.io" : "Search NewsData.io"}
+          {connectionStatus === 'success' && <Wifi className="h-4 w-4 text-green-500" />}
+          {connectionStatus === 'failed' && <WifiOff className="h-4 w-4 text-red-500" />}
         </CardTitle>
       </CardHeader>
       <CardContent>
+        {/* Connection Test Section */}
+        <div className="mb-4 p-3 bg-muted rounded-lg">
+          <div className="flex items-center justify-between">
+            <span className="text-sm">
+              {isRTL ? "حالة الاتصال:" : "Connection Status:"} 
+              <span className={`ml-2 font-medium ${
+                connectionStatus === 'success' ? 'text-green-600' : 
+                connectionStatus === 'failed' ? 'text-red-600' : 'text-gray-600'
+              }`}>
+                {connectionStatus === 'success' ? (isRTL ? 'متصل' : 'Connected') :
+                 connectionStatus === 'failed' ? (isRTL ? 'غير متصل' : 'Failed') :
+                 (isRTL ? 'غير معروف' : 'Unknown')}
+              </span>
+            </span>
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={testConnection}
+              disabled={testingConnection}
+            >
+              {testingConnection ? (
+                <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              ) : (
+                isRTL ? "اختبار الاتصال" : "Test Connection"
+              )}
+            </Button>
+          </div>
+        </div>
+
+        {/* Search Form */}
         <form
           className="flex flex-col md:flex-row gap-3 mb-4"
           onSubmit={handleSubmit}
@@ -127,11 +219,15 @@ const NewsDataSearch = () => {
             {isRTL ? "بحث" : "Search"}
           </Button>
         </form>
+
+        {/* Loading State */}
         {loading && (
           <div className="flex justify-center py-8">
             <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
           </div>
         )}
+
+        {/* Results */}
         {hasSearched && !loading && (
           <>
             {news.length === 0 ? (
@@ -140,69 +236,73 @@ const NewsDataSearch = () => {
               </div>
             ) : (
               <div className="space-y-4">
-                {news.map((a) => (
+                {news.map((article) => (
                   <div
-                    key={a.article_id || a.title}
+                    key={article.article_id || article.title}
                     className="p-4 border rounded-lg bg-white flex flex-col gap-2 shadow-sm"
                   >
-                    {/* Header: source icon, title, sentiment badge */}
+                    {/* Header with source icon, title, and sentiment */}
                     <div className="flex items-center gap-3">
-                      {a.source_icon ? (
+                      {article.source_icon ? (
                         <img
-                          src={a.source_icon}
-                          alt={a.source_id || a.source_name || ""}
+                          src={article.source_icon}
+                          alt={article.source_id || article.source_name || ""}
                           className="w-6 h-6 rounded"
                           loading="lazy"
                         />
                       ) : (
                         <span className="text-xs bg-muted rounded px-2 py-1">
-                          {a.source_name || a.source_id || ""}
+                          {article.source_name || article.source_id || ""}
                         </span>
                       )}
-                      <span className="font-semibold flex-1">{a.title}</span>
-                      {a.sentiment && (
+                      <span className="font-semibold flex-1">{article.title}</span>
+                      {article.sentiment && (
                         <span
                           className={`px-2 py-1 rounded text-xs
-                            ${a.sentiment === "positive"
+                            ${article.sentiment === "positive"
                               ? "bg-green-100 text-green-800"
-                              : a.sentiment === "negative"
+                              : article.sentiment === "negative"
                               ? "bg-red-100 text-red-800"
                               : "bg-gray-100 text-gray-800"
                             }`}
                         >
                           {isRTL
-                            ? a.sentiment === "positive"
+                            ? article.sentiment === "positive"
                               ? "إيجابي"
-                              : a.sentiment === "negative"
+                              : article.sentiment === "negative"
                               ? "سلبي"
                               : "محايد"
-                            : a.sentiment.charAt(0).toUpperCase() + a.sentiment.slice(1)}
+                            : article.sentiment.charAt(0).toUpperCase() + article.sentiment.slice(1)}
                         </span>
                       )}
                     </div>
+
                     {/* Image */}
-                    {a.image_url && (
+                    {article.image_url && (
                       <img
-                        src={a.image_url}
-                        alt={a.title}
+                        src={article.image_url}
+                        alt={article.title}
                         className="w-full max-w-xs rounded object-cover my-1"
                         loading="lazy"
                       />
                     )}
-                    {/* Description/Content */}
-                    <div className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 max-w-prose">
-                      {(a.description || a.content || "").slice(0, 200)}...
+
+                    {/* Description */}
+                    <div className="text-sm text-muted-foreground whitespace-pre-line line-clamp-3 max-w-prose">
+                      {(article.description || article.content || "").slice(0, 200)}...
                     </div>
-                    {/* Author/Creator */}
-                    {(a.creator && a.creator.length > 0) && (
+
+                    {/* Creator */}
+                    {(article.creator && article.creator.length > 0) && (
                       <div className="text-xs">
                         <span className="font-medium">{isRTL ? "الكاتب" : "By"}: </span>
-                        {a.creator.join(", ")}
+                        {article.creator.join(", ")}
                       </div>
                     )}
-                    {/* Keywords and Categories as tags */}
+
+                    {/* Tags */}
                     <div className="flex flex-wrap gap-1">
-                      {a.category && a.category.map((cat, idx) => (
+                      {article.category && article.category.map((cat, idx) => (
                         <span
                           key={cat + idx}
                           className="text-xs bg-blue-100 text-blue-800 px-2 py-0.5 rounded-full"
@@ -210,7 +310,7 @@ const NewsDataSearch = () => {
                           {cat}
                         </span>
                       ))}
-                      {a.keywords && a.keywords.map((kw, idx) => (
+                      {article.keywords && article.keywords.map((kw, idx) => (
                         <span
                           key={kw + idx}
                           className="text-xs bg-yellow-100 text-yellow-800 px-2 py-0.5 rounded-full"
@@ -219,21 +319,22 @@ const NewsDataSearch = () => {
                         </span>
                       ))}
                     </div>
-                    {/* Links and date */}
+
+                    {/* Footer with link and date */}
                     <div className="flex gap-2 py-1 items-center">
-                      {a.link && (
+                      {article.link && (
                         <a
-                          href={a.link}
+                          href={article.link}
                           target="_blank"
                           rel="noopener noreferrer"
-                          className="text-blue-600 underline text-xs ml-2"
+                          className="text-blue-600 underline text-xs"
                         >
-                          {isRTL ? "رابط الخبر" : "News Link"}
+                          {isRTL ? "رابط الخبر" : "Read More"}
                         </a>
                       )}
                       <span className="text-xs text-muted-foreground">
                         {isRTL ? "تاريخ:" : "Date:"}{" "}
-                        {a.pubDate ? new Date(a.pubDate).toLocaleString() : "-"}
+                        {article.pubDate ? new Date(article.pubDate).toLocaleString() : "-"}
                       </span>
                     </div>
                   </div>
