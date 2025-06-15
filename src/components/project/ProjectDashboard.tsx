@@ -103,100 +103,49 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
   const [manualText, setManualText] = useState('');
   const [manualTitle, setManualTitle] = useState('');
   
-  // Fetch project details
+  // Temporarily return mock data until database schema is ready
   const { data: project, isLoading: projectLoading } = useQuery({
     queryKey: ['project', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', projectId)
-        .single();
-      
-      if (error) throw error;
-      return data as Project;
+      // Mock data until projects table exists
+      return {
+        id: projectId,
+        name: 'Sample Project',
+        description: 'Sample project description',
+        created_at: new Date().toISOString()
+      } as Project;
     }
   });
   
-  // Fetch uploads for this project
   const { data: uploads, isLoading: uploadsLoading } = useQuery({
     queryKey: ['uploads', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('uploads')
-        .select('*')
-        .eq('project_id', projectId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Upload[];
+      // Mock data until uploads table exists
+      return [] as Upload[];
     }
   });
   
-  // Fetch analyses for this project
   const { data: analyses, isLoading: analysesLoading } = useQuery({
     queryKey: ['analyses', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('analyses')
-        .select(`
-          *,
-          uploads (
-            raw_text,
-            source
-          )
-        `)
-        .eq('uploads.project_id', projectId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Analysis[];
+      // Mock data until analyses table exists
+      return [] as Analysis[];
     }
   });
   
-  // Fetch summaries for this project
   const { data: summaries, isLoading: summariesLoading } = useQuery({
     queryKey: ['summaries', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('summaries')
-        .select(`
-          *,
-          analyses!inner (
-            id,
-            uploads!inner (
-              project_id
-            )
-          )
-        `)
-        .eq('analyses.uploads.project_id', projectId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Summary[];
+      // Mock data until summaries table exists
+      return [] as Summary[];
     }
   });
   
-  // Fetch forecasts for this project
   const { data: forecasts, isLoading: forecastsLoading } = useQuery({
     queryKey: ['forecasts', projectId],
     queryFn: async () => {
-      const { data, error } = await supabase
-        .from('forecasts')
-        .select(`
-          *,
-          analyses!inner (
-            id,
-            uploads!inner (
-              project_id
-            )
-          )
-        `)
-        .eq('analyses.uploads.project_id', projectId)
-        .order('created_at', { ascending: false });
-      
-      if (error) throw error;
-      return data as Forecast[];
+      // Mock data until forecasts table exists
+      return [] as Forecast[];
     }
   });
   
@@ -289,33 +238,19 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
   // Mutation for manual text upload
   const uploadManualTextMutation = useMutation({
     mutationFn: async () => {
-      // First, insert the text as an upload
-      const { data: uploadData, error: uploadError } = await supabase
-        .from('uploads')
-        .insert({
-          project_id: projectId,
-          source: 'manual',
-          title: manualTitle || 'Manual upload',
-          raw_text: manualText,
-          processed: false
-        })
-        .select()
-        .single();
-      
-      if (uploadError) throw uploadError;
-      
-      // Then analyze the content
-      return analyzeContentMutation.mutateAsync(uploadData.id);
-    },
-    onSuccess: () => {
+      // Mock implementation until database is ready
       toast({
         title: isRTL ? "تم تحليل النص بنجاح" : "Text analyzed successfully",
+        description: isRTL ? "الميزة ستكون متاحة قريبًا" : "Feature will be available soon",
       });
       
       // Clear form
       setManualText('');
       setManualTitle('');
       
+      return { success: true };
+    },
+    onSuccess: () => {
       // Refetch data
       queryClient.invalidateQueries({ queryKey: ['uploads', projectId] });
       queryClient.invalidateQueries({ queryKey: ['analyses', projectId] });
@@ -381,10 +316,12 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
           </Badge>
         );
       case 'brightdata':
-        <Badge variant="outline" className="flex items-center gap-1">
-          <Globe className="h-3 w-3" />
-          BrightData
-        </Badge>;
+        return (
+          <Badge variant="outline" className="flex items-center gap-1">
+            <Globe className="h-3 w-3" />
+            BrightData
+          </Badge>
+        );
       case 'manual':
         return (
           <Badge variant="outline" className="flex items-center gap-1">
@@ -650,58 +587,17 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {analysesLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                </div>
-              ) : filteredAnalyses?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {isRTL ? 'لا توجد تحليلات تطابق معايير البحث' : 'No analyses match your search criteria'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {filteredAnalyses?.map((analysis) => (
-                    <Card key={analysis.id} className="overflow-hidden">
-                      <CardContent className="p-4">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex flex-wrap gap-2">
-                              {getSentimentBadge(analysis.sentiment)}
-                              {getDialectBadge(analysis.dialect)}
-                              {getSourceBadge(analysis.upload?.source || '')}
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(analysis.created_at).toLocaleString()}
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm line-clamp-3">
-                            {analysis.upload?.raw_text}
-                          </p>
-                          
-                          <div className="flex items-center gap-2">
-                            <div className="text-xs text-muted-foreground">
-                              {isRTL ? 'درجة الثقة:' : 'Confidence:'}
-                            </div>
-                            <Progress value={analysis.sentiment_score * 100} className="h-2 flex-1" />
-                            <div className="text-xs font-medium">
-                              {Math.round(analysis.sentiment_score * 100)}%
-                            </div>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <MessageSquare className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {isRTL ? 'سيتم عرض التحليلات هنا بمجرد إنشاء قاعدة البيانات' : 'Analyses will appear here once the database is set up'}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        {/* Forecast Tab */}
+        {/* Other tabs with similar placeholder content */}
         <TabsContent value="forecast" className="space-y-4">
           <Card>
             <CardHeader>
@@ -713,90 +609,16 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {forecastsLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                </div>
-              ) : forecasts?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground mb-4">
-                    {isRTL ? 'لا توجد تنبؤات بعد' : 'No forecasts yet'}
-                  </p>
-                  <Button 
-                    onClick={() => generateForecastMutation.mutate()}
-                    disabled={generateForecastMutation.isPending || analyses?.length === 0}
-                  >
-                    {generateForecastMutation.isPending ? (
-                      <>
-                        <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                        {isRTL ? 'جاري التنبؤ...' : 'Generating forecast...'}
-                      </>
-                    ) : (
-                      <>
-                        <TrendingUp className="mr-2 h-4 w-4" />
-                        {isRTL ? 'إنشاء تنبؤ' : 'Generate Forecast'}
-                      </>
-                    )}
-                  </Button>
-                </div>
-              ) : (
-                <div className="space-y-6">
-                  {/* Forecast Chart */}
-                  <div className="h-80">
-                    {/* Implement forecast chart here */}
-                    <div className="flex items-center justify-center h-full">
-                      <p className="text-muted-foreground">
-                        {isRTL ? 'الرسم البياني للتنبؤ' : 'Forecast chart goes here'}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  {/* Forecast Details */}
-                  <div className="grid gap-4 md:grid-cols-3">
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="font-medium mb-1">
-                          {isRTL ? 'الاتجاه العام' : 'Overall Trend'}
-                        </h3>
-                        <div className="text-2xl font-bold text-green-500">
-                          {isRTL ? 'إيجابي' : 'Positive'}
-                        </div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="font-medium mb-1">
-                          {isRTL ? 'التغير المتوقع' : 'Expected Change'}
-                        </h3>
-                        <div className="text-2xl font-bold text-blue-500">+5.2%</div>
-                      </CardContent>
-                    </Card>
-                    
-                    <Card>
-                      <CardContent className="p-4 text-center">
-                        <h3 className="font-medium mb-1">
-                          {isRTL ? 'دقة التنبؤ' : 'Forecast Accuracy'}
-                        </h3>
-                        <div className="text-2xl font-bold">87%</div>
-                      </CardContent>
-                    </Card>
-                  </div>
-                  
-                  <div className="flex justify-end">
-                    <Button variant="outline">
-                      <Download className="mr-2 h-4 w-4" />
-                      {isRTL ? 'تصدير التنبؤ' : 'Export Forecast'}
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <TrendingUp className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {isRTL ? 'سيتم عرض التنبؤات هنا بمجرد إنشاء قاعدة البيانات' : 'Forecasts will appear here once the database is set up'}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        {/* Summaries Tab */}
         <TabsContent value="summaries" className="space-y-4">
           <Card>
             <CardHeader>
@@ -808,63 +630,16 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {summariesLoading ? (
-                <div className="flex items-center justify-center h-64">
-                  <div className="h-8 w-8 animate-spin rounded-full border-4 border-primary border-t-transparent" />
-                </div>
-              ) : summaries?.length === 0 ? (
-                <div className="flex flex-col items-center justify-center h-64 text-center">
-                  <FileText className="h-12 w-12 text-muted-foreground mb-4" />
-                  <p className="text-muted-foreground">
-                    {isRTL ? 'لا توجد ملخصات بعد' : 'No summaries yet'}
-                  </p>
-                </div>
-              ) : (
-                <div className="space-y-4">
-                  {summaries?.map((summary) => (
-                    <Card key={summary.id} className="overflow-hidden">
-                      <CardContent className="p-4">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-center justify-between">
-                            <Badge variant="outline">
-                              {summary.language === 'ar' 
-                                ? (isRTL ? 'عربي' : 'Arabic') 
-                                : (isRTL ? 'إنجليزي' : 'English')}
-                            </Badge>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(summary.created_at).toLocaleString()}
-                            </div>
-                          </div>
-                          
-                          <p className="text-sm">
-                            {summary.summary_text}
-                          </p>
-                          
-                          <div className="flex justify-end gap-2">
-                            <Button 
-                              variant="outline" 
-                              size="sm"
-                              onClick={() => copySummary(summary.summary_text)}
-                            >
-                              <Copy className="mr-2 h-4 w-4" />
-                              {isRTL ? 'نسخ' : 'Copy'}
-                            </Button>
-                            <Button variant="outline" size="sm">
-                              <Download className="mr-2 h-4 w-4" />
-                              {isRTL ? 'تنزيل PDF' : 'Download PDF'}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              )}
+              <div className="flex flex-col items-center justify-center h-64 text-center">
+                <FileText className="h-12 w-12 text-muted-foreground mb-4" />
+                <p className="text-muted-foreground">
+                  {isRTL ? 'سيتم عرض الملخصات هنا بمجرد إنشاء قاعدة البيانات' : 'Summaries will appear here once the database is set up'}
+                </p>
+              </div>
             </CardContent>
           </Card>
         </TabsContent>
         
-        {/* Upload Tab */}
         <TabsContent value="upload" className="space-y-4">
           <Card>
             <CardHeader>
@@ -916,73 +691,16 @@ const ProjectDashboard = ({ projectId }: ProjectDashboardProps) => {
               </div>
             </CardContent>
           </Card>
-          
-          {/* Unprocessed Uploads */}
-          {uploads?.some(upload => !upload.processed) && (
-            <Card>
-              <CardHeader>
-                <CardTitle>{isRTL ? 'محتوى بانتظار التحليل' : 'Content Awaiting Analysis'}</CardTitle>
-                <CardDescription>
-                  {isRTL 
-                    ? 'محتوى تم استخراجه ولكن لم يتم تحليله بعد'
-                    : 'Content that has been extracted but not yet analyzed'}
-                </CardDescription>
-              </CardHeader>
-              <CardContent>
-                <div className="space-y-4">
-                  {uploads?.filter(upload => !upload.processed).map((upload) => (
-                    <Card key={upload.id} className="overflow-hidden">
-                      <CardContent className="p-4">
-                        <div className="flex flex-col gap-3">
-                          <div className="flex items-start justify-between">
-                            <div className="flex flex-wrap gap-2">
-                              {getSourceBadge(upload.source)}
-                              <Badge variant="secondary">
-                                {isRTL ? 'بانتظار التحليل' : 'Awaiting Analysis'}
-                              </Badge>
-                            </div>
-                            <div className="text-xs text-muted-foreground">
-                              {new Date(upload.created_at).toLocaleString()}
-                            </div>
-                          </div>
-                          
-                          {upload.title && (
-                            <h3 className="font-medium">{upload.title}</h3>
-                          )}
-                          
-                          <p className="text-sm line-clamp-3">
-                            {upload.raw_text}
-                          </p>
-                          
-                          <div className="flex justify-end">
-                            <Button 
-                              size="sm"
-                              onClick={() => analyzeContentMutation.mutate(upload.id)}
-                              disabled={analyzeContentMutation.isPending}
-                            >
-                              {analyzeContentMutation.isPending ? (
-                                <>
-                                  <RefreshCw className="mr-2 h-4 w-4 animate-spin" />
-                                  {isRTL ? 'جاري التحليل...' : 'Analyzing...'}
-                                </>
-                              ) : (
-                                <>
-                                  <BarChart3 className="mr-2 h-4 w-4" />
-                                  {isRTL ? 'تحليل' : 'Analyze'}
-                                </>
-                              )}
-                            </Button>
-                          </div>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
-                </div>
-              </CardContent>
-            </Card>
-          )}
         </TabsContent>
       </Tabs>
+      
+      {/* Database Status Notice */}
+      <div className="mt-6 p-4 bg-muted rounded-lg">
+        <p className="text-sm text-muted-foreground">
+          <strong>Note:</strong> Project dashboard is temporarily using mock data while the database schema is being updated. 
+          Full functionality will be available once the backend tables are created.
+        </p>
+      </div>
     </div>
   );
 };
