@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
@@ -17,8 +16,8 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const HF_ENDPOINT = "https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud";
 const HF_TOKEN = "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";
 
-// Enhanced text validation with content quality scoring
-function validateAndScoreContent(text: string): { 
+// Enhanced text validation that allows title + description fallback
+function validateAndScoreContent(text: string, isMainContent: boolean = true): { 
   isValid: boolean; 
   errorMsg: string; 
   qualityScore: number;
@@ -28,7 +27,7 @@ function validateAndScoreContent(text: string): {
     return { isValid: false, errorMsg: "النص فارغ أو قصير جداً", qualityScore: 0, contentType: 'none' };
   }
   
-  // Check for placeholder content that indicates paid content
+  // Check for placeholder content patterns
   const placeholderPatterns = [
     /ONLY AVAILABLE IN PAID PLANS/i,
     /upgrade to premium/i,
@@ -38,12 +37,14 @@ function validateAndScoreContent(text: string): {
   ];
   
   const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(text));
-  if (hasPlaceholder) {
+  
+  // If main content has placeholder, mark it but don't reject completely
+  if (hasPlaceholder && isMainContent) {
     return { 
       isValid: false, 
-      errorMsg: "المحتوى يحتوي على نص مدفوع أو محجوب", 
+      errorMsg: "المحتوى الرئيسي محجوب - سيتم استخدام العنوان والوصف", 
       qualityScore: 0, 
-      contentType: 'placeholder' 
+      contentType: 'blocked_main_content' 
     };
   }
   
@@ -58,20 +59,27 @@ function validateAndScoreContent(text: string): {
     };
   }
 
-  // Calculate quality score based on content characteristics
+  // Calculate quality score
   let qualityScore = 0;
   const wordCount = text.split(/\s+/).length;
   
-  // Length scoring
-  if (wordCount > 100) qualityScore += 40;
-  else if (wordCount > 50) qualityScore += 25;
-  else if (wordCount > 20) qualityScore += 15;
+  // Adjust scoring for fallback content (title + description)
+  const minWords = isMainContent ? 20 : 10;
+  const goodWords = isMainContent ? 100 : 30;
+  const excellentWords = isMainContent ? 200 : 50;
+  
+  // Length scoring (adjusted for content type)
+  if (wordCount > excellentWords) qualityScore += 40;
+  else if (wordCount > goodWords) qualityScore += 30;
+  else if (wordCount > minWords) qualityScore += 20;
+  else if (wordCount > 5) qualityScore += 10;
   else qualityScore += 5;
   
   // Content structure scoring
   const sentences = text.split(/[.!؟]/).filter(s => s.trim().length > 0);
-  if (sentences.length > 5) qualityScore += 20;
-  else if (sentences.length > 2) qualityScore += 10;
+  if (sentences.length > 3) qualityScore += 20;
+  else if (sentences.length > 1) qualityScore += 15;
+  else qualityScore += 5;
   
   // Arabic content density
   const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
@@ -86,58 +94,58 @@ function validateAndScoreContent(text: string): {
     count + (text.toLowerCase().includes(word) ? 1 : 0), 0);
   qualityScore += Math.min(meaningfulCount * 2, 15);
   
-  const contentType = wordCount > 100 ? 'full' : wordCount > 50 ? 'medium' : 'short';
+  // For fallback content, lower the minimum threshold
+  const minQualityThreshold = isMainContent ? 20 : 15;
+  const contentType = wordCount > goodWords ? 'good' : wordCount > minWords ? 'fair' : 'short';
   
   return { 
-    isValid: true, 
-    errorMsg: "", 
+    isValid: qualityScore >= minQualityThreshold, 
+    errorMsg: qualityScore < minQualityThreshold ? "جودة المحتوى منخفضة للتحليل" : "", 
     qualityScore: Math.min(qualityScore, 100),
     contentType
   };
 }
 
-// Enhanced content extraction with prioritization
+// Enhanced content extraction with better fallback handling
 function extractBestContent(article: any): { text: string; source: string; quality: number } {
-  const options = [
-    { text: article.content, source: 'content', priority: 3 },
-    { text: article.description, source: 'description', priority: 2 },
-    { text: article.title, source: 'title', priority: 1 }
-  ].filter(option => option.text && option.text.trim().length > 0);
-
-  // Try content + description combination for better analysis
-  if (article.content && article.description) {
-    const combined = `${article.title}\n\n${article.description}\n\n${article.content}`.trim();
-    const validation = validateAndScoreContent(combined);
-    if (validation.isValid && validation.qualityScore > 60) {
+  // First, try main content
+  if (article.content && article.content.trim().length > 0) {
+    const contentValidation = validateAndScoreContent(article.content, true);
+    if (contentValidation.isValid) {
       return { 
-        text: combined, 
-        source: 'combined', 
-        quality: validation.qualityScore 
+        text: article.content, 
+        source: 'content', 
+        quality: contentValidation.qualityScore 
       };
     }
   }
 
-  // Try each option in priority order
-  for (const option of options.sort((a, b) => b.priority - a.priority)) {
-    const validation = validateAndScoreContent(option.text);
-    if (validation.isValid) {
+  // If main content is blocked or invalid, try title + description combination
+  const titleDesc = [article.title, article.description]
+    .filter(text => text && text.trim().length > 0)
+    .join('. ');
+
+  if (titleDesc.length > 0) {
+    const fallbackValidation = validateAndScoreContent(titleDesc, false);
+    if (fallbackValidation.isValid) {
       return { 
-        text: option.text, 
-        source: option.source, 
-        quality: validation.qualityScore 
+        text: titleDesc, 
+        source: 'title_description', 
+        quality: fallbackValidation.qualityScore 
       };
     }
   }
 
-  // Return best available even if not ideal
-  const bestOption = options[0];
-  if (bestOption) {
-    const validation = validateAndScoreContent(bestOption.text);
-    return { 
-      text: bestOption.text, 
-      source: bestOption.source, 
-      quality: validation.qualityScore 
-    };
+  // Last resort: just title
+  if (article.title && article.title.trim().length > 0) {
+    const titleValidation = validateAndScoreContent(article.title, false);
+    if (titleValidation.isValid) {
+      return { 
+        text: article.title, 
+        source: 'title_only', 
+        quality: titleValidation.qualityScore 
+      };
+    }
   }
 
   return { text: '', source: 'none', quality: 0 };
@@ -232,7 +240,7 @@ serve(async (req) => {
       query = query.eq('is_analyzed', false);
     }
 
-    const { data: articles, error: fetchError } = await query.limit(20); // Process max 20 at a time
+    const { data: articles, error: fetchError } = await query.limit(20);
 
     if (fetchError) {
       console.error('Error fetching articles:', fetchError);
@@ -266,19 +274,24 @@ serve(async (req) => {
       try {
         console.log(`Analyzing article ${article.id}: ${article.title.substring(0, 50)}...`);
 
-        // Extract best available content
+        // Extract best available content (now with fallback support)
         const contentResult = extractBestContent(article);
         
-        if (contentResult.quality < 20) {
-          console.log(`Skipping article ${article.id} - low quality content (${contentResult.quality})`);
+        // Lower the quality threshold since we're using fallback content
+        if (contentResult.quality < 10) {
+          console.log(`Skipping article ${article.id} - no usable content (${contentResult.quality})`);
           results.push({
             article_id: article.id,
             success: false,
-            error: "محتوى غير مناسب للتحليل",
-            quality_score: contentResult.quality
+            error: "لا يوجد محتوى مناسب للتحليل",
+            quality_score: contentResult.quality,
+            content_source: contentResult.source
           });
+          errors++;
           continue;
         }
+
+        console.log(`Using ${contentResult.source} for analysis with quality ${contentResult.quality}%`);
 
         // Call MARBERT analysis
         const response = await fetch(HF_ENDPOINT, {
@@ -429,7 +442,7 @@ serve(async (req) => {
           dialect: dialectResult.isJordanian ? 'jordanian' : 'other'
         });
 
-        console.log(`Successfully analyzed article ${article.id}`);
+        console.log(`Successfully analyzed article ${article.id} using ${contentResult.source}`);
 
       } catch (error) {
         console.error(`Error processing article ${article.id}:`, error);

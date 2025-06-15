@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle } from "lucide-react";
+import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle, Info } from "lucide-react";
 
 interface SavedNewsArticle {
   id: string;
@@ -53,13 +53,13 @@ const NewsArticleCard = ({
 }: NewsArticleCardProps) => {
   const { isRTL } = useLanguage();
 
-  // Enhanced content quality assessment
+  // Enhanced content quality assessment with fallback support
   const getContentQuality = () => {
     const content = article.content || '';
     const description = article.description || '';
     const title = article.title || '';
     
-    // Check for placeholder content
+    // Check for placeholder content patterns
     const placeholderPatterns = [
       /ONLY AVAILABLE IN PAID PLANS/i,
       /upgrade to premium/i,
@@ -72,17 +72,35 @@ const NewsArticleCard = ({
       pattern.test(content) || pattern.test(description)
     );
     
+    // If main content is blocked, check if we have usable title + description
     if (hasPlaceholder) {
+      const fallbackText = `${title} ${description}`.trim();
+      const fallbackWordCount = fallbackText.split(/\s+/).length;
+      const hasArabic = /[\u0600-\u06FF]/.test(fallbackText);
+      
+      if (!hasArabic || fallbackWordCount < 5) {
+        return { 
+          level: 'blocked', 
+          score: 0, 
+          message: 'محتوى محجوب - لا يوجد نص كافي',
+          icon: AlertTriangle,
+          color: 'text-red-600 bg-red-50',
+          canAnalyze: false
+        };
+      }
+      
+      // We have usable fallback content
       return { 
-        level: 'blocked', 
-        score: 0, 
-        message: 'محتوى محجوب أو مدفوع',
-        icon: AlertTriangle,
-        color: 'text-red-600 bg-red-50'
+        level: 'fallback', 
+        score: Math.min(fallbackWordCount * 3, 60), 
+        message: 'تحليل العنوان والوصف متاح',
+        icon: Info,
+        color: 'text-blue-600 bg-blue-50',
+        canAnalyze: true
       };
     }
 
-    // Calculate content score
+    // Regular content assessment
     const totalLength = content.length + description.length + title.length;
     const wordCount = (content + ' ' + description + ' ' + title).split(/\s+/).length;
     
@@ -92,7 +110,8 @@ const NewsArticleCard = ({
         score: 95, 
         message: 'محتوى ممتاز للتحليل',
         icon: CheckCircle,
-        color: 'text-green-600 bg-green-50'
+        color: 'text-green-600 bg-green-50',
+        canAnalyze: true
       };
     } else if (content.length > 200 || (description.length > 100 && title.length > 20)) {
       return { 
@@ -100,15 +119,17 @@ const NewsArticleCard = ({
         score: 75, 
         message: 'محتوى جيد للتحليل',
         icon: CheckCircle,
-        color: 'text-blue-600 bg-blue-50'
+        color: 'text-green-600 bg-green-50',
+        canAnalyze: true
       };
     } else if (description.length > 50 || title.length > 30) {
       return { 
         level: 'fair', 
         score: 50, 
         message: 'محتوى محدود للتحليل',
-        icon: AlertTriangle,
-        color: 'text-yellow-600 bg-yellow-50'
+        icon: Info,
+        color: 'text-yellow-600 bg-yellow-50',
+        canAnalyze: true
       };
     } else {
       return { 
@@ -116,7 +137,8 @@ const NewsArticleCard = ({
         score: 25, 
         message: 'محتوى قصير للتحليل',
         icon: AlertTriangle,
-        color: 'text-orange-600 bg-orange-50'
+        color: 'text-orange-600 bg-orange-50',
+        canAnalyze: true
       };
     }
   };
@@ -135,7 +157,7 @@ const NewsArticleCard = ({
             <Checkbox
               checked={selected}
               onCheckedChange={onSelect}
-              disabled={article.is_analyzed}
+              disabled={article.is_analyzed || !contentQuality.canAnalyze}
             />
           )}
           
@@ -195,13 +217,18 @@ const NewsArticleCard = ({
         </div>
       </div>
 
-      {/* Content Quality Indicator */}
+      {/* Enhanced Content Quality Indicator */}
       <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${contentQuality.color}`}>
         <QualityIcon className="h-4 w-4" />
         <span className="text-sm font-medium">{contentQuality.message}</span>
         <Badge variant="outline" className="text-xs">
           {contentQuality.score}%
         </Badge>
+        {contentQuality.level === 'fallback' && (
+          <Badge variant="outline" className="text-xs bg-yellow-50 text-yellow-700">
+            عنوان + وصف
+          </Badge>
+        )}
       </div>
 
       {/* Enhanced Analysis Display */}
@@ -278,7 +305,7 @@ const NewsArticleCard = ({
             variant="outline"
             size="sm"
             onClick={() => onAnalyze(article)}
-            disabled={isAnalyzing || contentQuality.level === 'blocked'}
+            disabled={isAnalyzing || !contentQuality.canAnalyze}
             className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
           >
             {isAnalyzing ? (

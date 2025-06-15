@@ -49,14 +49,48 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
     setAnalyzingArticles(prev => ({ ...prev, [article.id]: true }));
 
     try {
-      // Prioritize content, then description, then title for analysis
-      const textToAnalyze = article.content || article.description || article.title;
-      
-      if (!textToAnalyze || textToAnalyze.trim().length < 3) {
-        throw new Error(isRTL ? "النص فارغ أو قصير جداً" : "Text is empty or too short");
+      // Enhanced content prioritization with fallback support
+      let textToAnalyze = '';
+      let contentSource = 'none';
+
+      // Check if main content is available and usable
+      if (article.content && article.content.trim().length > 0) {
+        const placeholderPatterns = [
+          /ONLY AVAILABLE IN PAID PLANS/i,
+          /upgrade to premium/i,
+          /subscribe to read/i,
+          /premium content/i,
+          /paywall/i
+        ];
+        
+        const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(article.content));
+        
+        if (!hasPlaceholder) {
+          textToAnalyze = article.content;
+          contentSource = 'content';
+        }
       }
 
-      console.log('Analyzing text:', textToAnalyze.substring(0, 100) + '...');
+      // If main content is blocked or unavailable, use title + description
+      if (!textToAnalyze) {
+        const fallbackParts = [article.title, article.description].filter(part => part && part.trim().length > 0);
+        if (fallbackParts.length > 0) {
+          textToAnalyze = fallbackParts.join('. ');
+          contentSource = 'title_description';
+        }
+      }
+
+      // Last resort: just title
+      if (!textToAnalyze && article.title) {
+        textToAnalyze = article.title;
+        contentSource = 'title_only';
+      }
+      
+      if (!textToAnalyze || textToAnalyze.trim().length < 3) {
+        throw new Error(isRTL ? "لا يوجد محتوى كافي للتحليل" : "No sufficient content for analysis");
+      }
+
+      console.log(`Analyzing text from ${contentSource}:`, textToAnalyze.substring(0, 100) + '...');
       
       // Call our enhanced MARBERT analysis function
       const { data, error } = await supabase.functions.invoke('analyze-text', {
@@ -86,7 +120,11 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
           dialect_confidence: data.dialect_confidence || 0,
           dialect_indicators: data.dialect_indicators || [],
           emotional_markers: data.emotional_markers || [],
-          model_response: data,
+          model_response: {
+            ...data,
+            content_source: contentSource,
+            original_content_blocked: contentSource !== 'content'
+          },
           user_id: user.id
         });
 
@@ -115,18 +153,21 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
         throw updateError;
       }
 
-      console.log('Analysis completed successfully for article:', article.id);
+      console.log('Analysis completed successfully for article:', article.id, 'using', contentSource);
 
       // Trigger refresh of analyses in parent component
       if (onAnalysisComplete) {
         onAnalysisComplete();
       }
 
+      const sourceDisplay = contentSource === 'content' ? 'المحتوى الكامل' : 
+                           contentSource === 'title_description' ? 'العنوان والوصف' : 'العنوان فقط';
+
       toast({
         title: isRTL ? "تم التحليل بنجاح" : "Analysis Complete",
         description: isRTL 
-          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'} | العاطفة: ${data.emotion || 'محايد'}`
-          : `Sentiment: ${data.sentiment || 'neutral'} | Emotion: ${data.emotion || 'neutral'}`,
+          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'} | العاطفة: ${data.emotion || 'محايد'} | المصدر: ${sourceDisplay}`
+          : `Sentiment: ${data.sentiment || 'neutral'} | Emotion: ${data.emotion || 'neutral'} | Source: ${contentSource}`,
       });
     } catch (error: any) {
       console.error("Analysis error:", error);

@@ -16,7 +16,7 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const HF_ENDPOINT = "https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud";
 const HF_TOKEN = "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";
 
-// Enhanced text validation with content quality scoring
+// Enhanced text validation that accepts fallback content
 function validateText(text: string): { 
   isValid: boolean; 
   errorMsg: string; 
@@ -34,7 +34,7 @@ function validateText(text: string): {
     };
   }
   
-  // Check for placeholder content that indicates paid/blocked content
+  // Check for placeholder content but don't automatically reject
   const placeholderPatterns = [
     /ONLY AVAILABLE IN PAID PLANS/i,
     /upgrade to premium/i,
@@ -46,14 +46,25 @@ function validateText(text: string): {
   ];
   
   const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(text));
+  
+  // If we detect placeholder content, check if there's still usable Arabic text
   if (hasPlaceholder) {
-    return { 
-      isValid: false, 
-      errorMsg: "المحتوى يحتوي على نص مدفوع أو محجوب", 
-      qualityScore: 0, 
-      contentType: 'blocked',
-      details: { reason: 'blocked_content', detected_patterns: placeholderPatterns.filter(p => p.test(text)) }
-    };
+    // Extract non-placeholder parts
+    const textParts = text.split(/ONLY AVAILABLE IN PAID PLANS|upgrade to premium|subscribe to read|premium content|paywall|login to continue|register to view/i);
+    const usableText = textParts.join(' ').trim();
+    
+    if (usableText.length < 10) {
+      return { 
+        isValid: false, 
+        errorMsg: "المحتوى محجوب بالكامل - لا يوجد نص قابل للتحليل", 
+        qualityScore: 0, 
+        contentType: 'completely_blocked',
+        details: { reason: 'completely_blocked', usable_length: usableText.length }
+      };
+    }
+    
+    // Continue with validation using the usable text
+    text = usableText;
   }
   
   // Check for Arabic characters (Unicode range 0x0600-0x06FF)
@@ -68,26 +79,27 @@ function validateText(text: string): {
     };
   }
 
-  // Calculate comprehensive quality score
+  // Calculate quality score with adjusted thresholds for fallback content
   let qualityScore = 0;
   const wordCount = text.split(/\s+/).length;
   const charCount = text.length;
   
-  // Length scoring (40% of total score)
-  if (wordCount > 200) qualityScore += 40;
-  else if (wordCount > 100) qualityScore += 30;
-  else if (wordCount > 50) qualityScore += 20;
-  else if (wordCount > 20) qualityScore += 10;
-  else qualityScore += 5;
+  // Length scoring (more lenient for shorter content)
+  if (wordCount > 100) qualityScore += 40;
+  else if (wordCount > 50) qualityScore += 30;
+  else if (wordCount > 20) qualityScore += 25;
+  else if (wordCount > 10) qualityScore += 20;
+  else if (wordCount > 5) qualityScore += 15;
+  else qualityScore += 10;
   
-  // Content structure scoring (25% of total score)
+  // Content structure scoring
   const sentences = text.split(/[.!؟]/).filter(s => s.trim().length > 0);
-  if (sentences.length > 10) qualityScore += 25;
-  else if (sentences.length > 5) qualityScore += 20;
-  else if (sentences.length > 2) qualityScore += 15;
-  else qualityScore += 5;
+  if (sentences.length > 5) qualityScore += 25;
+  else if (sentences.length > 2) qualityScore += 20;
+  else if (sentences.length > 1) qualityScore += 15;
+  else qualityScore += 10;
   
-  // Arabic content density (20% of total score)
+  // Arabic content density
   const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
   const arabicDensity = arabicChars / charCount;
   if (arabicDensity > 0.8) qualityScore += 20;
@@ -95,20 +107,22 @@ function validateText(text: string): {
   else if (arabicDensity > 0.4) qualityScore += 10;
   else qualityScore += 5;
   
-  // Meaningful content indicators (15% of total score)
+  // Meaningful content indicators
   const meaningfulWords = ['في', 'من', 'على', 'إلى', 'عن', 'مع', 'هذا', 'هذه', 'التي', 'الذي', 'كان', 'تم', 'يتم', 'بعد', 'قبل'];
   const meaningfulCount = meaningfulWords.reduce((count, word) => 
     count + (text.toLowerCase().includes(word) ? 1 : 0), 0);
   qualityScore += Math.min(meaningfulCount, 15);
   
-  // Determine content type based on analysis
+  // Determine content type
   let contentType = 'short';
-  if (wordCount > 100 && qualityScore > 70) contentType = 'excellent';
+  if (hasPlaceholder && qualityScore > 30) contentType = 'fallback_good';
+  else if (hasPlaceholder) contentType = 'fallback_limited';
+  else if (wordCount > 100 && qualityScore > 70) contentType = 'excellent';
   else if (wordCount > 50 && qualityScore > 50) contentType = 'good';
   else if (wordCount > 20 && qualityScore > 30) contentType = 'fair';
   
   return { 
-    isValid: true, 
+    isValid: true, // Accept for analysis if we have Arabic text
     errorMsg: "", 
     qualityScore: Math.min(qualityScore, 100),
     contentType,
@@ -117,7 +131,8 @@ function validateText(text: string): {
       char_count: charCount,
       sentence_count: sentences.length,
       arabic_density: arabicDensity,
-      meaningful_words_found: meaningfulCount
+      meaningful_words_found: meaningfulCount,
+      has_placeholder: hasPlaceholder
     }
   };
 }
@@ -289,7 +304,7 @@ function analyzeEmotionAndSentiment(hfResult: any, originalText: string): {
     // Calculate emotional intensity based on exclamation marks, capitals, and repetition
     const exclamationCount = (originalText.match(/!/g) || []).length;
     const questionCount = (originalText.match(/؟/g) || []).length;
-    const capsRatio = (originalText.match(/[A-Z]/g) || []).length / originalText.length;
+    const capsRatio = (originalText.match(/[A-Z]/g) || []).length;
     
     emotional_intensity = Math.min((exclamationCount * 0.2 + questionCount * 0.1 + capsRatio + maxEmotionScore * 0.3), 1);
 
@@ -420,7 +435,7 @@ serve(async (req) => {
 
     console.log('Processing text for enhanced analysis:', text.substring(0, 100) + '...');
 
-    // Enhanced text validation with detailed quality assessment
+    // Enhanced text validation that accepts fallback content
     const validation = validateText(text);
     if (!validation.isValid) {
       return new Response(JSON.stringify({ 
