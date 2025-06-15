@@ -1,4 +1,3 @@
-
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { UserWithProfile, Profile } from '@/types/auth';
@@ -14,51 +13,73 @@ export const useAuthState = () => {
 
   useEffect(() => {
     let mounted = true;
+    let finished = false;
 
-    const finishLoading = () => { if (mounted) setLoading(false); };
+    const finishLoading = (source = "unknown") => {
+      if (!finished && mounted) {
+        finished = true;
+        setLoading(false);
+        console.log(`[useAuthState] Loading finished (${source})`);
+      }
+    };
+
+    // Development fallback: Prevent infinite spinner
+    const timeout = setTimeout(() => {
+      console.warn("[useAuthState] Forcibly finishing loading state after 8s timeout");
+      finishLoading("timeout");
+    }, 8000);
 
     // Set up auth state listener first
     const { data: { subscription } } = authService.onAuthStateChange(async (event, newSession) => {
       if (!mounted) return;
 
-      if (event === 'SIGNED_IN' && newSession?.user) {
-        setSession(newSession);
-        if (newSession.user.email === 'admin@arabinsights.com') {
-          setUser({ ...newSession.user, profile: null });
-          setProfile(null);
-          finishLoading();
-        } else {
-          try {
-            const userProfile = await profileService.fetchUserProfile(newSession.user.id);
-            if (mounted) {
-              setProfile(userProfile);
-              setUser({ ...newSession.user, profile: userProfile });
-              finishLoading();
-            }
-          } catch (error) {
-            if (mounted) {
-              setUser({ ...newSession.user, profile: null });
-              setProfile(null);
-              finishLoading();
+      try {
+        console.log("[useAuthState] Auth state change event:", event, !!newSession, newSession?.user?.email);
+        if (event === 'SIGNED_IN' && newSession?.user) {
+          setSession(newSession);
+          if (newSession.user.email === 'admin@arabinsights.com') {
+            setUser({ ...newSession.user, profile: null });
+            setProfile(null);
+            finishLoading("SIGNED_IN:admin");
+          } else {
+            try {
+              const userProfile = await profileService.fetchUserProfile(newSession.user.id);
+              if (mounted) {
+                setProfile(userProfile);
+                setUser({ ...newSession.user, profile: userProfile });
+                finishLoading("SIGNED_IN:user+profile");
+              }
+            } catch (error) {
+              console.error("[useAuthState] Error fetching profile on SIGNED_IN", error);
+              if (mounted) {
+                setUser({ ...newSession.user, profile: null });
+                setProfile(null);
+                finishLoading("SIGNED_IN:user+no_profile");
+              }
             }
           }
+        } else if (event === 'SIGNED_OUT') {
+          setUser(null);
+          setProfile(null);
+          setSession(null);
+          finishLoading("SIGNED_OUT");
+        } else if (event === 'TOKEN_REFRESHED' && newSession?.user) {
+          setSession(newSession);
+          if (user) {
+            setUser({ ...newSession.user, profile: user.profile });
+          }
+          finishLoading("TOKEN_REFRESHED");
         }
-      } else if (event === 'SIGNED_OUT') {
-        setUser(null);
-        setProfile(null);
-        setSession(null);
-        finishLoading();
-      } else if (event === 'TOKEN_REFRESHED' && newSession?.user) {
-        setSession(newSession);
-        if (user) {
-          setUser({ ...newSession.user, profile: user.profile });
-        }
+      } catch (err) {
+        console.error("[useAuthState] Auth event handler error:", err);
+        finishLoading("auth_event_error");
       }
     });
 
     // Get initial session
     const initAuth = async () => {
       try {
+        console.log("[useAuthState] Checking initial session...");
         const { data: { session }, error } = await authService.getSession();
         if (error) throw error;
         if (!mounted) return;
@@ -67,28 +88,33 @@ export const useAuthState = () => {
           if (session.user.email === 'admin@arabinsights.com') {
             setUser({ ...session.user, profile: null });
             setProfile(null);
+            finishLoading("init:admin");
           } else {
             try {
               const userProfile = await profileService.fetchUserProfile(session.user.id);
               if (mounted) {
                 setProfile(userProfile);
                 setUser({ ...session.user, profile: userProfile });
+                finishLoading("init:user+profile");
               }
             } catch (profileError) {
+              console.error("[useAuthState] Error fetching profile on INIT", profileError);
               if (mounted) {
                 setUser({ ...session.user, profile: null });
                 setProfile(null);
+                finishLoading("init:user+no_profile");
               }
             }
           }
+        } else {
+          finishLoading("init:no_session");
         }
       } catch (error) {
-        // On full failure, zero everything and stop loading
+        console.error("[useAuthState] INIT error:", error);
         setUser(null);
         setProfile(null);
         setSession(null);
-      } finally {
-        finishLoading();
+        finishLoading("init:error");
       }
     };
 
@@ -96,6 +122,7 @@ export const useAuthState = () => {
 
     return () => {
       mounted = false;
+      clearTimeout(timeout);
       subscription.unsubscribe();
     };
   }, []);
