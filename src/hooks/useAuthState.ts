@@ -1,3 +1,4 @@
+
 import { useState, useEffect } from 'react';
 import { Session } from '@supabase/supabase-js';
 import { UserWithProfile, Profile } from '@/types/auth';
@@ -44,7 +45,13 @@ export const useAuthState = () => {
           } else {
             try {
               const userProfile = await profileService.fetchUserProfile(newSession.user.id);
-              if (mounted) {
+              if (!mounted) return;
+              // If the profile is not found, treat as not fatal (user can still proceed)
+              if (!userProfile) {
+                setProfile(null);
+                setUser({ ...newSession.user, profile: null });
+                finishLoading("SIGNED_IN:user+no_profile_found");
+              } else {
                 setProfile(userProfile);
                 setUser({ ...newSession.user, profile: userProfile });
                 finishLoading("SIGNED_IN:user+profile");
@@ -54,7 +61,7 @@ export const useAuthState = () => {
               if (mounted) {
                 setUser({ ...newSession.user, profile: null });
                 setProfile(null);
-                finishLoading("SIGNED_IN:user+no_profile");
+                finishLoading("SIGNED_IN:user+no_profile_error");
               }
             }
           }
@@ -92,7 +99,12 @@ export const useAuthState = () => {
           } else {
             try {
               const userProfile = await profileService.fetchUserProfile(session.user.id);
-              if (mounted) {
+              if (!mounted) return;
+              if (!userProfile) {
+                setProfile(null);
+                setUser({ ...session.user, profile: null });
+                finishLoading("init:user+no_profile_found");
+              } else {
                 setProfile(userProfile);
                 setUser({ ...session.user, profile: userProfile });
                 finishLoading("init:user+profile");
@@ -102,7 +114,7 @@ export const useAuthState = () => {
               if (mounted) {
                 setUser({ ...session.user, profile: null });
                 setProfile(null);
-                finishLoading("init:user+no_profile");
+                finishLoading("init:user+no_profile_error");
               }
             }
           }
