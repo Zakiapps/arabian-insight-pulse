@@ -260,22 +260,35 @@ const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
       // Then analyze the article using AraBERT
       const textToAnalyze = article.content || article.description || article.title;
       
+      if (!textToAnalyze || textToAnalyze.trim().length === 0) {
+        throw new Error(isRTL ? "لا يوجد نص للتحليل" : "No text to analyze");
+      }
+
+      console.log("Analyzing text:", textToAnalyze.substring(0, 100));
+      
       const { data: analysisData, error: analysisError } = await supabase.functions.invoke('analyze-text', {
         body: {
-          text: textToAnalyze,
-          source: 'newsdata',
-          user_id: user.id
+          text: textToAnalyze
         }
       });
 
-      if (analysisError) throw analysisError;
+      console.log("Analysis response:", { analysisData, analysisError });
+
+      if (analysisError) {
+        console.error("Analysis error:", analysisError);
+        throw new Error(analysisError.message || "Analysis failed");
+      }
+
+      if (!analysisData) {
+        throw new Error("No analysis data received");
+      }
 
       // Update the saved article with analysis results
       const { error: updateError } = await supabase
         .from('scraped_news')
         .update({ 
           is_analyzed: true, 
-          sentiment: analysisData.sentiment,
+          sentiment: analysisData.sentiment || 'neutral',
           updated_at: new Date().toISOString()
         })
         .eq('id', savedArticle.id);
@@ -287,11 +300,17 @@ const NewsDataSearch = ({ onNewsSaved }: NewsDataSearchProps) => {
         onNewsSaved();
       }
 
+      const sentimentText = analysisData.sentiment === 'positive' ? 
+        (isRTL ? 'إيجابي' : 'Positive') : 
+        analysisData.sentiment === 'negative' ? 
+        (isRTL ? 'سلبي' : 'Negative') : 
+        (isRTL ? 'محايد' : 'Neutral');
+
       toast({
         title: isRTL ? "تم التحليل والحفظ" : "Analyzed and Saved",
         description: isRTL 
-          ? `تم حفظ المقال وتحليله. المشاعر: ${analysisData.sentiment === 'positive' ? 'إيجابي' : analysisData.sentiment === 'negative' ? 'سلبي' : 'محايد'}`
-          : `Article saved and analyzed. Sentiment: ${analysisData.sentiment}`,
+          ? `تم حفظ المقال وتحليله. المشاعر: ${sentimentText}`
+          : `Article saved and analyzed. Sentiment: ${sentimentText}`,
       });
     } catch (error: any) {
       console.error("Analysis and save error:", error);
