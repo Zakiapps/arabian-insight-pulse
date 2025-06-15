@@ -124,11 +124,6 @@ const AppSidebar = () => {
       icon: Globe,
     },
     {
-      title: isRTL ? "NewsAPI" : "NewsAPI",
-      url: "/models/newsapi",
-      icon: Newspaper,
-    },
-    {
       title: isRTL ? "التنبؤ" : "Forecasting",
       url: "/models/forecasting",
       icon: Zap,

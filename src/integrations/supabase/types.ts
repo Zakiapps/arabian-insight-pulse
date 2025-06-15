@@ -264,53 +264,6 @@ export type Database = {
         }
         Relationships: []
       }
-      news_configs: {
-        Row: {
-          api_key: string
-          created_at: string | null
-          id: string
-          is_active: boolean | null
-          keywords: string[] | null
-          language: string | null
-          last_run_at: string | null
-          project_id: string
-          sources: string[] | null
-          updated_at: string | null
-        }
-        Insert: {
-          api_key: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          keywords?: string[] | null
-          language?: string | null
-          last_run_at?: string | null
-          project_id: string
-          sources?: string[] | null
-          updated_at?: string | null
-        }
-        Update: {
-          api_key?: string
-          created_at?: string | null
-          id?: string
-          is_active?: boolean | null
-          keywords?: string[] | null
-          language?: string | null
-          last_run_at?: string | null
-          project_id?: string
-          sources?: string[] | null
-          updated_at?: string | null
-        }
-        Relationships: [
-          {
-            foreignKeyName: "news_configs_project_id_fkey"
-            columns: ["project_id"]
-            isOneToOne: false
-            referencedRelation: "projects"
-            referencedColumns: ["id"]
-          },
-        ]
-      }
       notification_history: {
         Row: {
           alert_id: string | null
