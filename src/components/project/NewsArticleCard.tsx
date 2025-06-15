@@ -2,8 +2,9 @@
 import { useState } from "react";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Trash2, ExternalLink, Sparkles } from "lucide-react";
+import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle } from "lucide-react";
 
 interface SavedNewsArticle {
   id: string;
@@ -35,16 +36,109 @@ interface NewsArticleCardProps {
   onDelete: (articleId: string) => void;
   isAnalyzing: boolean;
   isDeleting: boolean;
+  selectionMode?: boolean;
+  selected?: boolean;
+  onSelect?: (selected: boolean) => void;
 }
 
-const NewsArticleCard = ({ article, onAnalyze, onDelete, isAnalyzing, isDeleting }: NewsArticleCardProps) => {
+const NewsArticleCard = ({ 
+  article, 
+  onAnalyze, 
+  onDelete, 
+  isAnalyzing, 
+  isDeleting,
+  selectionMode = false,
+  selected = false,
+  onSelect
+}: NewsArticleCardProps) => {
   const { isRTL } = useLanguage();
 
+  // Enhanced content quality assessment
+  const getContentQuality = () => {
+    const content = article.content || '';
+    const description = article.description || '';
+    const title = article.title || '';
+    
+    // Check for placeholder content
+    const placeholderPatterns = [
+      /ONLY AVAILABLE IN PAID PLANS/i,
+      /upgrade to premium/i,
+      /subscribe to read/i,
+      /premium content/i,
+      /paywall/i
+    ];
+    
+    const hasPlaceholder = placeholderPatterns.some(pattern => 
+      pattern.test(content) || pattern.test(description)
+    );
+    
+    if (hasPlaceholder) {
+      return { 
+        level: 'blocked', 
+        score: 0, 
+        message: 'محتوى محجوب أو مدفوع',
+        icon: AlertTriangle,
+        color: 'text-red-600 bg-red-50'
+      };
+    }
+
+    // Calculate content score
+    const totalLength = content.length + description.length + title.length;
+    const wordCount = (content + ' ' + description + ' ' + title).split(/\s+/).length;
+    
+    if (content.length > 500) {
+      return { 
+        level: 'excellent', 
+        score: 95, 
+        message: 'محتوى ممتاز للتحليل',
+        icon: CheckCircle,
+        color: 'text-green-600 bg-green-50'
+      };
+    } else if (content.length > 200 || (description.length > 100 && title.length > 20)) {
+      return { 
+        level: 'good', 
+        score: 75, 
+        message: 'محتوى جيد للتحليل',
+        icon: CheckCircle,
+        color: 'text-blue-600 bg-blue-50'
+      };
+    } else if (description.length > 50 || title.length > 30) {
+      return { 
+        level: 'fair', 
+        score: 50, 
+        message: 'محتوى محدود للتحليل',
+        icon: AlertTriangle,
+        color: 'text-yellow-600 bg-yellow-50'
+      };
+    } else {
+      return { 
+        level: 'poor', 
+        score: 25, 
+        message: 'محتوى قصير للتحليل',
+        icon: AlertTriangle,
+        color: 'text-orange-600 bg-orange-50'
+      };
+    }
+  };
+
+  const contentQuality = getContentQuality();
+  const QualityIcon = contentQuality.icon;
+
   return (
-    <div className="p-4 border rounded-lg bg-white flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow">
-      {/* Header */}
+    <div className={`p-4 border rounded-lg bg-white flex flex-col gap-3 shadow-sm hover:shadow-md transition-shadow ${
+      selectionMode && selected ? 'ring-2 ring-blue-500 bg-blue-50' : ''
+    }`}>
+      {/* Header with selection */}
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-3 flex-1">
+          {selectionMode && (
+            <Checkbox
+              checked={selected}
+              onCheckedChange={onSelect}
+              disabled={article.is_analyzed}
+            />
+          )}
+          
           {article.source_icon ? (
             <img
               src={article.source_icon}
@@ -57,6 +151,7 @@ const NewsArticleCard = ({ article, onAnalyze, onDelete, isAnalyzing, isDeleting
               {article.source_name || ""}
             </span>
           )}
+          
           <div className="flex-1">
             <h3 className="font-semibold text-sm line-clamp-2">{article.title}</h3>
             <div className="text-xs text-muted-foreground">
@@ -98,6 +193,15 @@ const NewsArticleCard = ({ article, onAnalyze, onDelete, isAnalyzing, isDeleting
             </Badge>
           )}
         </div>
+      </div>
+
+      {/* Content Quality Indicator */}
+      <div className={`flex items-center gap-2 px-3 py-2 rounded-lg ${contentQuality.color}`}>
+        <QualityIcon className="h-4 w-4" />
+        <span className="text-sm font-medium">{contentQuality.message}</span>
+        <Badge variant="outline" className="text-xs">
+          {contentQuality.score}%
+        </Badge>
       </div>
 
       {/* Enhanced Analysis Display */}
@@ -169,12 +273,12 @@ const NewsArticleCard = ({ article, onAnalyze, onDelete, isAnalyzing, isDeleting
 
       {/* Action Buttons */}
       <div className="flex gap-2 pt-2">
-        {!article.is_analyzed && (
+        {!article.is_analyzed && !selectionMode && (
           <Button
             variant="outline"
             size="sm"
             onClick={() => onAnalyze(article)}
-            disabled={isAnalyzing}
+            disabled={isAnalyzing || contentQuality.level === 'blocked'}
             className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
           >
             {isAnalyzing ? (
@@ -203,19 +307,21 @@ const NewsArticleCard = ({ article, onAnalyze, onDelete, isAnalyzing, isDeleting
           </Button>
         )}
         
-        <Button
-          variant="outline"
-          size="sm"
-          onClick={() => onDelete(article.id)}
-          disabled={isDeleting}
-        >
-          {isDeleting ? (
-            <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
-          ) : (
-            <Trash2 className="h-4 w-4 mr-1" />
-          )}
-          {isRTL ? "حذف" : "Delete"}
-        </Button>
+        {!selectionMode && (
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => onDelete(article.id)}
+            disabled={isDeleting}
+          >
+            {isDeleting ? (
+              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+            ) : (
+              <Trash2 className="h-4 w-4 mr-1" />
+            )}
+            {isRTL ? "حذف" : "Delete"}
+          </Button>
+        )}
       </div>
     </div>
   );

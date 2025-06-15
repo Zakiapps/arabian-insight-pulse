@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
@@ -17,30 +16,110 @@ const supabase = createClient(supabaseUrl, supabaseKey);
 const HF_ENDPOINT = "https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud";
 const HF_TOKEN = "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";
 
-// Enhanced text validation with emotion context
-function validateText(text: string): { isValid: boolean; errorMsg: string; emotionContext?: string } {
+// Enhanced text validation with content quality scoring
+function validateText(text: string): { 
+  isValid: boolean; 
+  errorMsg: string; 
+  qualityScore: number; 
+  contentType: string;
+  details: any;
+} {
   if (!text || text.trim().length < 3) {
-    return { isValid: false, errorMsg: "النص فارغ أو قصير جداً" };
+    return { 
+      isValid: false, 
+      errorMsg: "النص فارغ أو قصير جداً", 
+      qualityScore: 0, 
+      contentType: 'empty',
+      details: { reason: 'empty_text', length: text?.length || 0 }
+    };
+  }
+  
+  // Check for placeholder content that indicates paid/blocked content
+  const placeholderPatterns = [
+    /ONLY AVAILABLE IN PAID PLANS/i,
+    /upgrade to premium/i,
+    /subscribe to read/i,
+    /premium content/i,
+    /paywall/i,
+    /login to continue/i,
+    /register to view/i
+  ];
+  
+  const hasPlaceholder = placeholderPatterns.some(pattern => pattern.test(text));
+  if (hasPlaceholder) {
+    return { 
+      isValid: false, 
+      errorMsg: "المحتوى يحتوي على نص مدفوع أو محجوب", 
+      qualityScore: 0, 
+      contentType: 'blocked',
+      details: { reason: 'blocked_content', detected_patterns: placeholderPatterns.filter(p => p.test(text)) }
+    };
   }
   
   // Check for Arabic characters (Unicode range 0x0600-0x06FF)
   const hasArabic = /[\u0600-\u06FF]/.test(text);
   if (!hasArabic) {
-    return { isValid: false, errorMsg: "النص لا يحتوي على حروف عربية" };
+    return { 
+      isValid: false, 
+      errorMsg: "النص لا يحتوي على حروف عربية", 
+      qualityScore: 0, 
+      contentType: 'non-arabic',
+      details: { reason: 'no_arabic', language_detected: 'unknown' }
+    };
   }
 
-  // Detect emotional intensity indicators
-  const emotionalIntensityWords = [
-    "جداً", "كتير", "شديد", "قوي", "ضعيف", "هائل", "رهيب", "ممتاز", "سيء", "فظيع"
-  ];
+  // Calculate comprehensive quality score
+  let qualityScore = 0;
+  const wordCount = text.split(/\s+/).length;
+  const charCount = text.length;
   
-  const hasIntensity = emotionalIntensityWords.some(word => 
-    text.toLowerCase().includes(word.toLowerCase())
-  );
+  // Length scoring (40% of total score)
+  if (wordCount > 200) qualityScore += 40;
+  else if (wordCount > 100) qualityScore += 30;
+  else if (wordCount > 50) qualityScore += 20;
+  else if (wordCount > 20) qualityScore += 10;
+  else qualityScore += 5;
   
-  const emotionContext = hasIntensity ? "نص يحتوي على مؤشرات عاطفية قوية" : "نص بمستوى عاطفي معتدل";
+  // Content structure scoring (25% of total score)
+  const sentences = text.split(/[.!؟]/).filter(s => s.trim().length > 0);
+  if (sentences.length > 10) qualityScore += 25;
+  else if (sentences.length > 5) qualityScore += 20;
+  else if (sentences.length > 2) qualityScore += 15;
+  else qualityScore += 5;
   
-  return { isValid: true, errorMsg: "", emotionContext };
+  // Arabic content density (20% of total score)
+  const arabicChars = (text.match(/[\u0600-\u06FF]/g) || []).length;
+  const arabicDensity = arabicChars / charCount;
+  if (arabicDensity > 0.8) qualityScore += 20;
+  else if (arabicDensity > 0.6) qualityScore += 15;
+  else if (arabicDensity > 0.4) qualityScore += 10;
+  else qualityScore += 5;
+  
+  // Meaningful content indicators (15% of total score)
+  const meaningfulWords = ['في', 'من', 'على', 'إلى', 'عن', 'مع', 'هذا', 'هذه', 'التي', 'الذي', 'كان', 'تم', 'يتم', 'بعد', 'قبل'];
+  const meaningfulCount = meaningfulWords.reduce((count, word) => 
+    count + (text.toLowerCase().includes(word) ? 1 : 0), 0);
+  qualityScore += Math.min(meaningfulCount, 15);
+  
+  // Determine content type based on analysis
+  let contentType = 'short';
+  if (wordCount > 100 && qualityScore > 70) contentType = 'excellent';
+  else if (wordCount > 50 && qualityScore > 50) contentType = 'good';
+  else if (wordCount > 20 && qualityScore > 30) contentType = 'fair';
+  
+  return { 
+    isValid: true, 
+    errorMsg: "", 
+    qualityScore: Math.min(qualityScore, 100),
+    contentType,
+    details: {
+      word_count: wordCount,
+      char_count: charCount,
+      sentence_count: sentences.length,
+      arabic_density: arabicDensity,
+      meaningful_words_found: meaningfulCount
+    }
+  };
 }
 
 // Enhanced Jordanian dialect detection with emotion markers
@@ -339,12 +418,17 @@ serve(async (req) => {
       });
     }
 
-    // Enhanced text validation with emotion context
+    console.log('Processing text for enhanced analysis:', text.substring(0, 100) + '...');
+
+    // Enhanced text validation with detailed quality assessment
     const validation = validateText(text);
     if (!validation.isValid) {
       return new Response(JSON.stringify({ 
         error: "Text validation failed", 
-        details: validation.errorMsg 
+        details: validation.errorMsg,
+        quality_score: validation.qualityScore,
+        content_type: validation.contentType,
+        validation_details: validation.details
       }), { 
         status: 400, 
         headers: corsHeaders 
@@ -358,12 +442,11 @@ serve(async (req) => {
       });
     }
 
-    console.log('Processing text for emotion analysis:', text);
+    console.log(`Content quality score: ${validation.qualityScore}%, type: ${validation.contentType}`);
 
     // Enhanced Arabic text preprocessing
     const preprocessResult = preprocessArabicText(text);
-    console.log('Preprocessed text:', preprocessResult.processed);
-    console.log('Emotional context found:', preprocessResult.emotionalContext);
+    console.log('Preprocessed text:', preprocessResult.processed.substring(0, 100) + '...');
 
     // Call enhanced Hugging Face endpoint
     const response = await fetch(HF_ENDPOINT, {
@@ -393,7 +476,7 @@ serve(async (req) => {
     }
 
     const hfResult = await response.json();
-    console.log('HuggingFace emotion analysis result:', JSON.stringify(hfResult, null, 2));
+    console.log('HuggingFace enhanced analysis result:', JSON.stringify(hfResult, null, 2));
 
     // Enhanced emotion and sentiment analysis
     const emotionResult = analyzeEmotionAndSentiment(hfResult, text);
@@ -414,18 +497,31 @@ serve(async (req) => {
       dialect_indicators: dialectResult.indicators,
       emotional_markers: dialectResult.emotionalMarkers,
       emotional_context: preprocessResult.emotionalContext,
-      validation_context: validation.emotionContext,
-      modelSource: 'MARBERT_Enhanced_Emotion_Analysis',
+      content_quality: {
+        score: validation.qualityScore,
+        type: validation.contentType,
+        details: validation.details
+      },
+      modelSource: 'MARBERT_Enhanced_Analysis',
       processed_text: preprocessResult.processed,
-      validation: validation
+      validation: validation,
+      analysis_metadata: {
+        api_version: '2.0',
+        enhanced_features: true,
+        processing_time: new Date().toISOString()
+      }
     };
 
-    console.log('Enhanced emotion analysis result:', result);
+    console.log('Enhanced analysis result completed:', {
+      sentiment: result.sentiment,
+      quality_score: validation.qualityScore,
+      content_type: validation.contentType
+    });
 
     return new Response(JSON.stringify(result), { headers: corsHeaders });
 
   } catch (error) {
-    console.error("Enhanced emotion analysis function error:", error);
+    console.error("Enhanced analysis function error:", error);
     return new Response(JSON.stringify({ 
       error: "Internal server error", 
       details: error.message 
