@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
@@ -8,6 +7,9 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { useAuth } from '@/contexts/AuthContext';
 import { toast } from 'sonner';
 import { BarChart3, Eye, EyeOff } from 'lucide-react';
+import SignInEmailInput from "@/components/auth/SignInEmailInput";
+import SignInPasswordInput from "@/components/auth/SignInPasswordInput";
+import SignInErrorAlert from "@/components/auth/SignInErrorAlert";
 
 const SignIn = () => {
   const [email, setEmail] = useState('admin@arabinsights.com');
@@ -103,49 +105,19 @@ const SignIn = () => {
         </CardHeader>
         <CardContent>
           <form onSubmit={handleSubmit} className="space-y-6">
-            <div>
-              <Label htmlFor="email" className="text-base font-medium">البريد الإلكتروني</Label>
-              <Input
-                id="email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                className="mt-2 h-12 text-base"
-                disabled={loading}
-                placeholder="admin@arabinsights.com"
-                autoComplete="email"
-              />
-            </div>
-            <div>
-              <Label htmlFor="password" className="text-base font-medium">كلمة المرور</Label>
-              <div className="relative mt-2">
-                <Input
-                  id="password"
-                  type={showPassword ? "text" : "password"}
-                  value={password}
-                  onChange={(e) => setPassword(e.target.value)}
-                  required
-                  className="h-12 text-base pr-12"
-                  disabled={loading}
-                  placeholder="password"
-                  autoComplete="current-password"
-                />
-                <button
-                  type="button"
-                  className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
-                  onClick={() => setShowPassword(!showPassword)}
-                  tabIndex={-1}
-                >
-                  {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
-                </button>
-              </div>
-            </div>
-            {loginError && (
-              <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm text-center">
-                {loginError}
-              </div>
-            )}
+            <SignInEmailInput
+              value={email}
+              onChange={(e) => setEmail(e.target.value)}
+              disabled={loading}
+            />
+            <SignInPasswordInput
+              value={password}
+              onChange={(e) => setPassword(e.target.value)}
+              showPassword={showPassword}
+              setShowPassword={setShowPassword}
+              disabled={loading}
+            />
+            <SignInErrorAlert message={loginError} />
             <Button
               type="submit"
               className="w-full h-12 text-base bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
@@ -186,4 +158,3 @@ const SignIn = () => {
 };
 
 export default SignIn;
-
