@@ -1,9 +1,23 @@
 
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+// Supported models and their custom endpoints/tokens (for demo—should come from config/db in prod)
+const modelConfigs: Record<string, { url: string; apiKey: string; realModel?: string }> = {
+  // Custom endpoints for certain models (as in your typescript logic)
+  "Qwen/Qwen2.5-Coder-32B-Instruct": {
+    url: "https://mfey12szez9peox8.us-east-1.aws.endpoints.huggingface.cloud/v1",
+    apiKey: "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",
+    realModel: "Qwen2-5-Coder-32B-Instruct",
+  },
+  "NousResearch/Hermes-3-Llama-3.1-8B": {
+    url: "https://j5d3uzrla2th3m4i.us-east-1.aws.endpoints.huggingface.cloud/v1",
+    apiKey: "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",
+    realModel: "Qwen/Qwen2.5-Coder-7B-Instruct",
+  },
+  // Add your other custom models as needed...
 };
 
 function log(...args: unknown[]) {
@@ -16,30 +30,53 @@ serve(async (req) => {
     return new Response(null, { headers: corsHeaders });
   }
   try {
-    const { url, token } = await req.json();
+    // Accept model, url, token in the request
+    const { model, url, token } = await req.json();
 
-    log("Received test request", { url, withToken: !!token });
+    log("Received test request", { model, url, withToken: !!token });
 
-    if (!url || typeof url !== "string" || !url.startsWith("https://")) {
+    let testUrl = url;
+    let testToken = token;
+    let testedModel = model;
+
+    // If model has special config, override url/token
+    if (model && modelConfigs[model]) {
+      testUrl = modelConfigs[model].url;
+      testToken = modelConfigs[model].apiKey;
+      if (modelConfigs[model].realModel) {
+        testedModel = modelConfigs[model].realModel;
+      }
+      log(`Using custom config for model ${model}`, testUrl);
+    }
+
+    // Validate the URL and token
+    if (!testUrl || typeof testUrl !== "string" || !testUrl.startsWith("https://")) {
       log("Invalid or missing URL");
       return new Response(JSON.stringify({ ok: false, message: "Invalid or missing URL" }), { headers: corsHeaders, status: 400 });
     }
-    if (!token || typeof token !== "string" || !token.startsWith("hf_")) {
+    if (!testToken || typeof testToken !== "string" || !testToken.startsWith("hf_")) {
       log("Invalid or missing token");
       return new Response(JSON.stringify({ ok: false, message: "Invalid or missing Hugging Face token (should start with hf_...)" }), { headers: corsHeaders, status: 400 });
     }
 
-    const hfReqBody = { inputs: "test" };
+    // POST body according to HuggingFace API requirement: model, input
+    // Many endpoints expect {inputs: "...", parameters: {...}}; we'll give dummy
+    const payload: Record<string, unknown> = { inputs: "test", options: { wait_for_model: false } };
+    // Some OpenAI-compatible endpoints require `model` field in the POST body (for clarity, only for /v1/chat/completions)
+    if (testUrl.endsWith('/v1') || testUrl.includes('/v1/')) {
+      payload["model"] = testedModel;
+      payload["messages"] = [{ role: "user", content: "Hello" }];
+    }
 
     let response;
     try {
-      response = await fetch(url, {
+      response = await fetch(testUrl, {
         method: "POST",
         headers: {
-          "Authorization": `Bearer ${token}`,
+          "Authorization": `Bearer ${testToken}`,
           "Content-Type": "application/json"
         },
-        body: JSON.stringify(hfReqBody)
+        body: JSON.stringify(payload)
       });
     } catch (err) {
       log("Error connecting to Hugging Face:", err.message || err);
@@ -51,28 +88,35 @@ serve(async (req) => {
 
     log("Hugging Face endpoint status", response.status, response.statusText);
 
+    let hfResponseText = "";
+    let hfResponseObj: any = {};
     if (!response.ok) {
-      let obj: any = {};
-      let responseText = "";
       try {
-        responseText = await response.text();
-        obj = JSON.parse(responseText);
+        hfResponseText = await response.text();
+        hfResponseObj = JSON.parse(hfResponseText);
       } catch (_) {
-        obj = {};
+        hfResponseObj = {};
       }
-      log("Hugging Face response not OK", response.status, response.statusText, { obj, responseText });
+      log("Hugging Face response not OK", response.status, response.statusText, { hfResponseObj, hfResponseText });
       return new Response(JSON.stringify({
         ok: false,
-        message: obj.error || obj.message || response.statusText || "Connection failed",
+        message: hfResponseObj.error || hfResponseObj.message || response.statusText || "Connection failed",
         status: response.status,
-        hfResponse: responseText
+        checkedModel: model,
+        checkedUrl: testUrl,
+        hfResponse: hfResponseText
       }), { headers: corsHeaders, status: 400 });
     }
 
     log("Hugging Face response OK");
-    return new Response(JSON.stringify({ ok: true }), { headers: corsHeaders });
+    return new Response(JSON.stringify({
+      ok: true,
+      checkedModel: model,
+      checkedUrl: testUrl,
+    }), { headers: corsHeaders });
   } catch (err) {
     log("Unhandled error", err.message || err);
     return new Response(JSON.stringify({ ok: false, message: err.message || "Unexpected error" }), { headers: corsHeaders, status: 500 });
   }
 });
+
