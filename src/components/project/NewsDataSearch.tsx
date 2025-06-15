@@ -14,6 +14,7 @@ interface NewsArticle {
   content?: string;
   pubDate?: string;
   link?: string;
+  image_url?: string;
 }
 
 const NewsDataSearch = () => {
@@ -29,11 +30,9 @@ const NewsDataSearch = () => {
     setHasSearched(true);
     setNews([]);
     try {
-      // Use Supabase Edge function proxy
       const response = await fetch(`/functions/v1/scrape-newsdata?query=${encodeURIComponent(kw)}`);
       let data: any;
 
-      // Check content-type for JSON, else throw error
       const contentType = response.headers.get("content-type");
       if (contentType && contentType.includes("application/json")) {
         data = await response.json();
@@ -43,7 +42,7 @@ const NewsDataSearch = () => {
         toast({
           title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
           description: isRTL
-            ? "لم يتم العثور على أخبار أو حدث خطأ في الخادم." 
+            ? "لم يتم العثور على أخبار أو حدث خطأ في الخادم."
             : "No news found or server error.",
           variant: "destructive",
         });
@@ -51,14 +50,25 @@ const NewsDataSearch = () => {
         return;
       }
 
-      if (data.success && Array.isArray(data.articles)) {
-        setNews(data.articles.slice(0, 10));
+      // NewsData.io now returns array in either "articles" or "results"
+      let articles: NewsArticle[] = [];
+      if (Array.isArray(data.articles)) {
+        articles = data.articles;
+      } else if (Array.isArray(data.results)) {
+        articles = data.results;
+      }
+
+      if (articles.length > 0) {
+        setNews(articles.slice(0, 10));
       } else {
         toast({
-          title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
-          description: data.error || "",
+          title: isRTL ? "لا توجد نتائج" : "No news found",
+          description: isRTL
+            ? "لم يتم العثور على أخبار مطابقة لهذه الكلمة."
+            : "No matching news articles for this keyword.",
           variant: "destructive",
         });
+        setNews([]);
       }
     } catch (error: any) {
       toast({
@@ -127,6 +137,14 @@ const NewsDataSearch = () => {
                     className="p-4 border rounded-lg bg-white flex flex-col gap-2 shadow-sm"
                   >
                     <div className="font-semibold">{a.title}</div>
+                    {a.image_url && (
+                      <img
+                        src={a.image_url}
+                        alt={a.title}
+                        className="w-full max-w-xs rounded object-cover my-1"
+                        loading="lazy"
+                      />
+                    )}
                     <div className="text-xs text-muted-foreground whitespace-pre-line line-clamp-3 max-w-prose">
                       {(a.description || a.content || "").slice(0, 200)}...
                     </div>
