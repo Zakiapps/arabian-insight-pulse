@@ -1,4 +1,3 @@
-
 import React, { useState } from "react";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { Button } from "@/components/ui/button";
@@ -18,7 +17,6 @@ export default function UnifiedScraper() {
   const [report, setReport] = useState("");
   const [loading, setLoading] = useState(false);
 
-  // Back to dashboard
   return (
     <div className={cn("max-w-3xl mx-auto mt-10 space-y-10 animate-fade-in", isRTL ? "text-right" : "text-left")}>
       <div className="flex mb-4">
