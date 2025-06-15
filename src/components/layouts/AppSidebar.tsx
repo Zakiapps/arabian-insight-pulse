@@ -119,11 +119,6 @@ const AppSidebar = () => {
       icon: FileText,
     },
     {
-      title: isRTL ? "BrightData" : "BrightData",
-      url: "/models/brightdata",
-      icon: Globe,
-    },
-    {
       title: isRTL ? "التنبؤ" : "Forecasting",
       url: "/models/forecasting",
       icon: Zap,

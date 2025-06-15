@@ -1,4 +1,5 @@
 
+
 import { Toaster } from "@/components/ui/sonner";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
@@ -38,7 +39,6 @@ import ProjectPage from "@/pages/ProjectPage";
 // Models & Services pages
 import SentimentModelPage from "@/pages/models/SentimentModelPage";
 import SummarizationModelPage from "@/pages/models/SummarizationModelPage";
-import BrightDataPage from "@/pages/models/BrightDataPage";
 import ForecastingPage from "@/pages/models/ForecastingPage";
 
 // Admin pages
@@ -113,7 +113,6 @@ function App() {
                     }>
                       <Route path="sentiment" element={<SentimentModelPage />} />
                       <Route path="summarization" element={<SummarizationModelPage />} />
-                      <Route path="brightdata" element={<BrightDataPage />} />
                       <Route path="forecasting" element={<ForecastingPage />} />
                     </Route>
 
@@ -148,3 +147,4 @@ function App() {
 }
 
 export default App;
+
