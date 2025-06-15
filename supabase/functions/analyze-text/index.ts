@@ -1,4 +1,3 @@
-
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
@@ -17,6 +16,12 @@ const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
 const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
 const supabase = createClient(supabaseUrl, supabaseKey);
 
+// Get Hugging Face API token
+// const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
+
+// Your custom Hugging Face endpoint
+// const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
+
 serve(async (req) => {
   // Handle CORS
   if (req.method === 'OPTIONS') {
@@ -27,44 +32,31 @@ serve(async (req) => {
     const { text } = await req.json();
     console.log('Processing text:', text?.substring(0, 50) + '...');
 
-    if (!text || text.trim().length === 0) {
-      return new Response(
-        JSON.stringify({ error: "Text is required for analysis" }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
-    }
-
-    // Get admin HuggingFace config from DB for the token
+    // Get admin HuggingFace config from DB
     const { data: huggingfaceData, error: configErr } = await supabase
       .from('huggingface_configs')
       .select('*')
       .limit(1)
       .maybeSingle();
 
-    if (configErr) {
-      console.error('Database error:', configErr);
-      throw new Error('Cannot load HuggingFace config: ' + configErr.message);
-    }
-    
+    if (configErr) throw new Error('Cannot load HuggingFace config');
     if (!huggingfaceData) {
       return new Response(
-        JSON.stringify({ error: "No Hugging Face configuration found. Please configure it in admin settings." }),
+        JSON.stringify({ error: "No Hugging Face configuration found." }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
 
-    // Use the specified endpoint for bert-ajgt-abv model
-    const hfEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
+    // Pick the endpoint/token for arabert as example (add logic for mt5 as needed)
+    const hfEndpoint = huggingfaceData.arabert_url;
     const hfToken = huggingfaceData.arabert_token;
 
-    if (!hfToken) {
+    if (!hfToken || !hfEndpoint) {
       return new Response(
-        JSON.stringify({ error: 'Hugging Face token missing. Please configure it in admin settings.' }),
+        JSON.stringify({ error: 'Hugging Face endpoint/token missing. Please set it in admin config.' }),
         { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
-
-    console.log('Using specified AraBERT endpoint:', hfEndpoint);
 
     // Enhanced validation with detailed error messages
     const validation = validateArabicTextDetailed(text);
@@ -81,7 +73,7 @@ serve(async (req) => {
 
     // Analyze with admin-configured HuggingFace endpoint
     const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, hfEndpoint, hfToken);
-    console.log('AraBERT analysis completed:', analysisResult);
+    console.log('Custom MARBERT analysis completed');
     
     // Detect dialect using enhanced Jordanian detection logic
     const dialect = detectJordanianDialect(preprocessedText);
@@ -95,7 +87,7 @@ serve(async (req) => {
     const finalResult = {
       ...analysisResult,
       dialect,
-      modelSource: 'bert-ajgt-abv_Custom_Endpoint'
+      modelSource: 'MARBERT_Custom_Endpoint_Enhanced'
     };
     
     console.log('Analysis completed successfully with enhanced dialect detection');
