@@ -1,12 +1,13 @@
-
 import { useState } from "react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { useLanguage } from "@/contexts/LanguageContext";
 import { useToast } from "@/hooks/use-toast";
-import { Newspaper, Search, Wifi, WifiOff } from "lucide-react";
+import { Newspaper, Search, Wifi, WifiOff, Save, Brain } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { useAuth } from "@/contexts/AuthContext";
+import { useParams } from "react-router-dom";
 
 interface NewsArticle {
   article_id: string;
@@ -28,12 +29,16 @@ interface NewsArticle {
 const NewsDataSearch = () => {
   const { isRTL } = useLanguage();
   const { toast } = useToast();
+  const { user } = useAuth();
+  const { projectId } = useParams();
   const [keyword, setKeyword] = useState("");
   const [news, setNews] = useState<NewsArticle[]>([]);
   const [loading, setLoading] = useState(false);
   const [testingConnection, setTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'unknown' | 'success' | 'failed'>('unknown');
   const [hasSearched, setHasSearched] = useState(false);
+  const [savingArticles, setSavingArticles] = useState<Record<string, boolean>>({});
+  const [analyzingArticles, setAnalyzingArticles] = useState<Record<string, boolean>>({});
 
   // Function to detect if text contains Arabic characters
   const isArabicText = (text: string) => {
@@ -151,6 +156,99 @@ const NewsDataSearch = () => {
       });
     } finally {
       setLoading(false);
+    }
+  };
+
+  const saveArticleToProject = async (article: NewsArticle) => {
+    if (!user || !projectId) {
+      toast({
+        title: isRTL ? "خطأ" : "Error",
+        description: isRTL ? "يجب تسجيل الدخول أولاً" : "You must be logged in",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setSavingArticles(prev => ({ ...prev, [article.article_id]: true }));
+
+    try {
+      const { error } = await supabase
+        .from('scraped_news')
+        .insert({
+          project_id: projectId,
+          user_id: user.id,
+          article_id: article.article_id,
+          title: article.title,
+          description: article.description,
+          content: article.content,
+          source_name: article.source_name,
+          source_icon: article.source_icon,
+          image_url: article.image_url,
+          link: article.link,
+          pub_date: article.pubDate ? new Date(article.pubDate).toISOString() : null,
+          language: isArabicText(article.title || '') ? 'ar' : 'en',
+          category: article.category || [],
+          keywords: article.keywords || [],
+        });
+
+      if (error) throw error;
+
+      toast({
+        title: isRTL ? "تم الحفظ" : "Saved Successfully",
+        description: isRTL ? "تم حفظ المقال في المشروع" : "Article saved to project",
+      });
+    } catch (error: any) {
+      console.error("Save error:", error);
+      toast({
+        title: isRTL ? "خطأ في الحفظ" : "Save Error",
+        description: error.message || "Failed to save article",
+        variant: "destructive",
+      });
+    } finally {
+      setSavingArticles(prev => ({ ...prev, [article.article_id]: false }));
+    }
+  };
+
+  const analyzeArticle = async (article: NewsArticle) => {
+    if (!user) {
+      toast({
+        title: isRTL ? "خطأ" : "Error",
+        description: isRTL ? "يجب تسجيل الدخول أولاً" : "You must be logged in",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    setAnalyzingArticles(prev => ({ ...prev, [article.article_id]: true }));
+
+    try {
+      const textToAnalyze = article.content || article.description || article.title;
+      
+      const { data, error } = await supabase.functions.invoke('analyze-text', {
+        body: {
+          text: textToAnalyze,
+          source: 'newsdata',
+          user_id: user.id
+        }
+      });
+
+      if (error) throw error;
+
+      toast({
+        title: isRTL ? "تم التحليل" : "Analysis Complete",
+        description: isRTL 
+          ? `المشاعر: ${data.sentiment === 'positive' ? 'إيجابي' : data.sentiment === 'negative' ? 'سلبي' : 'محايد'}`
+          : `Sentiment: ${data.sentiment}`,
+      });
+    } catch (error: any) {
+      console.error("Analysis error:", error);
+      toast({
+        title: isRTL ? "خطأ في التحليل" : "Analysis Error",
+        description: error.message || "Failed to analyze article",
+        variant: "destructive",
+      });
+    } finally {
+      setAnalyzingArticles(prev => ({ ...prev, [article.article_id]: false }));
     }
   };
 
@@ -332,6 +430,37 @@ const NewsDataSearch = () => {
                           {kw}
                         </span>
                       ))}
+                    </div>
+
+                    {/* Action Buttons */}
+                    <div className="flex gap-2 pt-2">
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => saveArticleToProject(article)}
+                        disabled={savingArticles[article.article_id]}
+                      >
+                        {savingArticles[article.article_id] ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        ) : (
+                          <Save className="h-4 w-4 mr-1" />
+                        )}
+                        {isRTL ? "حفظ في المشروع" : "Save to Project"}
+                      </Button>
+                      
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => analyzeArticle(article)}
+                        disabled={analyzingArticles[article.article_id]}
+                      >
+                        {analyzingArticles[article.article_id] ? (
+                          <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+                        ) : (
+                          <Brain className="h-4 w-4 mr-1" />
+                        )}
+                        {isRTL ? "تحليل بـ AraBERT" : "Analyze with AraBERT"}
+                      </Button>
                     </div>
 
                     {/* Footer with link and date */}

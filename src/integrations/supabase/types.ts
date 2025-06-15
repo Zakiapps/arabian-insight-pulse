@@ -481,6 +481,80 @@ export type Database = {
         }
         Relationships: []
       }
+      scraped_news: {
+        Row: {
+          article_id: string | null
+          category: string[] | null
+          content: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          image_url: string | null
+          is_analyzed: boolean | null
+          keywords: string[] | null
+          language: string | null
+          link: string | null
+          project_id: string
+          pub_date: string | null
+          sentiment: string | null
+          source_icon: string | null
+          source_name: string | null
+          title: string
+          updated_at: string | null
+          user_id: string
+        }
+        Insert: {
+          article_id?: string | null
+          category?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_analyzed?: boolean | null
+          keywords?: string[] | null
+          language?: string | null
+          link?: string | null
+          project_id: string
+          pub_date?: string | null
+          sentiment?: string | null
+          source_icon?: string | null
+          source_name?: string | null
+          title: string
+          updated_at?: string | null
+          user_id: string
+        }
+        Update: {
+          article_id?: string | null
+          category?: string[] | null
+          content?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          image_url?: string | null
+          is_analyzed?: boolean | null
+          keywords?: string[] | null
+          language?: string | null
+          link?: string | null
+          project_id?: string
+          pub_date?: string | null
+          sentiment?: string | null
+          source_icon?: string | null
+          source_name?: string | null
+          title?: string
+          updated_at?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "scraped_news_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sendgrid_settings: {
         Row: {
           api_key: string | null
