@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useProject } from '@/contexts/ProjectContext';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +10,6 @@ import {
   Calendar, 
   Edit, 
   FileText, 
-  Loader2, 
   MoreHorizontal, 
   Plus, 
   Trash2 
@@ -117,7 +117,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
                   <div>
                     <CardTitle className="flex items-center">
                       {project.name}
-                      {!project.is_active && (
+                      {!project.isActive && (
                         <Badge variant="outline" className="ml-2">
                           {isRTL ? 'غير نشط' : 'Inactive'}
                         </Badge>
@@ -160,13 +160,13 @@ const ProjectList: React.FC<ProjectListProps> = ({
                   <div className="flex items-center">
                     <FileText className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>
-                      {project.upload_count} {isRTL ? 'تحميل' : 'uploads'}
+                      {project.uploadCount} {isRTL ? 'تحميل' : 'uploads'}
                     </span>
                   </div>
                   <div className="flex items-center">
                     <BarChart className="mr-2 h-4 w-4 text-muted-foreground" />
                     <span>
-                      {project.analysis_count} {isRTL ? 'تحليل' : 'analyses'}
+                      {project.analysisCount} {isRTL ? 'تحليل' : 'analyses'}
                     </span>
                   </div>
                 </div>
@@ -174,7 +174,7 @@ const ProjectList: React.FC<ProjectListProps> = ({
               <CardFooter className="flex justify-between border-t p-4 text-xs text-muted-foreground">
                 <div className="flex items-center">
                   <Calendar className="mr-1 h-3 w-3" />
-                  {format(new Date(project.created_at), 'PPP', { locale: isRTL ? ar : undefined })}
+                  {format(new Date(project.createdAt), 'PPP', { locale: isRTL ? ar : undefined })}
                 </div>
                 {currentProject?.id === project.id && (
                   <Badge variant="outline" className="bg-primary/10">

@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,23 +45,27 @@ const ProjectForm: React.FC<ProjectFormProps> = ({
   });
   
   const onSubmit = async (values: FormValues) => {
-    if (projectId) {
-      // Update existing project
-      const success = await updateProject(projectId, {
-        name: values.name,
-        description: values.description,
-      });
-      
-      if (success && onSuccess) {
-        onSuccess();
+    try {
+      if (projectId) {
+        // Update existing project
+        await updateProject(projectId, {
+          name: values.name,
+          description: values.description,
+        });
+        
+        if (onSuccess) {
+          onSuccess();
+        }
+      } else {
+        // Create new project
+        await createProject(values.name, values.description);
+        
+        if (onSuccess) {
+          onSuccess();
+        }
       }
-    } else {
-      // Create new project
-      const newProjectId = await createProject(values.name, values.description);
-      
-      if (newProjectId && onSuccess) {
-        onSuccess();
-      }
+    } catch (error) {
+      console.error('Error saving project:', error);
     }
   };
   

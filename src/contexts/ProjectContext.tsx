@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
@@ -89,10 +88,12 @@ export function ProjectProvider({ children }: { children: ReactNode }) {
     if (!user) throw new Error('User not authenticated');
 
     try {
-      const projectId = await supabase.rpc('create_project', {
+      const { data: projectId, error } = await supabase.rpc('create_project', {
         name_param: name,
         description_param: description || null,
       });
+
+      if (error) throw error;
 
       const newProject: Project = {
         id: projectId,

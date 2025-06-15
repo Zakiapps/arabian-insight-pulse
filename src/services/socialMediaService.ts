@@ -78,6 +78,11 @@ class SocialMediaService {
     }
   }
 
+  // Add alias methods for compatibility
+  async getPosts(filters?: any): Promise<ScrapedPost[]> {
+    return this.getScrapedPosts(filters);
+  }
+
   async getStats(): Promise<SocialMediaStats> {
     try {
       const posts = await this.getScrapedPosts();
@@ -135,6 +140,11 @@ class SocialMediaService {
     }
   }
 
+  // Add alias method for compatibility
+  async getPostStats(): Promise<SocialMediaStats> {
+    return this.getStats();
+  }
+
   async scrapePlatform(platform: string, keywords: string[]): Promise<void> {
     try {
       // This would integrate with the scraping edge functions
@@ -155,6 +165,25 @@ class SocialMediaService {
       console.log('Scraping initiated for platform:', platform);
     } catch (error) {
       console.error('Error initiating scraping:', error);
+      throw error;
+    }
+  }
+
+  // Add alias methods for compatibility
+  async triggerScraping(platform: string, keywords: string[]): Promise<void> {
+    return this.scrapePlatform(platform, keywords);
+  }
+
+  async deletePosts(postIds: string[]): Promise<void> {
+    try {
+      const { error } = await supabase
+        .from('analyzed_posts')
+        .delete()
+        .in('id', postIds);
+
+      if (error) throw error;
+    } catch (error) {
+      console.error('Error deleting posts:', error);
       throw error;
     }
   }

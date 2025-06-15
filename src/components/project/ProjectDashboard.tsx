@@ -16,6 +16,7 @@ interface Project {
   name: string;
   description: string | null;
   created_at: string;
+  is_active: boolean;
 }
 
 interface ProjectStats {
@@ -59,7 +60,7 @@ const ProjectDashboard = () => {
       });
       
       if (error) throw error;
-      return data as ProjectStats;
+      return data as unknown as ProjectStats;
     },
     enabled: !!projectId,
   });
@@ -201,7 +202,7 @@ const ProjectDashboard = () => {
         </TabsContent>
 
         <TabsContent value="sentiment" className="space-y-4">
-          <SentimentChart data={stats?.sentiment_distribution} />
+          <SentimentChart />
         </TabsContent>
 
         <TabsContent value="dialect" className="space-y-4">
@@ -209,7 +210,7 @@ const ProjectDashboard = () => {
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-4">
-          <TextSummarizer projectId={projectId!} />
+          <TextSummarizer />
         </TabsContent>
       </Tabs>
     </div>

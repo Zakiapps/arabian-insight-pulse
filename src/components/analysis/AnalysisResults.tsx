@@ -1,3 +1,4 @@
+
 import React from 'react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -31,13 +32,13 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
   
   // Find the upload and its related data
   const upload = uploads.find(u => u.id === uploadId);
-  const analysis = analyses.find(a => a.upload_id === uploadId);
-  const summary = analysis ? summaries.find(s => s.analysis_id === analysis.id) : null;
-  const forecast = analysis ? forecasts.find(f => f.analysis_id === analysis.id) : null;
+  const analysis = analyses.find(a => a.uploadId === uploadId);
+  const summary = analysis ? summaries.find(s => s.analysisId === analysis.id) : null;
+  const forecast = analysis ? forecasts.find(f => f.analysisId === analysis.id) : null;
   
   const handleCopySummary = () => {
     if (summary) {
-      navigator.clipboard.writeText(summary.summary_text);
+      navigator.clipboard.writeText(summary.summaryText);
       toast.success(isRTL ? 'تم نسخ الملخص' : 'Summary copied to clipboard');
     }
   };
@@ -45,7 +46,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
   const handleDownloadSummary = () => {
     if (summary) {
       const element = document.createElement('a');
-      const file = new Blob([summary.summary_text], { type: 'text/plain' });
+      const file = new Blob([summary.summaryText], { type: 'text/plain' });
       element.href = URL.createObjectURL(file);
       element.download = `summary-${new Date().toISOString().slice(0, 10)}.txt`;
       document.body.appendChild(element);
@@ -148,7 +149,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
                 </Badge>
                 
                 <p className="mt-4 text-2xl font-bold">
-                  {Math.round((analysis.sentiment_score || 0) * 100)}%
+                  {Math.round((analysis.sentimentScore || 0) * 100)}%
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {isRTL ? 'درجة الثقة' : 'Confidence Score'}
@@ -161,8 +162,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
             <div className="text-sm text-muted-foreground text-center">
               <p>
                 {isRTL 
-                  ? `تم التحليل في ${format(new Date(analysis.created_at), 'PPpp', { locale: ar })}` 
-                  : `Analyzed on ${format(new Date(analysis.created_at), 'PPpp')}`}
+                  ? `تم التحليل في ${format(new Date(analysis.createdAt), 'PPpp', { locale: ar })}` 
+                  : `Analyzed on ${format(new Date(analysis.createdAt), 'PPpp')}`}
               </p>
             </div>
           </TabsContent>
@@ -185,7 +186,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
                 </Badge>
                 
                 <p className="mt-4 text-2xl font-bold">
-                  {Math.round((analysis.dialect_confidence || 0) * 100)}%
+                  {Math.round((analysis.dialectConfidence || 0) * 100)}%
                 </p>
                 <p className="text-sm text-muted-foreground">
                   {isRTL ? 'درجة الثقة' : 'Confidence Score'}
@@ -234,7 +235,7 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
                   </CardHeader>
                   <CardContent>
                     <p className="text-sm whitespace-pre-line">
-                      {summary.summary_text}
+                      {summary.summaryText}
                     </p>
                   </CardContent>
                 </Card>
@@ -242,8 +243,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
                 <div className="text-xs text-muted-foreground text-center">
                   <p>
                     {isRTL 
-                      ? `تم إنشاء الملخص باستخدام ${summary.model_used || 'mT5'}` 
-                      : `Summary generated using ${summary.model_used || 'mT5'}`}
+                      ? `تم إنشاء الملخص باستخدام ${summary.modelUsed || 'mT5'}` 
+                      : `Summary generated using ${summary.modelUsed || 'mT5'}`}
                   </p>
                 </div>
               </>
@@ -274,8 +275,8 @@ const AnalysisResults: React.FC<AnalysisResultsProps> = ({ uploadId }) => {
                 <div className="text-xs text-muted-foreground text-center">
                   <p>
                     {isRTL 
-                      ? `تم إنشاء التوقع لفترة ${forecast.forecast_period === 'daily' ? 'يومية' : forecast.forecast_period === 'weekly' ? 'أسبوعية' : 'شهرية'}` 
-                      : `Forecast generated for ${forecast.forecast_period} period`}
+                      ? 'تم إنشاء التوقع' 
+                      : 'Forecast generated'}
                   </p>
                 </div>
               </>
