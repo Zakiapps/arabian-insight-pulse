@@ -1,4 +1,3 @@
-
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -23,7 +22,8 @@ import {
   FolderKanban,
   ArrowRight,
   Calendar,
-  Target
+  Target,
+  Brain
 } from "lucide-react";
 import { useNavigate } from "react-router-dom";
 import { toast } from "sonner";
@@ -97,24 +97,52 @@ const Dashboard = () => {
     enabled: !!profile?.id
   });
 
-  // Calculate metrics
+  // Fetch text analysis data across all projects
+  const { data: textAnalysisData } = useQuery({
+    queryKey: ['dashboard-text-analyses', profile?.id],
+    queryFn: async () => {
+      if (!profile?.id) return [];
+      
+      const { data, error } = await supabase
+        .from('text_analyses')
+        .select('sentiment, dialect, created_at, project_id')
+        .eq('user_id', profile.id)
+        .order('created_at', { ascending: false })
+        .limit(100);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!profile?.id
+  });
+
+  // Calculate metrics including text analysis
   const totalProjects = projects?.length || 0;
   const activeProjects = projects?.filter(p => p.is_active)?.length || 0;
   const totalPosts = postsData?.length || 0;
+  const totalTextAnalyses = textAnalysisData?.length || 0;
   const positivePosts = postsData?.filter(post => post.sentiment === 'positive').length || 0;
   const negativePosts = postsData?.filter(post => post.sentiment === 'negative').length || 0;
   
-  const sentimentPercentage = totalPosts > 0 ? {
-    positive: Math.round((positivePosts / totalPosts) * 100),
-    negative: Math.round((negativePosts / totalPosts) * 100),
-    neutral: Math.round(((totalPosts - positivePosts - negativePosts) / totalPosts) * 100)
+  // Text analysis sentiment data
+  const positiveTextAnalyses = textAnalysisData?.filter(analysis => analysis.sentiment === 'positive').length || 0;
+  const negativeTextAnalyses = textAnalysisData?.filter(analysis => analysis.sentiment === 'negative').length || 0;
+  
+  const combinedPositive = positivePosts + positiveTextAnalyses;
+  const combinedNegative = negativePosts + negativeTextAnalyses;
+  const combinedTotal = totalPosts + totalTextAnalyses;
+  
+  const sentimentPercentage = combinedTotal > 0 ? {
+    positive: Math.round((combinedPositive / combinedTotal) * 100),
+    negative: Math.round((combinedNegative / combinedTotal) * 100),
+    neutral: Math.round(((combinedTotal - combinedPositive - combinedNegative) / combinedTotal) * 100)
   } : { positive: 0, negative: 0, neutral: 0 };
 
   // Sentiment distribution data for pie chart
   const sentimentData = [
-    { name: 'إيجابي', value: positivePosts, color: '#10b981' },
-    { name: 'سلبي', value: negativePosts, color: '#ef4444' },
-    { name: 'محايد', value: totalPosts - positivePosts - negativePosts, color: '#6b7280' }
+    { name: 'إيجابي', value: combinedPositive, color: '#10b981' },
+    { name: 'سلبي', value: combinedNegative, color: '#ef4444' },
+    { name: 'محايد', value: combinedTotal - combinedPositive - combinedNegative, color: '#6b7280' }
   ].filter(item => item.value > 0);
 
   return (
@@ -164,16 +192,16 @@ const Dashboard = () => {
 
         <Card className="border-r-4 border-r-blue-500 cursor-pointer hover:shadow-lg transition-shadow" onClick={() => navigate('/dashboard/posts')}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">إجمالي المنشورات</CardTitle>
+            <CardTitle className="text-sm font-medium">تحليلات النص</CardTitle>
             <div className="p-2 rounded-full bg-blue-100">
-              <MessageSquare className="h-4 w-4 text-blue-600" />
+              <Brain className="h-4 w-4 text-blue-600" />
             </div>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold">{totalPosts.toLocaleString()}</div>
+            <div className="text-2xl font-bold">{totalTextAnalyses.toLocaleString()}</div>
             <p className="text-xs text-muted-foreground flex items-center mt-1">
               <TrendingUp className="inline h-3 w-3 mr-1 text-green-500" />
-              المنشورات المحللة
+              تحليل مكتمل
             </p>
           </CardContent>
         </Card>
@@ -188,7 +216,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold text-green-600">{sentimentPercentage.positive}%</div>
             <p className="text-xs text-muted-foreground">
-              {positivePosts.toLocaleString()} منشور إيجابي
+              {combinedPositive.toLocaleString()} منشور إيجابي
             </p>
           </CardContent>
         </Card>
@@ -203,7 +231,7 @@ const Dashboard = () => {
           <CardContent>
             <div className="text-2xl font-bold text-red-600">{sentimentPercentage.negative}%</div>
             <p className="text-xs text-muted-foreground">
-              {negativePosts.toLocaleString()} منشور سلبي
+              {combinedNegative.toLocaleString()} منشور سلبي
             </p>
           </CardContent>
         </Card>
@@ -403,8 +431,8 @@ const Dashboard = () => {
                   <span className="text-muted-foreground font-medium">{activeProjects}</span>
                 </div>
                 <div className="flex justify-between">
-                  <span>المنشورات المحللة:</span>
-                  <span className="text-muted-foreground font-medium">{totalPosts.toLocaleString()}</span>
+                  <span>التحليلات المكتملة:</span>
+                  <span className="text-muted-foreground font-medium">{totalTextAnalyses.toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between">
                   <span>معدل النجاح:</span>

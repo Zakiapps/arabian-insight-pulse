@@ -695,6 +695,59 @@ export type Database = {
         }
         Relationships: []
       }
+      text_analyses: {
+        Row: {
+          created_at: string
+          dialect: string | null
+          dialect_confidence: number | null
+          id: string
+          input_text: string
+          language: string
+          model_response: Json | null
+          project_id: string
+          sentiment: string
+          sentiment_score: number
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          dialect?: string | null
+          dialect_confidence?: number | null
+          id?: string
+          input_text: string
+          language?: string
+          model_response?: Json | null
+          project_id: string
+          sentiment: string
+          sentiment_score: number
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          dialect?: string | null
+          dialect_confidence?: number | null
+          id?: string
+          input_text?: string
+          language?: string
+          model_response?: Json | null
+          project_id?: string
+          sentiment?: string
+          sentiment_score?: number
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "text_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       transactions: {
         Row: {
           amount: number
@@ -1014,6 +1067,17 @@ export type Database = {
           created_at: string
           raw_text: string
           source: string
+        }[]
+      }
+      get_project_analysis_stats: {
+        Args: { project_id_param: string }
+        Returns: {
+          total_analyses: number
+          positive_count: number
+          negative_count: number
+          neutral_count: number
+          arabic_count: number
+          jordanian_dialect_count: number
         }[]
       }
       get_project_stats: {

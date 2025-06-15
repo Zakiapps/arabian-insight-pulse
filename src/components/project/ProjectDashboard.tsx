@@ -7,14 +7,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { BarChart3, TrendingUp, FileText, Brain, Activity, Upload, MessageSquare, Target, Zap } from 'lucide-react';
+import { BarChart3, TrendingUp, FileText, Brain, Activity, Upload, MessageSquare, Target, Zap, Globe, Users } from 'lucide-react';
 import ProjectHeader from './ProjectHeader';
 import SentimentChart from './SentimentChart';
 import DialectDistribution from './DialectDistribution';
 import TextSummarizer from './TextSummarizer';
+import TextAnalysisForm from './TextAnalysisForm';
 import ExtractedNewsList from "@/components/project/ExtractedNewsList";
 import { useState } from 'react';
-import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, PieChart, Pie, Cell } from 'recharts';
+import { ResponsiveContainer, LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, AreaChart, Area, PieChart, Pie, Cell, BarChart, Bar } from 'recharts';
 
 interface Project {
   id: string;
@@ -32,6 +33,15 @@ interface ProjectStats {
     negative: number;
     neutral: number;
   };
+}
+
+interface AnalysisStats {
+  total_analyses: number;
+  positive_count: number;
+  negative_count: number;
+  neutral_count: number;
+  arabic_count: number;
+  jordanian_dialect_count: number;
 }
 
 const ProjectDashboard = () => {
@@ -71,6 +81,41 @@ const ProjectDashboard = () => {
     enabled: !!projectId,
   });
 
+  // Fetch text analysis stats
+  const { data: analysisStats } = useQuery({
+    queryKey: ['project-analysis-stats', projectId],
+    queryFn: async () => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      const { data, error } = await supabase.rpc('get_project_analysis_stats', {
+        project_id_param: projectId,
+      });
+      
+      if (error) throw error;
+      return data[0] as AnalysisStats;
+    },
+    enabled: !!projectId,
+  });
+
+  // Fetch text analyses
+  const { data: textAnalyses } = useQuery({
+    queryKey: ['project-text-analyses', projectId],
+    queryFn: async () => {
+      if (!projectId) throw new Error('Project ID is required');
+      
+      const { data, error } = await supabase
+        .from('text_analyses')
+        .select('*')
+        .eq('project_id', projectId)
+        .order('created_at', { ascending: false })
+        .limit(50);
+      
+      if (error) throw error;
+      return data || [];
+    },
+    enabled: !!projectId,
+  });
+
   const { data: analyses } = useQuery({
     queryKey: ['project-analyses', projectId],
     queryFn: async () => {
@@ -93,20 +138,21 @@ const ProjectDashboard = () => {
       if (!projectId) return [];
       
       const { data, error } = await supabase
-        .from('analyzed_posts')
+        .from('text_analyses')
         .select('sentiment, created_at')
+        .eq('project_id', projectId)
         .order('created_at', { ascending: true })
         .limit(30);
       
       if (error) throw error;
       
       // Group by day for better visualization
-      const grouped = data?.reduce((acc: any, post) => {
-        const date = new Date(post.created_at).toISOString().split('T')[0];
+      const grouped = data?.reduce((acc: any, analysis) => {
+        const date = new Date(analysis.created_at).toISOString().split('T')[0];
         if (!acc[date]) {
           acc[date] = { date, positive: 0, negative: 0, neutral: 0, total: 0 };
         }
-        acc[date][post.sentiment || 'neutral']++;
+        acc[date][analysis.sentiment || 'neutral']++;
         acc[date].total++;
         return acc;
       }, {});
@@ -146,11 +192,11 @@ const ProjectDashboard = () => {
     );
   }
 
-  // Prepare sentiment pie chart data
+  // Prepare sentiment pie chart data from text analyses
   const sentimentData = [
-    { name: 'إيجابي', value: stats?.sentiment_distribution?.positive || 0, color: '#10b981' },
-    { name: 'سلبي', value: stats?.sentiment_distribution?.negative || 0, color: '#ef4444' },
-    { name: 'محايد', value: stats?.sentiment_distribution?.neutral || 0, color: '#6b7280' }
+    { name: 'إيجابي', value: analysisStats?.positive_count || 0, color: '#10b981' },
+    { name: 'سلبي', value: analysisStats?.negative_count || 0, color: '#ef4444' },
+    { name: 'محايد', value: analysisStats?.neutral_count || 0, color: '#6b7280' }
   ].filter(item => item.value > 0);
 
   return (
@@ -166,15 +212,15 @@ const ProjectDashboard = () => {
         <Card className="border-l-4 border-l-blue-500 bg-gradient-to-br from-blue-50 to-blue-100/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-blue-900">
-              {isRTL ? 'إجمالي التحليلات' : 'Total Analyses'}
+              {isRTL ? 'تحليلات النص' : 'Text Analyses'}
             </CardTitle>
             <div className="p-2 rounded-full bg-blue-200">
-              <BarChart3 className="h-4 w-4 text-blue-700" />
+              <Brain className="h-4 w-4 text-blue-700" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-blue-800">
-              {statsLoading ? '...' : stats?.analysis_count || 0}
+              {analysisStats?.total_analyses || 0}
             </div>
             <p className="text-xs text-blue-600 flex items-center mt-1">
               <TrendingUp className="h-3 w-3 mr-1" />
@@ -186,19 +232,19 @@ const ProjectDashboard = () => {
         <Card className="border-l-4 border-l-green-500 bg-gradient-to-br from-green-50 to-green-100/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-green-900">
-              {isRTL ? 'إجمالي الرفوعات' : 'Total Uploads'}
+              {isRTL ? 'المشاعر الإيجابية' : 'Positive Sentiment'}
             </CardTitle>
             <div className="p-2 rounded-full bg-green-200">
-              <FileText className="h-4 w-4 text-green-700" />
+              <TrendingUp className="h-4 w-4 text-green-700" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-green-800">
-              {statsLoading ? '...' : stats?.upload_count || 0}
+              {analysisStats?.positive_count || 0}
             </div>
             <p className="text-xs text-green-600 flex items-center mt-1">
-              <Upload className="h-3 w-3 mr-1" />
-              ملف مرفوع
+              <Target className="h-3 w-3 mr-1" />
+              تحليل إيجابي
             </p>
           </CardContent>
         </Card>
@@ -206,19 +252,19 @@ const ProjectDashboard = () => {
         <Card className="border-l-4 border-l-purple-500 bg-gradient-to-br from-purple-50 to-purple-100/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-purple-900">
-              {isRTL ? 'المشاعر الإيجابية' : 'Positive Sentiment'}
+              {isRTL ? 'النصوص العربية' : 'Arabic Texts'}
             </CardTitle>
             <div className="p-2 rounded-full bg-purple-200">
-              <TrendingUp className="h-4 w-4 text-purple-700" />
+              <Globe className="h-4 w-4 text-purple-700" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-purple-800">
-              {statsLoading ? '...' : stats?.sentiment_distribution?.positive || 0}
+              {analysisStats?.arabic_count || 0}
             </div>
             <p className="text-xs text-purple-600 flex items-center mt-1">
-              <Target className="h-3 w-3 mr-1" />
-              منشور إيجابي
+              <MessageSquare className="h-3 w-3 mr-1" />
+              نص عربي
             </p>
           </CardContent>
         </Card>
@@ -226,19 +272,19 @@ const ProjectDashboard = () => {
         <Card className="border-l-4 border-l-orange-500 bg-gradient-to-br from-orange-50 to-orange-100/50">
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium text-orange-900">
-              {isRTL ? 'معدل النشاط' : 'Activity Rate'}
+              {isRTL ? 'اللهجة الأردنية' : 'Jordanian Dialect'}
             </CardTitle>
             <div className="p-2 rounded-full bg-orange-200">
-              <Activity className="h-4 w-4 text-orange-700" />
+              <Users className="h-4 w-4 text-orange-700" />
             </div>
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-orange-800">
-              {project.is_active ? '100%' : '0%'}
+              {analysisStats?.jordanian_dialect_count || 0}
             </div>
             <p className="text-xs text-orange-600 flex items-center mt-1">
-              <Zap className="h-3 w-3 mr-1" />
-              {project.is_active ? 'نشط' : 'غير نشط'}
+              <Globe className="h-3 w-3 mr-1" />
+              نص أردني
             </p>
           </CardContent>
         </Card>
@@ -342,8 +388,11 @@ const ProjectDashboard = () => {
       <ExtractedNewsList projectId={project.id} key={newsRefreshKey} />
 
       {/* Detailed Analysis Tabs */}
-      <Tabs defaultValue="analytics" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-4">
+      <Tabs defaultValue="analyze" className="space-y-4">
+        <TabsList className="grid w-full grid-cols-5">
+          <TabsTrigger value="analyze">
+            {isRTL ? 'تحليل النص' : 'Text Analysis'}
+          </TabsTrigger>
           <TabsTrigger value="analytics">
             {isRTL ? 'التحليلات' : 'Analytics'}
           </TabsTrigger>
@@ -358,18 +407,22 @@ const ProjectDashboard = () => {
           </TabsTrigger>
         </TabsList>
 
+        <TabsContent value="analyze" className="space-y-4">
+          <TextAnalysisForm projectId={project.id} />
+        </TabsContent>
+
         <TabsContent value="analytics" className="space-y-4">
           <Card>
             <CardHeader>
               <CardTitle>{isRTL ? 'تحليل البيانات التفصيلي' : 'Detailed Data Analysis'}</CardTitle>
               <CardDescription>
-                {isRTL ? 'عرض شامل لجميع التحليلات في المشروع' : 'Comprehensive overview of all project analyses'}
+                {isRTL ? 'عرض شامل لجميع تحليلات النص في المشروع' : 'Comprehensive overview of all text analyses in the project'}
               </CardDescription>
             </CardHeader>
             <CardContent>
-              {analyses && analyses.length > 0 ? (
+              {textAnalyses && textAnalyses.length > 0 ? (
                 <div className="space-y-4">
-                  {analyses.slice(0, 10).map((analysis: any) => (
+                  {textAnalyses.slice(0, 10).map((analysis: any) => (
                     <div key={analysis.id} className="p-4 border rounded-lg hover:bg-muted/30 transition-colors">
                       <div className="flex justify-between items-start mb-2">
                         <span className="font-medium">
@@ -388,14 +441,21 @@ const ProjectDashboard = () => {
                               {Math.round(analysis.sentiment_score * 100)}%
                             </Badge>
                           )}
+                          {analysis.dialect && (
+                            <Badge variant="outline" className="text-xs">
+                              {analysis.dialect === 'jordanian' ? 'أردني' :
+                               analysis.dialect === 'egyptian' ? 'مصري' :
+                               analysis.dialect === 'saudi' ? 'سعودي' : 'فصيح'}
+                            </Badge>
+                          )}
                         </div>
                       </div>
                       <p className="text-sm text-muted-foreground mb-2 line-clamp-2">
-                        {analysis.raw_text?.slice(0, 150)}...
+                        {analysis.input_text?.slice(0, 150)}...
                       </p>
                       <div className="flex items-center justify-between text-xs text-muted-foreground">
                         <span>
-                          {isRTL ? 'المصدر:' : 'Source:'} {analysis.source || 'غير محدد'}
+                          {isRTL ? 'اللغة:' : 'Language:'} {analysis.language || 'عربي'}
                         </span>
                         <span>
                           {new Date(analysis.created_at).toLocaleDateString('ar-SA')}
@@ -403,10 +463,10 @@ const ProjectDashboard = () => {
                       </div>
                     </div>
                   ))}
-                  {analyses.length > 10 && (
+                  {textAnalyses.length > 10 && (
                     <div className="text-center">
                       <Button variant="outline">
-                        عرض المزيد ({analyses.length - 10} تحليل إضافي)
+                        عرض المزيد ({textAnalyses.length - 10} تحليل إضافي)
                       </Button>
                     </div>
                   )}
@@ -424,11 +484,11 @@ const ProjectDashboard = () => {
         </TabsContent>
 
         <TabsContent value="sentiment" className="space-y-4">
-          <SentimentChart analyses={analyses || []} />
+          <SentimentChart analyses={textAnalyses || []} />
         </TabsContent>
 
         <TabsContent value="dialect" className="space-y-4">
-          <DialectDistribution analyses={analyses || []} />
+          <DialectDistribution analyses={textAnalyses || []} />
         </TabsContent>
 
         <TabsContent value="summary" className="space-y-4">
