@@ -14,36 +14,40 @@ const SignIn = () => {
   const [password, setPassword] = useState('password');
   const [showPassword, setShowPassword] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [loginError, setLoginError] = useState<string | null>(null);
+
   const { login, isAuthenticated, loading: authLoading } = useAuth();
   const navigate = useNavigate();
 
   // Redirect if already authenticated
   useEffect(() => {
     if (isAuthenticated && !authLoading) {
-      console.log('User is authenticated, redirecting to dashboard');
       navigate('/dashboard', { replace: true });
     }
   }, [isAuthenticated, authLoading, navigate]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    
+
+    setLoginError(null);
+
     if (!email.trim() || !password) {
       toast.error('يرجى إدخال البريد الإلكتروني وكلمة المرور');
+      setLoginError('يرجى إدخال البريد الإلكتروني وكلمة المرور');
       return;
     }
 
     setLoading(true);
-    console.log('Attempting login for:', email.trim());
 
     try {
       const { error } = await login(email.trim(), password);
-      
+
       if (error) {
-        console.error('Login error:', error);
         let errorMessage = 'خطأ في تسجيل الدخول';
-        
-        if (error.message.includes('Invalid login credentials') || error.message.includes('invalid_credentials')) {
+        if (
+          error.message.includes('Invalid login credentials') ||
+          error.message.includes('invalid_credentials')
+        ) {
           errorMessage = 'بيانات الدخول غير صحيحة. تأكد من البريد الإلكتروني وكلمة المرور.';
         } else if (error.message.includes('Email not confirmed')) {
           errorMessage = 'يرجى تأكيد البريد الإلكتروني أولاً';
@@ -52,22 +56,21 @@ const SignIn = () => {
         } else {
           errorMessage = error.message;
         }
-        
+
+        setLoginError(errorMessage);
         toast.error(errorMessage);
       } else {
-        console.log('Login successful');
         toast.success('تم تسجيل الدخول بنجاح');
         // Navigation will happen automatically via useEffect
       }
     } catch (error: any) {
-      console.error('Login exception:', error);
+      setLoginError('حدث خطأ غير متوقع');
       toast.error('حدث خطأ غير متوقع');
     } finally {
       setLoading(false);
     }
   };
 
-  // Show loading state during auth check
   if (authLoading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-slate-50 to-white" dir="rtl">
@@ -132,14 +135,20 @@ const SignIn = () => {
                   type="button"
                   className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 hover:text-gray-600"
                   onClick={() => setShowPassword(!showPassword)}
+                  tabIndex={-1}
                 >
                   {showPassword ? <EyeOff className="h-5 w-5" /> : <Eye className="h-5 w-5" />}
                 </button>
               </div>
             </div>
-            <Button 
-              type="submit" 
-              className="w-full h-12 text-base bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90" 
+            {loginError && (
+              <div className="bg-destructive/10 text-destructive p-3 rounded-md text-sm text-center">
+                {loginError}
+              </div>
+            )}
+            <Button
+              type="submit"
+              className="w-full h-12 text-base bg-gradient-to-r from-primary to-blue-600 hover:from-primary/90 hover:to-blue-600/90"
               disabled={loading}
             >
               {loading ? (
@@ -152,7 +161,7 @@ const SignIn = () => {
               )}
             </Button>
           </form>
-          
+
           <div className="mt-6 space-y-4">
             <div className="text-center">
               <Link to="/signup" className="text-primary hover:text-primary/80 font-medium">
@@ -177,3 +186,4 @@ const SignIn = () => {
 };
 
 export default SignIn;
+
