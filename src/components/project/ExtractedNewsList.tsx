@@ -10,33 +10,9 @@ import { useQuery } from "@tanstack/react-query";
 import { useState } from "react";
 import NewsArticleCard from "./NewsArticleCard";
 import NewsEmptyState from "./NewsEmptyState";
-import { useNewsAnalysis } from "@/hooks/useNewsAnalysis";
 import { useNewsDeletion } from "@/hooks/useNewsDeletion";
 import { useBatchAnalysis } from "@/hooks/useBatchAnalysis";
-
-interface SavedNewsArticle {
-  id: string;
-  article_id: string;
-  title: string;
-  description?: string;
-  content?: string;
-  source_name?: string;
-  source_icon?: string;
-  image_url?: string;
-  link?: string;
-  pub_date?: string;
-  language: string;
-  category?: string[];
-  keywords?: string[];
-  sentiment?: string;
-  emotion?: string;
-  dialect?: string;
-  dialect_confidence?: number;
-  dialect_indicators?: string[];
-  emotional_markers?: string[];
-  is_analyzed: boolean;
-  created_at: string;
-}
+import { SavedNewsArticle } from "@/types/news";
 
 interface ExtractedNewsListProps {
   projectId: string;
@@ -44,6 +20,8 @@ interface ExtractedNewsListProps {
 }
 
 const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListProps) => {
+  console.log('ExtractedNewsList rendered with projectId:', projectId);
+  
   const { isRTL } = useLanguage();
   const { user } = useAuth();
   const [selectedArticles, setSelectedArticles] = useState<string[]>([]);
@@ -52,6 +30,12 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
   const { data: savedNews, isLoading, refetch } = useQuery({
     queryKey: ['saved-news', projectId],
     queryFn: async () => {
+      console.log('Fetching saved news for projectId:', projectId);
+      if (!projectId) {
+        console.error('No projectId provided to query');
+        throw new Error('Project ID is required');
+      }
+      
       const { data, error } = await supabase
         .from('scraped_news')
         .select('*')
@@ -62,6 +46,7 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
         console.error('Error fetching saved news:', error);
         throw error;
       }
+      console.log('Fetched saved news:', data?.length, 'articles');
       return data as SavedNewsArticle[];
     },
     enabled: !!projectId && !!user
@@ -75,17 +60,11 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
     }
   };
 
-  const { analyzingArticles, analyzeArticle } = useNewsAnalysis(projectId, handleAnalysisComplete);
   const { deletingArticles, deleteArticle } = useNewsDeletion();
   const { isAnalyzing: isBatchAnalyzing, analyzeAllUnanalyzed, analyzeSelected } = useBatchAnalysis(projectId);
 
   const handleDeleteArticle = (articleId: string) => {
     deleteArticle(articleId, refetch);
-  };
-
-  const handleAnalyzeArticle = async (article: SavedNewsArticle) => {
-    console.log('Analyzing article:', article.id, article.title);
-    await analyzeArticle(article);
   };
 
   const handleSelectArticle = (articleId: string, selected: boolean) => {
@@ -247,13 +226,8 @@ const ExtractedNewsList = ({ projectId, onAnalysisComplete }: ExtractedNewsListP
               <NewsArticleCard
                 key={article.id}
                 article={article}
-                onAnalyze={handleAnalyzeArticle}
-                onDelete={handleDeleteArticle}
-                isAnalyzing={analyzingArticles[article.id] || false}
-                isDeleting={deletingArticles[article.id] || false}
-                selectionMode={selectionMode}
-                selected={selectedArticles.includes(article.id)}
-                onSelect={(selected) => handleSelectArticle(article.id, selected)}
+                projectId={projectId}
+                onAnalysisComplete={handleAnalysisComplete}
               />
             ))}
           </div>

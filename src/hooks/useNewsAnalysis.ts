@@ -4,30 +4,7 @@ import { useToast } from '@/hooks/use-toast';
 import { supabase } from '@/integrations/supabase/client';
 import { useAuth } from '@/contexts/AuthContext';
 import { useLanguage } from '@/contexts/LanguageContext';
-
-interface SavedNewsArticle {
-  id: string;
-  article_id: string;
-  title: string;
-  description?: string;
-  content?: string;
-  source_name?: string;
-  source_icon?: string;
-  image_url?: string;
-  link?: string;
-  pub_date?: string;
-  language: string;
-  category?: string[];
-  keywords?: string[];
-  sentiment?: string;
-  emotion?: string;
-  dialect?: string;
-  dialect_confidence?: number;
-  dialect_indicators?: string[];
-  emotional_markers?: string[];
-  is_analyzed: boolean;
-  created_at: string;
-}
+import { SavedNewsArticle } from '@/types/news';
 
 // Utility to bound numeric values for database insertion
 function boundValue(value: number | undefined, min: number, max: number, defaultValue: number): number {
@@ -44,7 +21,10 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
   const { isRTL } = useLanguage();
 
   const analyzeArticle = async (article: SavedNewsArticle) => {
+    console.log('analyzeArticle called with:', { projectId, articleId: article.id, userId: user?.id });
+    
     if (!user) {
+      console.error('No user found for analysis');
       toast({
         title: isRTL ? "خطأ" : "Error",
         description: isRTL ? "يجب تسجيل الدخول أولاً" : "Please log in first",
@@ -53,7 +33,17 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
       return;
     }
 
-    console.log('Starting analysis for article:', article.id, article.title);
+    if (!projectId) {
+      console.error('No projectId provided for analysis');
+      toast({
+        title: isRTL ? "خطأ" : "Error",
+        description: isRTL ? "معرف المشروع مطلوب" : "Project ID is required",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    console.log('Starting analysis for article:', article.id, article.title, 'projectId:', projectId);
     setAnalyzingArticles(prev => ({ ...prev, [article.id]: true }));
 
     try {
@@ -83,11 +73,13 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
       const boundedConfidence = boundValue(data.confidence, 0, 1, 0.5);
       const boundedDialectConfidence = boundValue(data.dialect_confidence, 0, 100, 0);
 
+      console.log('Inserting analysis to text_analyses with projectId:', projectId);
+
       // Store the analysis in text_analyses table with bounded values
       const { error: insertError } = await supabase
         .from('text_analyses')
         .insert({
-          project_id: projectId,
+          project_id: projectId, // Make sure this is passed correctly
           input_text: data.analyzedText || `${article.title}. ${article.description || ''}`.substring(0, 500),
           sentiment: data.sentiment || 'neutral',
           sentiment_score: boundedConfidence,
@@ -108,6 +100,8 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
         console.error('Error inserting analysis:', insertError);
         throw insertError;
       }
+
+      console.log('Analysis inserted successfully, updating article...');
 
       // Update the article with bounded analysis results
       const { error: updateError } = await supabase

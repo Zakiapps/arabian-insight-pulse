@@ -4,50 +4,35 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Brain, ExternalLink, Clock, Globe, Newspaper, CheckCircle, AlertCircle } from 'lucide-react';
 import { useNewsAnalysis } from '@/hooks/useNewsAnalysis';
-
-interface NewsArticle {
-  id: string;
-  title: string;
-  description?: string;
-  content?: string;
-  source_name?: string;
-  source_icon?: string;
-  image_url?: string;
-  link?: string;
-  pub_date?: string;
-  language: string;
-  category?: string[];
-  keywords?: string[];
-  sentiment?: string;
-  emotion?: string;
-  dialect?: string;
-  dialect_confidence?: number;
-  dialect_indicators?: string[];
-  emotional_markers?: string[];
-  is_analyzed: boolean;
-  created_at: string;
-}
+import { SavedNewsArticle } from '@/types/news';
 
 interface NewsArticleCardProps {
-  article: NewsArticle;
+  article: SavedNewsArticle;
   projectId: string;
   onAnalysisComplete?: () => void;
 }
 
 const NewsArticleCard = ({ article, projectId, onAnalysisComplete }: NewsArticleCardProps) => {
+  console.log('NewsArticleCard rendered with projectId:', projectId, 'article:', article.id);
+  
   const { analyzingArticles, analyzeArticle } = useNewsAnalysis(projectId, onAnalysisComplete);
   
   const isAnalyzing = analyzingArticles[article.id];
 
   const handleAnalyze = () => {
+    console.log('Analyzing article with projectId:', projectId);
+    if (!projectId) {
+      console.error('Missing projectId in NewsArticleCard');
+      return;
+    }
     analyzeArticle(article);
   };
 
   const getContentSourceIcon = () => {
     if (article.content && article.content.length > 100) {
-      return <CheckCircle className="h-4 w-4 text-green-600" title="محتوى كامل متوفر" />;
+      return <CheckCircle className="h-4 w-4 text-green-600" />;
     } else {
-      return <AlertCircle className="h-4 w-4 text-orange-600" title="سيتم التحليل باستخدام العنوان والوصف" />;
+      return <AlertCircle className="h-4 w-4 text-orange-600" />;
     }
   };
 
@@ -174,7 +159,7 @@ const NewsArticleCard = ({ article, projectId, onAnalysisComplete }: NewsArticle
           {!article.is_analyzed ? (
             <Button 
               onClick={handleAnalyze}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || !projectId}
               size="sm"
               className="flex-1"
             >
@@ -193,7 +178,7 @@ const NewsArticleCard = ({ article, projectId, onAnalysisComplete }: NewsArticle
           ) : (
             <Button 
               onClick={handleAnalyze}
-              disabled={isAnalyzing}
+              disabled={isAnalyzing || !projectId}
               variant="outline"
               size="sm"
               className="flex-1"
