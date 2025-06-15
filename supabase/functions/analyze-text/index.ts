@@ -1,111 +1,110 @@
+
 import "https://deno.land/x/xhr@0.1.0/mod.ts";
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from 'https://esm.sh/@supabase/supabase-js@2.7.1';
-import { preprocessArabicText, validateArabicTextDetailed } from './utils/textProcessing.ts';
-import { detectJordanianDialect } from './utils/dialectDetection.ts';
-import { analyzeWithCustomEndpoint } from './utils/marbertAnalyzer.ts';
-import { validateWithTestData } from './utils/validation.ts';
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.7.1";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
+  'Content-Type': 'application/json',
 };
 
-// Initialize Supabase client
-const supabaseUrl = Deno.env.get('SUPABASE_URL')!;
-const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
+const supabaseUrl = Deno.env.get('SUPABASE_URL');
+const supabaseKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY');
 const supabase = createClient(supabaseUrl, supabaseKey);
 
-// Get Hugging Face API token
-// const hfToken = Deno.env.get('HUGGING_FACE_ACCESS_TOKEN');
-
-// Your custom Hugging Face endpoint
-// const customEndpoint = 'https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud';
+// Hugging Face endpoint & token
+const HF_ENDPOINT = "https://jdzzl8pdnwofvatk.us-east-1.aws.endpoints.huggingface.cloud";
+const HF_TOKEN = Deno.env.get('HUGGINGFACE_API_KEY');
 
 serve(async (req) => {
-  // Handle CORS
-  if (req.method === 'OPTIONS') {
+  if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
 
   try {
     const { text } = await req.json();
-    console.log('Processing text:', text?.substring(0, 50) + '...');
 
-    // Get admin HuggingFace config from DB
-    const { data: huggingfaceData, error: configErr } = await supabase
-      .from('huggingface_configs')
-      .select('*')
-      .limit(1)
-      .maybeSingle();
-
-    if (configErr) throw new Error('Cannot load HuggingFace config');
-    if (!huggingfaceData) {
-      return new Response(
-        JSON.stringify({ error: "No Hugging Face configuration found." }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!text) {
+      return new Response(JSON.stringify({ error: "No text provided" }), { status: 400, headers: corsHeaders });
+    }
+    if (!HF_TOKEN) {
+      return new Response(JSON.stringify({ error: "Hugging Face API key missing" }), { status: 500, headers: corsHeaders });
     }
 
-    // Pick the endpoint/token for arabert as example (add logic for mt5 as needed)
-    const hfEndpoint = huggingfaceData.arabert_url;
-    const hfToken = huggingfaceData.arabert_token;
+    // Call HuggingFace endpoint as per your function
+    const response = await fetch(HF_ENDPOINT, {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${HF_TOKEN}`,
+        "Content-Type": "application/json",
+        "Accept": "application/json",
+      },
+      body: JSON.stringify({
+        inputs: text,
+        parameters: {} // Feel free to add more parameters if needed
+      })
+    });
 
-    if (!hfToken || !hfEndpoint) {
-      return new Response(
-        JSON.stringify({ error: 'Hugging Face endpoint/token missing. Please set it in admin config.' }),
-        { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error("HuggingFace error:", errText);
+      return new Response(JSON.stringify({ error: "Failed to call HuggingFace", details: errText }), { status: 500, headers: corsHeaders });
     }
 
-    // Enhanced validation with detailed error messages
-    const validation = validateArabicTextDetailed(text);
-    if (!validation.isValid) {
-      return new Response(
-        JSON.stringify({ error: validation.errorMessage }),
-        { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Response expected: e.g. [[{ label: "LABEL_0", score: ... }, { label: "LABEL_1", score: ... }]] or similar
+    const hfResult = await response.json();
+    // Try to find sentiment result
+    let sentiment = "neutral";
+    let confidence = 0;
+    let dialect = "";
+    try {
+      // some endpoints wrap results in outer array
+      const top = Array.isArray(hfResult) ? hfResult[0] : hfResult;
+      if (Array.isArray(top)) {
+        // e.g.: [{ label: "LABEL_1", score: 0.9 }, ...]
+        // usually LABEL_0 = negative, LABEL_1 = positive, LABEL_2 = neutral (rare)
+        const pos = top.find(s => ["LABEL_1", "positive", "POSITIVE"].includes((s.label || "").toUpperCase()));
+        const neg = top.find(s => ["LABEL_0", "negative", "NEGATIVE"].includes((s.label || "").toUpperCase()));
+        const neu = top.find(s => ["LABEL_2", "neutral", "NEUTRAL"].includes((s.label || "").toUpperCase()));
+        if (pos && neg) {
+          if (pos.score > neg.score) {
+            sentiment = "positive";
+            confidence = pos.score;
+          } else {
+            sentiment = "negative";
+            confidence = neg.score;
+          }
+        } else if (pos) {
+          sentiment = "positive";
+          confidence = pos.score;
+        } else if (neg) {
+          sentiment = "negative";
+          confidence = neg.score;
+        } else if (neu) {
+          sentiment = "neutral";
+          confidence = neu.score;
+        }
+      }
+    } catch (e) {
+      console.error("Could not parse sentiment from HuggingFace response", e);
     }
 
-    // Preprocess text using enhanced normalization
-    const preprocessedText = preprocessArabicText(text);
-    console.log('Text preprocessed with enhanced normalization');
+    // Fake dialect detection (for demo: detect if word "أردني" exists)
+    if (/أردن|عمان|زلمة|طقس/.test(text)) {
+      dialect = "jordanian";
+    } else {
+      dialect = "msa";
+    }
 
-    // Analyze with admin-configured HuggingFace endpoint
-    const analysisResult = await analyzeWithCustomEndpoint(preprocessedText, hfEndpoint, hfToken);
-    console.log('Custom MARBERT analysis completed');
-    
-    // Detect dialect using enhanced Jordanian detection logic
-    const dialect = detectJordanianDialect(preprocessedText);
-    console.log('Enhanced Jordanian dialect detection completed');
-    
-    // Run validation in background (don't wait for it)
-    validateWithTestData(supabase, hfEndpoint, hfToken).catch(err => 
-      console.error('Background validation error:', err)
-    );
-    
-    const finalResult = {
-      ...analysisResult,
+    return new Response(JSON.stringify({
+      sentiment,
+      confidence,
       dialect,
-      modelSource: 'MARBERT_Custom_Endpoint_Enhanced'
-    };
-    
-    console.log('Analysis completed successfully with enhanced dialect detection');
-
-    return new Response(
-      JSON.stringify(finalResult),
-      { headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
-
+      model: "bert-ajgt-abv"
+    }), { headers: corsHeaders });
   } catch (error) {
-    console.error('Function error:', error);
-    
-    return new Response(
-      JSON.stringify({ 
-        error: 'Sentiment analysis failed',
-        details: error.message 
-      }),
-      { status: 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-    );
+    console.error("analyze-text function error:", error);
+    return new Response(JSON.stringify({ error: "Internal error", details: error.message }), { status: 500, headers: corsHeaders });
   }
 });
