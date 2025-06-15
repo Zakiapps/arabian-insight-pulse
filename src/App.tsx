@@ -49,6 +49,7 @@ import AdminSubscriptions from "@/pages/admin/AdminSubscriptions";
 import AdminTransactions from "@/pages/admin/AdminTransactions";
 import AdminSettings from "@/pages/admin/AdminSettings";
 import PaymentSettings from "@/pages/admin/PaymentSettings";
+import HuggingFaceConfigPage from "@/pages/admin/HuggingFaceConfig";
 
 const queryClient = new QueryClient();
 
@@ -129,6 +130,7 @@ function App() {
                       <Route path="transactions" element={<AdminTransactions />} />
                       <Route path="settings" element={<AdminSettings />} />
                       <Route path="payment-settings" element={<PaymentSettings />} />
+                      <Route path="huggingface-config" element={<HuggingFaceConfigPage />} />
                     </Route>
                     
                     {/* Unified Scraper route */}
