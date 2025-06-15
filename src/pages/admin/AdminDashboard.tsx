@@ -1,6 +1,5 @@
-
 import { useEffect, useState } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { 
   Users, 
   CreditCard, 
@@ -18,6 +17,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { LineChart, Line, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, BarChart as RechartsBarChart, Bar } from 'recharts';
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Link } from "react-router-dom";
+import { Shield } from "lucide-react";
 
 const data = [
   { name: 'يناير', revenue: 4000, users: 24 },
@@ -111,6 +112,7 @@ const AdminDashboard = () => {
     revenue: 0
   });
   const [loading, setLoading] = useState(true);
+  const [hfStatus, setHfStatus] = useState<"loading" | "found" | "missing">("loading");
 
   useEffect(() => {
     const fetchStats = async () => {
@@ -140,6 +142,22 @@ const AdminDashboard = () => {
     fetchStats();
   }, []);
 
+  useEffect(() => {
+    let mounted = true;
+    supabase
+      .from("huggingface_configs")
+      .select("id")
+      .order("created_at", { ascending: false })
+      .limit(1)
+      .maybeSingle()
+      .then(({ data, error }) => {
+        if (!mounted) return;
+        if (error || !data) setHfStatus("missing");
+        else setHfStatus("found");
+      });
+    return () => { mounted = false; };
+  }, []);
+
   // Format currency for display
   const formatCurrency = (amount: number) => {
     return new Intl.NumberFormat('ar-SA', {
@@ -149,7 +167,7 @@ const AdminDashboard = () => {
   };
 
   return (
-    <div className="space-y-6">
+    <div>
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-2xl font-bold tracking-tight">مرحباً بك في لوحة القيادة</h1>
@@ -163,7 +181,7 @@ const AdminDashboard = () => {
         </Button>
       </div>
       
-      <div className="grid gap-4 grid-cols-1 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
         <StatsCard 
           title="إجمالي المستخدمين" 
           value={stats.userCount} 
@@ -353,6 +371,36 @@ const AdminDashboard = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Hugging Face Config Card */}
+      <Card className="border-l-4 border-purple-500 shadow flex flex-row items-center">
+        <CardHeader className="flex flex-row items-center gap-3 py-6">
+          <Shield className="h-8 w-8 text-purple-500" />
+          <div>
+            <CardTitle className="text-lg font-bold">
+              إعدادات Hugging Face
+            </CardTitle>
+            <CardDescription>
+              إعداد نقاط النهاية الخاصة بنماذج Hugging Face.
+            </CardDescription>
+          </div>
+        </CardHeader>
+        <CardContent className="flex flex-col items-end justify-end flex-1">
+          {hfStatus === "loading" ? (
+            <span className="text-muted-foreground text-sm">جار التحميل...</span>
+          ) : hfStatus === "found" ? (
+            <span className="text-green-600 text-sm font-semibold">تم الإعداد</span>
+          ) : (
+            <span className="text-red-600 text-sm font-semibold">غير مفعل</span>
+          )}
+          <Link
+            to="/admin/huggingface-config"
+            className="mt-2 px-4 py-1 bg-purple-100 text-purple-700 text-xs rounded hover:bg-purple-200 transition"
+          >
+            إعداد أو تعديل
+          </Link>
+        </CardContent>
+      </Card>
     </div>
   );
 };

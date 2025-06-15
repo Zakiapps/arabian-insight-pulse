@@ -234,6 +234,36 @@ export type Database = {
         }
         Relationships: []
       }
+      huggingface_configs: {
+        Row: {
+          arabert_token: string | null
+          arabert_url: string | null
+          created_at: string | null
+          id: string
+          mt5_token: string | null
+          mt5_url: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          arabert_token?: string | null
+          arabert_url?: string | null
+          created_at?: string | null
+          id?: string
+          mt5_token?: string | null
+          mt5_url?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          arabert_token?: string | null
+          arabert_url?: string | null
+          created_at?: string | null
+          id?: string
+          mt5_token?: string | null
+          mt5_url?: string | null
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       news_configs: {
         Row: {
           api_key: string

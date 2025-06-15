@@ -15,7 +15,6 @@ interface HuggingFaceConfig {
   mt5_token?: string;
 }
 
-// Helper to check if data is a valid config (naive check)
 function isValidConfig(data: any): data is HuggingFaceConfig {
   return (
     typeof data === "object" &&
@@ -32,28 +31,37 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
   const [arabertToken, setArabertToken] = useState("");
   const [mt5Url, setMt5Url] = useState("");
   const [mt5Token, setMt5Token] = useState("");
+  const [configId, setConfigId] = useState<string | null>(null);
   const [loading, setLoading] = useState(false);
+  const [empty, setEmpty] = useState(false);
 
+  // Fetch existing config on mount
   useEffect(() => {
     (async () => {
       setLoading(true);
+      setEmpty(false);
       try {
         const { data, error } = await supabase
-          .from("huggingface_configs" as any)
+          .from("huggingface_configs")
           .select("*")
+          .order("created_at", { ascending: false })
+          .limit(1)
           .maybeSingle();
 
         if (error) {
+          setEmpty(true);
           toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
-        } else if (isValidConfig(data)) {
-          setArabertUrl(data.arabert_url ?? "");
-          setArabertToken(data.arabert_token ?? "");
-          setMt5Url(data.mt5_url ?? "");
-          setMt5Token(data.mt5_token ?? "");
-        } else if (data && "code" in data && "details" in data) {
-          toast.error(isRTL ? "خطأ تحميل البيانات" : "Data loading error");
+        } else if (isValidConfig(data) && data) {
+          setConfigId(data.id as string);
+          setArabertUrl(data.arabert_url || "");
+          setArabertToken(data.arabert_token || "");
+          setMt5Url(data.mt5_url || "");
+          setMt5Token(data.mt5_token || "");
+        } else {
+          setEmpty(true);
         }
-      } catch (err) {
+      } catch {
+        setEmpty(true);
         toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
       } finally {
         setLoading(false);
@@ -70,17 +78,29 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
       mt5_url: mt5Url,
       mt5_token: mt5Token,
     };
-    // Upsert using 'as any' fallback due to missing types
-    const { error } = await (supabase
-      .from("huggingface_configs" as any)
-      .upsert([config], { onConflict: "id" }) as any);
-
-    if (error) {
-      toast.error(isRTL ? "خطأ في حفظ الإعدادات" : "Error saving settings");
+    if (configId) {
+      // Update existing config
+      const { error } = await supabase
+        .from("huggingface_configs")
+        .update(config)
+        .eq("id", configId);
+      if (error) {
+        toast.error(isRTL ? "خطأ في حفظ الإعدادات" : "Error saving settings");
+      } else {
+        toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
+      }
     } else {
-      toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
+      // Insert new config
+      const { error, data } = await supabase.from("huggingface_configs").insert([config]).select().single();
+      if (error) {
+        toast.error(isRTL ? "خطأ في حفظ الإعدادات" : "Error saving settings");
+      } else {
+        setConfigId(data.id);
+        toast.success(isRTL ? "تم حفظ الإعدادات بنجاح" : "Settings saved successfully!");
+      }
     }
     setLoading(false);
+    setEmpty(false);
   };
 
   return (
@@ -132,10 +152,11 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
             {loading ? (isRTL ? "جاري الحفظ..." : "Saving...") : (isRTL ? "حفظ الإعدادات" : "Save Settings")}
           </Button>
         </form>
-        {/* Fallback UI if form loads empty */}
-        {(!arabertUrl && !arabertToken && !mt5Url && !mt5Token && !loading) && (
+        {empty && !loading && (
           <div className="text-center text-muted-foreground mt-6">
-            {isRTL ? "لم يتم إعداد أي نقاط نهاية بعد." : "No huggingface endpoints are set yet."}
+            {isRTL
+              ? "لم يتم إعداد أي نقاط نهاية بعد. يرجى تعبئة الإعدادات وحفظها."
+              : "No Hugging Face endpoints are set yet. Please fill the configuration and save."}
           </div>
         )}
       </CardContent>
