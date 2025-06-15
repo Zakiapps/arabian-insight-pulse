@@ -59,13 +59,30 @@ serve(async (req) => {
       return new Response(JSON.stringify({ ok: false, message: "Invalid or missing Hugging Face token (should start with hf_...)" }), { headers: corsHeaders, status: 400 });
     }
 
-    // POST body according to HuggingFace API requirement: model, input
-    // Many endpoints expect {inputs: "...", parameters: {...}}; we'll give dummy
-    const payload: Record<string, unknown> = { inputs: "test", options: { wait_for_model: false } };
-    // Some OpenAI-compatible endpoints require `model` field in the POST body (for clarity, only for /v1/chat/completions)
-    if (testUrl.endsWith('/v1') || testUrl.includes('/v1/')) {
-      payload["model"] = testedModel;
-      payload["messages"] = [{ role: "user", content: "Hello" }];
+    // Determine if this is a /v1/chat/completions type endpoint
+    let payload: Record<string, unknown>;
+    if (testUrl.endsWith('/v1/chat/completions') || testUrl.includes('/v1/chat/completions')) {
+      payload = {
+        messages: [
+          { role: "system", content: "You are a helpful coding assistant." },
+          { role: "user", content: "Write a Python function to reverse a string." }
+        ],
+        max_tokens: 8000,
+        temperature: 0
+      };
+      // For some endpoints a model field may be required
+      if (testedModel) payload["model"] = testedModel;
+    } else if (testUrl.endsWith('/v1') || testUrl.includes('/v1/')) {
+      // Generic OpenAI-compatible logic
+      payload = {
+        model: testedModel,
+        messages: [
+          { role: "user", content: "Hello" }
+        ]
+      };
+    } else {
+      // Default/inference API minimal logic
+      payload = { inputs: "test", options: { wait_for_model: false } };
     }
 
     let response;
@@ -109,6 +126,7 @@ serve(async (req) => {
     }
 
     log("Hugging Face response OK");
+
     return new Response(JSON.stringify({
       ok: true,
       checkedModel: model,
@@ -119,4 +137,3 @@ serve(async (req) => {
     return new Response(JSON.stringify({ ok: false, message: err.message || "Unexpected error" }), { headers: corsHeaders, status: 500 });
   }
 });
-
