@@ -31,7 +31,26 @@ const NewsDataSearch = () => {
     try {
       // Use Supabase Edge function proxy
       const response = await fetch(`/functions/v1/scrape-newsdata?query=${encodeURIComponent(kw)}`);
-      const data = await response.json();
+      let data: any;
+
+      // Check content-type for JSON, else throw error
+      const contentType = response.headers.get("content-type");
+      if (contentType && contentType.includes("application/json")) {
+        data = await response.json();
+      } else {
+        const text = await response.text();
+        console.error("Unexpected response (not JSON):", text);
+        toast({
+          title: isRTL ? "خطأ في جلب الأخبار" : "Error fetching news",
+          description: isRTL
+            ? "لم يتم العثور على أخبار أو حدث خطأ في الخادم." 
+            : "No news found or server error.",
+          variant: "destructive",
+        });
+        setNews([]);
+        return;
+      }
+
       if (data.success && Array.isArray(data.articles)) {
         setNews(data.articles.slice(0, 10));
       } else {
