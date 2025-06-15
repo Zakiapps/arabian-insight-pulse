@@ -28,13 +28,11 @@ const HuggingFaceAdminConfigForm: React.FC = () => {
       setLoading(true);
       // Supabase generated types don't know about huggingface_configs,
       // so we must use 'as any' and check if object seems valid
-      const { data, error } = await (supabase
+      // --- FIX: do NOT cast to Promise, just await the result ---
+      const { data, error } = await supabase
         .from("huggingface_configs" as any)
         .select("*")
-        .maybeSingle() as Promise<{
-          data: HuggingFaceConfig | null;
-          error: any;
-        }>);
+        .maybeSingle();
 
       if (error) {
         toast.error(isRTL ? "فشل تحميل الإعدادات" : "Failed to load settings");
