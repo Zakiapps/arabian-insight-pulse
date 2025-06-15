@@ -45,7 +45,7 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
       return;
     }
 
-    console.log('Starting analysis for article:', article.id);
+    console.log('Starting analysis for article:', article.id, article.title);
     setAnalyzingArticles(prev => ({ ...prev, [article.id]: true }));
 
     try {
@@ -106,7 +106,12 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
 
       console.log('Analysis result received:', data);
 
-      // Store the analysis in text_analyses table for the recent analyses section
+      // Validate analysis result
+      if (!data || !data.sentiment) {
+        throw new Error('Invalid analysis result received');
+      }
+
+      // Store the analysis in text_analyses table
       const { error: insertError } = await supabase
         .from('text_analyses')
         .insert({
@@ -155,7 +160,7 @@ export const useNewsAnalysis = (projectId: string, onAnalysisComplete?: () => vo
 
       console.log('Analysis completed successfully for article:', article.id, 'using', contentSource);
 
-      // Trigger refresh of analyses in parent component
+      // Trigger refresh in parent component
       if (onAnalysisComplete) {
         onAnalysisComplete();
       }

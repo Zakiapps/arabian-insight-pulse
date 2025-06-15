@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { useLanguage } from "@/contexts/LanguageContext";
-import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle, Info } from "lucide-react";
+import { Trash2, ExternalLink, Sparkles, AlertTriangle, CheckCircle, Info, RefreshCw } from "lucide-react";
 
 interface SavedNewsArticle {
   id: string;
@@ -232,8 +232,55 @@ const NewsArticleCard = ({
       </div>
 
       {/* Enhanced Analysis Display */}
-      {article.is_analyzed && (article.dialect_indicators?.length || article.emotional_markers?.length) && (
+      {article.is_analyzed && (
         <div className="space-y-2">
+          {/* Analysis Results Summary */}
+          <div className="bg-green-50 border border-green-200 rounded-lg p-3">
+            <div className="flex items-center gap-2 mb-2">
+              <CheckCircle className="h-4 w-4 text-green-600" />
+              <span className="text-sm font-medium text-green-800">تم التحليل بـ MARBERT</span>
+            </div>
+            
+            <div className="grid grid-cols-2 gap-2 text-xs">
+              {article.sentiment && (
+                <div>
+                  <span className="font-medium">المشاعر:</span> 
+                  <span className={`ml-1 ${
+                    article.sentiment === 'positive' ? 'text-green-600' :
+                    article.sentiment === 'negative' ? 'text-red-600' : 'text-gray-600'
+                  }`}>
+                    {article.sentiment === 'positive' ? 'إيجابي' : 
+                     article.sentiment === 'negative' ? 'سلبي' : 'محايد'}
+                  </span>
+                </div>
+              )}
+              
+              {article.emotion && (
+                <div>
+                  <span className="font-medium">العاطفة:</span> 
+                  <span className="ml-1 text-purple-600">{article.emotion}</span>
+                </div>
+              )}
+              
+              {article.dialect && (
+                <div>
+                  <span className="font-medium">اللهجة:</span> 
+                  <span className="ml-1 text-blue-600">
+                    {article.dialect === 'jordanian' ? 'أردنية' : 'عربية أخرى'}
+                  </span>
+                </div>
+              )}
+              
+              {article.dialect_confidence && article.dialect_confidence > 0 && (
+                <div>
+                  <span className="font-medium">الثقة:</span> 
+                  <span className="ml-1">{Math.round(article.dialect_confidence)}%</span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* Dialect Indicators */}
           {article.dialect_indicators && article.dialect_indicators.length > 0 && (
             <div className="flex flex-wrap gap-1">
               <span className="text-xs text-blue-600 font-medium">مؤشرات أردنية:</span>
@@ -248,6 +295,7 @@ const NewsArticleCard = ({
             </div>
           )}
           
+          {/* Emotional Markers */}
           {article.emotional_markers && article.emotional_markers.length > 0 && (
             <div className="flex flex-wrap gap-1">
               <span className="text-xs text-purple-600 font-medium">مؤشرات عاطفية:</span>
@@ -309,7 +357,7 @@ const NewsArticleCard = ({
             className="bg-gradient-to-r from-blue-50 to-purple-50 hover:from-blue-100 hover:to-purple-100"
           >
             {isAnalyzing ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
             ) : (
               <Sparkles className="h-4 w-4 mr-1" />
             )}
@@ -342,7 +390,7 @@ const NewsArticleCard = ({
             disabled={isDeleting}
           >
             {isDeleting ? (
-              <div className="h-4 w-4 animate-spin rounded-full border-2 border-primary border-t-transparent" />
+              <RefreshCw className="h-4 w-4 mr-1 animate-spin" />
             ) : (
               <Trash2 className="h-4 w-4 mr-1" />
             )}

@@ -441,6 +441,11 @@ export type Database = {
           content: string | null
           created_at: string | null
           description: string | null
+          dialect: string | null
+          dialect_confidence: number | null
+          dialect_indicators: string[] | null
+          emotion: string | null
+          emotional_markers: string[] | null
           id: string
           image_url: string | null
           is_analyzed: boolean | null
@@ -462,6 +467,11 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           description?: string | null
+          dialect?: string | null
+          dialect_confidence?: number | null
+          dialect_indicators?: string[] | null
+          emotion?: string | null
+          emotional_markers?: string[] | null
           id?: string
           image_url?: string | null
           is_analyzed?: boolean | null
@@ -483,6 +493,11 @@ export type Database = {
           content?: string | null
           created_at?: string | null
           description?: string | null
+          dialect?: string | null
+          dialect_confidence?: number | null
+          dialect_indicators?: string[] | null
+          emotion?: string | null
+          emotional_markers?: string[] | null
           id?: string
           image_url?: string | null
           is_analyzed?: boolean | null
@@ -700,6 +715,9 @@ export type Database = {
           created_at: string
           dialect: string | null
           dialect_confidence: number | null
+          dialect_indicators: string[] | null
+          emotion: string | null
+          emotional_markers: string[] | null
           id: string
           input_text: string
           language: string
@@ -714,6 +732,9 @@ export type Database = {
           created_at?: string
           dialect?: string | null
           dialect_confidence?: number | null
+          dialect_indicators?: string[] | null
+          emotion?: string | null
+          emotional_markers?: string[] | null
           id?: string
           input_text: string
           language?: string
@@ -728,6 +749,9 @@ export type Database = {
           created_at?: string
           dialect?: string | null
           dialect_confidence?: number | null
+          dialect_indicators?: string[] | null
+          emotion?: string | null
+          emotional_markers?: string[] | null
           id?: string
           input_text?: string
           language?: string
